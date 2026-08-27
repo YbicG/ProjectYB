@@ -10,6 +10,7 @@ import { setupStoreIpc, getStore } from './ipc/store.ipc';
 import { setupWindowIpc } from './ipc/window.ipc';
 import { terminalService } from './services/terminal.service';
 import { systemMonitor } from './services/system-monitor';
+import { trayService } from './services/tray.service';
 
 let mainWindow: BrowserWindow | null = null;
 
@@ -27,6 +28,7 @@ async function createWindow() {
     ...bounds,
     minWidth: 1000,
     minHeight: 600,
+    icon: trayService.getAppIcon(),
     titleBarStyle: 'hidden',
     titleBarOverlay: {
       color: '#09090b',
@@ -44,12 +46,7 @@ async function createWindow() {
     return { action: 'deny' };
   });
 
-  mainWindow.on('close', async () => {
-    try {
-      const store = await getStore();
-      if (mainWindow) store.set('windowBounds', mainWindow.getBounds());
-    } catch {}
-  });
+  trayService.init(mainWindow);
 
   setupTerminalIpc(mainWindow);
   setupGitIpc();
@@ -81,17 +78,23 @@ app.whenReady().then(async () => {
   await createWindow();
 
   app.on('activate', async function () {
-    if (BrowserWindow.getAllWindows().length === 0) await createWindow();
+    if (mainWindow) {
+      trayService.showWindow(mainWindow);
+    } else if (BrowserWindow.getAllWindows().length === 0) {
+      await createWindow();
+    }
   });
 });
 
 app.on('before-quit', () => {
+  trayService.setQuitting(true);
+  trayService.destroy();
   terminalService.killAll();
   systemMonitor.stopMonitoring();
 });
 
 app.on('window-all-closed', () => {
-  if (process.platform !== 'darwin') {
+  if (trayService.isAppQuitting || process.platform === 'darwin') {
     app.quit();
   }
 });

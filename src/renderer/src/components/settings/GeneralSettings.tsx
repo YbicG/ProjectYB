@@ -21,6 +21,7 @@ export const GeneralSettings: React.FC = () => {
   
   const [defaultShell, setDefaultShell] = useState('powershell.exe');
   const [autoRestore, setAutoRestore] = useState(true);
+  const [minimizeToTray, setMinimizeToTray] = useState(true);
   const { scanProjects, addManualProject, unignoreProject } = useProjectStore();
 
   // Load settings from store on mount
@@ -45,6 +46,9 @@ export const GeneralSettings: React.FC = () => {
         
         const restore = await window.api.store.get('autoRestore');
         if (restore !== undefined) setAutoRestore(restore as boolean);
+
+        const traySetting = await window.api.store.get('minimizeToTray');
+        if (traySetting !== undefined) setMinimizeToTray(traySetting as boolean);
       } catch {}
     };
     loadSettings();
@@ -146,6 +150,14 @@ export const GeneralSettings: React.FC = () => {
     setAutoRestore(checked);
     if (window.api?.store) {
       await window.api.store.set('autoRestore', checked);
+    }
+  };
+
+  const handleMinimizeToTrayChange = async (checked: boolean) => {
+    setMinimizeToTray(checked);
+    if (window.api?.store) {
+      await window.api.store.set('minimizeToTray', checked);
+      toast.success(checked ? 'Minimize to tray enabled' : 'Minimize to tray disabled');
     }
   };
 
@@ -281,30 +293,32 @@ export const GeneralSettings: React.FC = () => {
               ))}
             </div>
           ) : (
-            <p className="text-xs text-zinc-600">No ignored projects recorded in session.</p>
+            <p className="text-xs text-zinc-500 italic">No ignored projects.</p>
           )}
 
-          <div className="flex items-center gap-2">
-            <Input
-              placeholder="Enter folder path to unignore..."
-              value={newUnignorePath}
-              onChange={(e) => setNewUnignorePath(e.target.value)}
-              onKeyDown={(e) => e.key === 'Enter' && handleManualUnignore()}
-              className="h-9 bg-zinc-900 border-zinc-800 text-zinc-300 flex-1 font-mono text-xs"
-            />
-            <Button
-              variant="outline"
-              className="border-dashed border-zinc-700 hover:border-zinc-500 shrink-0 text-xs"
-              onClick={handleManualUnignore}
-              disabled={!newUnignorePath.trim()}
-            >
-              <Eye className="w-3.5 h-3.5 mr-1.5" />
-              Unignore Path
-            </Button>
+          <div className="pt-2 border-t border-zinc-800/80 space-y-2">
+            <p className="text-xs text-zinc-400 font-medium">Unignore by exact path:</p>
+            <div className="flex gap-2">
+              <Input
+                placeholder="e.g. D:\Code\ecommerce\server"
+                value={newUnignorePath}
+                onChange={(e) => setNewUnignorePath(e.target.value)}
+                className="bg-zinc-900 border-zinc-800 font-mono text-sm h-9"
+              />
+              <Button 
+                onClick={handleManualUnignore}
+                variant="outline"
+                className="border-zinc-700 hover:bg-zinc-900 text-zinc-200 h-9 shrink-0 gap-1.5 text-xs font-semibold"
+              >
+                <Eye className="w-3.5 h-3.5 mr-1.5" />
+                Unignore Path
+              </Button>
+            </div>
           </div>
         </CardContent>
       </Card>
 
+      {/* ── CARD 4: PREFERENCES ── */}
       <Card className="bg-zinc-950 border-zinc-800">
         <CardHeader>
           <CardTitle>Preferences</CardTitle>
@@ -335,9 +349,22 @@ export const GeneralSettings: React.FC = () => {
             </div>
             <input
               type="checkbox"
-              className="w-4 h-4 accent-violet-500 rounded"
+              className="w-4 h-4 accent-violet-500 rounded cursor-pointer"
               checked={autoRestore}
               onChange={(e) => handleAutoRestoreChange(e.target.checked)}
+            />
+          </div>
+
+          <div className="flex items-center justify-between p-3 bg-zinc-900 border border-zinc-800 rounded-md">
+            <div>
+              <p className="font-medium text-sm text-zinc-200">Minimize to System Tray on Close</p>
+              <p className="text-xs text-zinc-500">Keep ProjectYB running in the system tray when closing the window. Right-click the tray icon to fully close.</p>
+            </div>
+            <input
+              type="checkbox"
+              className="w-4 h-4 accent-violet-500 rounded cursor-pointer"
+              checked={minimizeToTray}
+              onChange={(e) => handleMinimizeToTrayChange(e.target.checked)}
             />
           </div>
         </CardContent>
