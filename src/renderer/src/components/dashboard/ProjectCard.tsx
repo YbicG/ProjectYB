@@ -1,10 +1,12 @@
-import React from 'react';
-import { TerminalSquare, GitBranch, Code, FolderOpen, Play, Clock, MonitorPlay, ExternalLink, ChevronDown } from 'lucide-react';
+import React, { useState } from 'react';
+import { TerminalSquare, GitBranch, Code, FolderOpen, Play, Clock, MonitorPlay, ExternalLink, Settings } from 'lucide-react';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '../ui/card';
 import { Badge } from '../ui/badge';
 import { Button } from '../ui/button';
 import { StatusDot } from '../shared/StatusDot';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '../ui/dropdown-menu';
+import { RunConfigDialog } from '../services/RunConfigDialog';
+import { useRunConfigStore } from '@renderer/stores/useRunConfigStore';
 import { useAppStore } from '@renderer/stores/useAppStore';
 import { useGitStore } from '@renderer/stores/useGitStore';
 import { useTerminalStore } from '@renderer/stores/useTerminalStore';
@@ -30,6 +32,8 @@ export const ProjectCard: React.FC<ProjectCardProps> = ({ project }) => {
   const { setActiveTab } = useAppStore();
   const { selectProject, fetchStatus } = useGitStore();
   const { createTerminal } = useTerminalStore();
+  const { addConfig } = useRunConfigStore();
+  const [configDialogOpen, setConfigDialogOpen] = useState(false);
 
   const handleOpenTerminal = async () => {
     await createTerminal({ name: project.name, cwd: project.path, projectId: project.id });
@@ -133,6 +137,17 @@ export const ProjectCard: React.FC<ProjectCardProps> = ({ project }) => {
                   <div className="text-[10px] text-zinc-500">Opens PowerShell window</div>
                 </div>
               </DropdownMenuItem>
+              <DropdownMenuSeparator className="bg-zinc-800" />
+              <DropdownMenuItem
+                className="gap-2 cursor-pointer focus:bg-zinc-800"
+                onClick={() => setConfigDialogOpen(true)}
+              >
+                <Settings className="w-4 h-4 text-zinc-400" />
+                <div>
+                  <div className="text-sm font-medium">Add Run Config</div>
+                  <div className="text-[10px] text-zinc-500">Save a reusable command</div>
+                </div>
+              </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
           <Button variant="ghost" size="icon" className="h-8 w-8 hover:bg-zinc-800" title="Git Status" onClick={handleGitStatus}>
@@ -167,6 +182,15 @@ export const ProjectCard: React.FC<ProjectCardProps> = ({ project }) => {
           Run
         </Button>
       </CardFooter>
+
+      <RunConfigDialog
+        open={configDialogOpen}
+        onOpenChange={setConfigDialogOpen}
+        projectId={project.id}
+        projectName={project.name}
+        projectPath={project.path}
+        onSave={(data) => addConfig(data)}
+      />
     </Card>
   );
 };
