@@ -21,13 +21,14 @@ import {
   CheckCircle2,
   RefreshCw,
   Copy,
-  Check
+  Check,
+  Plus
 } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { useProjectStore } from '@renderer/stores/useProjectStore';
 import { useServiceStore } from '@renderer/stores/useServiceStore';
 import { useTerminalStore } from '@renderer/stores/useTerminalStore';
-import { useRunConfigStore } from '@renderer/stores/useRunConfigStore';
+import { useRunConfigStore, type RunConfig } from '@renderer/stores/useRunConfigStore';
 import { useAppStore } from '@renderer/stores/useAppStore';
 import { StatusDot } from '../../shared/StatusDot';
 import { Card, CardHeader, CardTitle, CardContent } from '../../ui/card';
@@ -39,6 +40,7 @@ import { ProjectConfigDialog } from '../../dashboard/ProjectConfigDialog';
 import { EnvManagerDialog } from '../../env/EnvManagerDialog';
 import { ProjectSnapshotDialog } from '../../dashboard/ProjectSnapshotDialog';
 import { AiContextDialog } from '../../dashboard/AiContextDialog';
+import { RunConfigDialog } from '../../services/RunConfigDialog';
 import { toast } from 'sonner';
 import { cn } from '@renderer/lib/utils';
 import type { ProjectInfo, SubProject } from '@renderer/types/project';
@@ -48,7 +50,7 @@ export const ModernProjectWorkbench: React.FC = () => {
   const { selectedProjectId, projects, selectProject } = useProjectStore();
   const { runningServices, startService, stopService } = useServiceStore();
   const { createTerminal } = useTerminalStore();
-  const { configs: allConfigs } = useRunConfigStore();
+  const { configs: allConfigs, addConfig, updateConfig } = useRunConfigStore();
   const { setActiveTab } = useAppStore();
 
   const [commits, setCommits] = useState<GitLogEntry[]>([]);
@@ -62,6 +64,8 @@ export const ModernProjectWorkbench: React.FC = () => {
   const [envDialogOpen, setEnvDialogOpen] = useState(false);
   const [snapshotDialogOpen, setSnapshotDialogOpen] = useState(false);
   const [aiContextDialogOpen, setAiContextDialogOpen] = useState(false);
+  const [runConfigDialogOpen, setRunConfigDialogOpen] = useState(false);
+  const [editingRunConfig, setEditingRunConfig] = useState<RunConfig | undefined>();
 
   const project = projects.find((p) => p.id === selectedProjectId);
 
@@ -81,9 +85,12 @@ export const ModernProjectWorkbench: React.FC = () => {
 
     // Load AI context preview
     if (window.api?.projects?.generateAiContext) {
-      window.api.projects.generateAiContext(project.path).then((res) => {
-        if (res?.success) setAiContextContent(res.content || '');
-      }).catch(() => {});
+      window.api.projects
+        .generateAiContext(project.path)
+        .then((res) => {
+          if (res?.success) setAiContextContent(res.content || '');
+        })
+        .catch(() => {});
     }
   }, [project?.id, project?.isGitRepo]);
 
@@ -92,7 +99,11 @@ export const ModernProjectWorkbench: React.FC = () => {
       <div className="h-full flex flex-col items-center justify-center text-zinc-500 space-y-3 p-6 text-center">
         <FolderOpen className="w-10 h-10 opacity-30" />
         <p className="text-sm font-semibold text-zinc-400">No project selected</p>
-        <Button size="sm" onClick={() => setActiveTab('dashboard')} className="text-xs bg-violet-600">
+        <Button
+          size="sm"
+          onClick={() => setActiveTab('dashboard')}
+          className="text-xs bg-violet-600 hover:bg-violet-700 text-white"
+        >
           Return to Dashboard
         </Button>
       </div>
@@ -101,6 +112,7 @@ export const ModernProjectWorkbench: React.FC = () => {
 
   const isRunning = runningServices.some((s) => s.projectId === project.id);
   const scripts = project.scripts || {};
+  const projectConfigs = allConfigs.filter((c) => c.projectId === project.id);
 
   const handleOpenTerminal = async (sub?: SubProject) => {
     const termName = sub ? `${project.name} (${sub.name})` : project.name;
@@ -110,7 +122,9 @@ export const ModernProjectWorkbench: React.FC = () => {
   };
 
   const handleRunScript = async (scriptName: string, command: string, cwd?: string) => {
-    const existing = runningServices.find((s) => s.projectId === project.id && s.name === scriptName);
+    const existing = runningServices.find(
+      (s) => s.projectId === project.id && s.name === scriptName
+    );
     if (existing) {
       stopService(existing.id);
       toast.info(`Stopped service: ${scriptName}`);
@@ -136,15 +150,26 @@ export const ModernProjectWorkbench: React.FC = () => {
     }
   };
 
+  const handleSaveRunConfig = async (data: Omit<RunConfig, 'id' | 'createdAt'>) => {
+    if (editingRunConfig) {
+      await updateConfig(editingRunConfig.id, data);
+      toast.success(`Updated ${data.name}`);
+    } else {
+      await addConfig(data);
+      toast.success(`Created ${data.name}`);
+    }
+    setEditingRunConfig(undefined);
+  };
+
   return (
     <div className="h-full flex flex-col overflow-hidden bg-zinc-950 text-zinc-100 select-none">
       {/* ── Top Project Header Bar ── */}
-      <div className="h-14 px-4 sm:px-6 bg-zinc-950/80 border-b border-zinc-800 flex items-center justify-between gap-4 shrink-0 flex-wrap">
+      <div className="h-14 px-4 sm:px-6 bg-zinc-950 border-b border-zinc-800/90 flex items-center justify-between gap-4 shrink-0 flex-wrap shadow-sm">
         <div className="flex items-center gap-3 min-w-0">
           <Button
             variant="ghost"
             size="icon"
-            className="h-8 w-8 text-zinc-400 hover:text-zinc-100"
+            className="h-8 w-8 text-zinc-400 hover:text-zinc-100 hover:bg-zinc-900"
             onClick={() => setActiveTab('dashboard')}
             title="Back to Dashboard"
           >
@@ -156,7 +181,10 @@ export const ModernProjectWorkbench: React.FC = () => {
           <div className="min-w-0">
             <div className="flex items-center gap-2">
               <h1 className="font-bold text-sm sm:text-base text-zinc-100 truncate">{project.name}</h1>
-              <Badge variant="outline" className="text-[10px] font-mono border-violet-500/40 text-violet-300">
+              <Badge
+                variant="outline"
+                className="text-[10px] font-mono border-violet-500/40 text-violet-300"
+              >
                 {project.type}
               </Badge>
             </div>
@@ -231,118 +259,164 @@ export const ModernProjectWorkbench: React.FC = () => {
         </div>
       </div>
 
+      {/* ── Subprojects & Monorepo Shelf (PROMINENT FULL WIDTH) ── */}
+      {project.subprojects && project.subprojects.length > 0 && (
+        <div className="px-4 py-2.5 bg-zinc-900/50 border-b border-zinc-800 flex items-center gap-2.5 overflow-x-auto shrink-0 select-none">
+          <div className="flex items-center gap-1.5 text-xs font-semibold text-zinc-300 shrink-0 mr-1">
+            <Layers className="w-4 h-4 text-violet-400" />
+            <span>Monorepo Subprojects</span>
+            <Badge
+              variant="outline"
+              className="text-[10px] px-1.5 py-0 border-violet-500/40 text-violet-300 font-mono"
+            >
+              {project.subprojects.length}
+            </Badge>
+          </div>
+
+          <div className="flex items-center gap-2 min-w-0">
+            {project.subprojects.map((sub) => (
+              <div
+                key={sub.name}
+                className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-zinc-900/90 border border-zinc-800 hover:border-violet-500/40 hover:bg-zinc-850 transition-all text-xs shrink-0 group shadow-sm"
+              >
+                <FolderOpen className="w-3.5 h-3.5 text-cyan-400 shrink-0" />
+                <div className="min-w-0">
+                  <span className="font-semibold text-zinc-100 font-mono truncate">{sub.name}</span>
+                  <span className="text-[10px] text-zinc-500 font-mono ml-1.5">({sub.relativePath})</span>
+                </div>
+                <div className="flex items-center gap-1 ml-2 pl-2 border-l border-zinc-800">
+                  <button
+                    onClick={() => handleOpenTerminal(sub)}
+                    className="p-1 rounded text-zinc-400 hover:text-cyan-300 hover:bg-zinc-800 transition-colors"
+                    title="Open Subproject Terminal"
+                  >
+                    <Terminal className="w-3.5 h-3.5" />
+                  </button>
+                  <button
+                    onClick={() => window.api?.projects?.openInVSCode?.(sub.path)}
+                    className="p-1 rounded text-zinc-400 hover:text-violet-300 hover:bg-zinc-800 transition-colors"
+                    title="Open in VS Code"
+                  >
+                    <Code className="w-3.5 h-3.5" />
+                  </button>
+                  <button
+                    onClick={() => window.api?.projects?.openInExplorer?.(sub.path)}
+                    className="p-1 rounded text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800 transition-colors"
+                    title="Open Folder"
+                  >
+                    <FolderOpen className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* ── 3-Pane Workbench Body ── */}
       <div className="flex-1 grid grid-cols-1 lg:grid-cols-12 min-h-0 overflow-hidden">
-        {/* ── Left Pane: Scripts & Subprojects (3 cols) ── */}
+        {/* ── Left Pane: Saved Configs & Scripts (3 cols) ── */}
         <div className="lg:col-span-3 border-r border-zinc-800/80 bg-zinc-950/60 p-3 overflow-y-auto space-y-4">
-          {/* Runnable Scripts */}
+          {/* Saved Run Configurations (AT THE TOP) */}
           <div className="space-y-2">
-            <span className="text-[10px] uppercase font-semibold text-zinc-400 tracking-wider">
-              Runnable Scripts ({Object.keys(scripts).length})
-            </span>
+            <div className="flex items-center justify-between">
+              <span className="text-[10px] uppercase font-semibold text-zinc-400 tracking-wider flex items-center gap-1.5">
+                <Layers className="w-3 h-3 text-violet-400" />
+                Saved Configs ({projectConfigs.length})
+              </span>
+              <div className="flex items-center gap-1">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-5 px-1.5 text-[10px] text-violet-400 hover:text-violet-300 hover:bg-violet-950/40"
+                  onClick={() => {
+                    setEditingRunConfig(undefined);
+                    setRunConfigDialogOpen(true);
+                  }}
+                >
+                  <Plus className="w-2.5 h-2.5 mr-0.5" /> New
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-5 px-1 text-[10px] text-zinc-500 hover:text-zinc-300"
+                  onClick={() => setActiveTab('services')}
+                >
+                  Manage
+                </Button>
+              </div>
+            </div>
 
-            {Object.keys(scripts).length === 0 ? (
-              <p className="text-xs text-zinc-600 italic">No scripts found</p>
+            {projectConfigs.length === 0 ? (
+              <div
+                onClick={() => {
+                  setEditingRunConfig(undefined);
+                  setRunConfigDialogOpen(true);
+                }}
+                className="p-3 rounded-lg border border-dashed border-zinc-800/80 hover:border-violet-500/40 hover:bg-zinc-900/40 cursor-pointer text-center space-y-1 transition-colors"
+              >
+                <p className="text-[11px] font-medium text-zinc-400">+ Add Run Configuration</p>
+                <p className="text-[9px] text-zinc-600">Save multi-command or parallel tasks</p>
+              </div>
             ) : (
               <div className="space-y-1.5">
-                {Object.entries(scripts).map(([sName, sCmd]) => {
-                  const isScriptRunning = runningServices.some(
-                    (s) => s.projectId === project.id && s.name === sName
-                  );
+                {projectConfigs.map((cfg) => {
+                  const isParallel =
+                    cfg.executionMode === 'parallel' && (cfg.commands?.length || 0) > 1;
+                  const cmds = cfg.commands?.length
+                    ? cfg.commands.filter((c) => c.command.trim())
+                    : cfg.command
+                      ? [{ id: '1', name: '', command: cfg.command }]
+                      : [];
+
                   return (
                     <div
-                      key={sName}
+                      key={cfg.id}
                       className="p-2 rounded-lg bg-zinc-900/80 border border-zinc-800 flex items-center justify-between gap-2 hover:border-zinc-700 transition-colors"
                     >
-                      <div className="min-w-0">
+                      <div className="min-w-0 flex-1">
                         <div className="flex items-center gap-1.5">
-                          <StatusDot status={isScriptRunning ? 'running' : 'stopped'} size="sm" />
-                          <span className="font-bold font-mono text-xs text-zinc-200 truncate">{sName}</span>
+                          <span className="font-bold font-mono text-xs text-zinc-200 truncate">
+                            {cfg.name}
+                          </span>
+                          {isParallel ? (
+                            <Badge
+                              variant="outline"
+                              className="text-[8px] bg-cyan-950/40 border-cyan-800 text-cyan-300 px-1 py-0"
+                            >
+                              {cmds.length} tabs
+                            </Badge>
+                          ) : (
+                            <Badge
+                              variant="outline"
+                              className="text-[8px] bg-violet-950/40 border-violet-800 text-violet-300 px-1 py-0"
+                            >
+                              1 tab
+                            </Badge>
+                          )}
                         </div>
-                        <span className="text-[10px] text-zinc-500 font-mono truncate block mt-0.5" title={sCmd}>
-                          {sCmd}
+                        <span
+                          className="text-[10px] text-zinc-500 font-mono truncate block mt-0.5"
+                          title={cmds.map((c) => c.command).join(' && ')}
+                        >
+                          {cmds.map((c) => c.command).join(' && ') || 'No command'}
                         </span>
                       </div>
 
-                      <Button
-                        size="icon"
-                        variant={isScriptRunning ? 'destructive' : 'ghost'}
-                        className={cn(
-                          'h-6 w-6 shrink-0',
-                          isScriptRunning ? 'bg-rose-600 text-white' : 'text-zinc-400 hover:text-emerald-400'
-                        )}
-                        onClick={() => handleRunScript(sName, sCmd)}
-                        title={isScriptRunning ? 'Stop Script' : 'Run Script'}
-                      >
-                        {isScriptRunning ? <Square className="w-3 h-3" /> : <Play className="w-3 h-3 fill-current" />}
-                      </Button>
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-          </div>
-
-          {/* Saved Run Configurations */}
-          {(() => {
-            const projectConfigs = allConfigs.filter((c) => c.projectId === project?.id);
-            if (projectConfigs.length === 0) return null;
-
-            return (
-              <div className="space-y-2 pt-2 border-t border-zinc-800/80">
-                <div className="flex items-center justify-between">
-                  <span className="text-[10px] uppercase font-semibold text-zinc-400 tracking-wider">
-                    Saved Configs ({projectConfigs.length})
-                  </span>
-                  <button
-                    onClick={() => setActiveTab('services')}
-                    className="text-[10px] text-violet-400 hover:text-violet-300 transition-colors"
-                  >
-                    Manage
-                  </button>
-                </div>
-
-                <div className="space-y-1.5">
-                  {projectConfigs.map((cfg) => {
-                    const isParallel = cfg.executionMode === 'parallel' && (cfg.commands?.length || 0) > 1;
-                    const cmds = cfg.commands?.length
-                      ? cfg.commands.filter((c) => c.command.trim())
-                      : cfg.command ? [{ id: '1', name: '', command: cfg.command }] : [];
-
-                    return (
-                      <div
-                        key={cfg.id}
-                        className="p-2 rounded-lg bg-zinc-900/80 border border-zinc-800 flex items-center justify-between gap-2 hover:border-zinc-700 transition-colors"
-                      >
-                        <div className="min-w-0 flex-1">
-                          <div className="flex items-center gap-1.5">
-                            <span className="font-bold font-mono text-xs text-zinc-200 truncate">{cfg.name}</span>
-                            {isParallel ? (
-                              <Badge variant="outline" className="text-[8px] bg-cyan-950/40 border-cyan-800 text-cyan-300 px-1 py-0">
-                                {cmds.length} tabs
-                              </Badge>
-                            ) : (
-                              <Badge variant="outline" className="text-[8px] bg-violet-950/40 border-violet-800 text-violet-300 px-1 py-0">
-                                1 tab
-                              </Badge>
-                            )}
-                          </div>
-                          <span className="text-[10px] text-zinc-500 font-mono truncate block mt-0.5" title={cmds.map((c) => c.command).join(' && ')}>
-                            {cmds.map((c) => c.command).join(' && ') || 'No command'}
-                          </span>
-                        </div>
-
+                      <div className="flex items-center gap-0.5 shrink-0">
                         <Button
                           size="icon"
                           variant="ghost"
-                          className="h-6 w-6 shrink-0 text-zinc-400 hover:text-emerald-400"
+                          className="h-6 w-6 text-zinc-400 hover:text-emerald-400"
                           onClick={async () => {
                             if (!cmds.length) return;
                             const effectiveCwd = cfg.cwd || project.path;
                             if (isParallel) {
                               for (let i = 0; i < cmds.length; i++) {
                                 const cmd = cmds[i];
-                                const termName = cmd.name ? `${cfg.name} (${cmd.name})` : `${cfg.name} #${i + 1}`;
+                                const termName = cmd.name
+                                  ? `${cfg.name} (${cmd.name})`
+                                  : `${cfg.name} #${i + 1}`;
                                 await startService(project.id, project.name, {
                                   id: `${cfg.id}-${cmd.id || i}`,
                                   name: termName,
@@ -353,7 +427,10 @@ export const ModernProjectWorkbench: React.FC = () => {
                               }
                               toast.success(`Launched ${cmds.length} commands for ${cfg.name}`);
                             } else {
-                              const combined = cmds.map((c) => c.command.trim()).filter(Boolean).join(' && ');
+                              const combined = cmds
+                                .map((c) => c.command.trim())
+                                .filter(Boolean)
+                                .join(' && ');
                               await startService(project.id, project.name, {
                                 id: cfg.id,
                                 name: cfg.name,
@@ -369,44 +446,72 @@ export const ModernProjectWorkbench: React.FC = () => {
                           <Play className="w-3 h-3 fill-current" />
                         </Button>
                       </div>
-                    );
-                  })}
-                </div>
-              </div>
-            );
-          })()}
-
-          {/* Subprojects & Monorepo Packages */}
-          {project.subprojects && project.subprojects.length > 0 && (
-            <div className="space-y-2 pt-2 border-t border-zinc-800/80">
-              <span className="text-[10px] uppercase font-semibold text-zinc-400 tracking-wider">
-                Monorepo Subprojects ({project.subprojects.length})
-              </span>
-
-              <div className="space-y-1.5">
-                {project.subprojects.map((sub) => (
-                  <div
-                    key={sub.name}
-                    className="p-2 rounded-lg bg-zinc-900/50 border border-zinc-800/80 flex items-center justify-between text-xs"
-                  >
-                    <div className="min-w-0">
-                      <span className="font-semibold text-zinc-300 block truncate">{sub.name}</span>
-                      <span className="text-[10px] font-mono text-zinc-500 truncate block">{sub.relativePath}</span>
                     </div>
-                    <Button
-                      size="icon"
-                      variant="ghost"
-                      className="h-6 w-6 text-zinc-400 hover:text-zinc-100"
-                      onClick={() => handleOpenTerminal(sub)}
-                      title="Open Subproject Terminal"
-                    >
-                      <Terminal className="w-3 h-3" />
-                    </Button>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
-            </div>
-          )}
+            )}
+          </div>
+
+          {/* Runnable Scripts (BELOW SAVED CONFIGS) */}
+          <div className="space-y-2 pt-2 border-t border-zinc-800/80">
+            <span className="text-[10px] uppercase font-semibold text-zinc-400 tracking-wider flex items-center gap-1.5">
+              <Terminal className="w-3 h-3 text-cyan-400" />
+              Runnable Scripts ({Object.keys(scripts).length})
+            </span>
+
+            {Object.keys(scripts).length === 0 ? (
+              <p className="text-xs text-zinc-600 italic">No scripts found in package.json</p>
+            ) : (
+              <div className="space-y-1.5">
+                {Object.entries(scripts).map(([sName, sCmd]) => {
+                  const isScriptRunning = runningServices.some(
+                    (s) => s.projectId === project.id && s.name === sName
+                  );
+                  return (
+                    <div
+                      key={sName}
+                      className="p-2 rounded-lg bg-zinc-900/80 border border-zinc-800 flex items-center justify-between gap-2 hover:border-zinc-700 transition-colors"
+                    >
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-1.5">
+                          <StatusDot status={isScriptRunning ? 'running' : 'stopped'} size="sm" />
+                          <span className="font-bold font-mono text-xs text-zinc-200 truncate">
+                            {sName}
+                          </span>
+                        </div>
+                        <span
+                          className="text-[10px] text-zinc-500 font-mono truncate block mt-0.5"
+                          title={sCmd}
+                        >
+                          {sCmd}
+                        </span>
+                      </div>
+
+                      <Button
+                        size="icon"
+                        variant={isScriptRunning ? 'destructive' : 'ghost'}
+                        className={cn(
+                          'h-6 w-6 shrink-0',
+                          isScriptRunning
+                            ? 'bg-rose-600 text-white'
+                            : 'text-zinc-400 hover:text-emerald-400'
+                        )}
+                        onClick={() => handleRunScript(sName, sCmd)}
+                        title={isScriptRunning ? 'Stop Script' : 'Run Script'}
+                      >
+                        {isScriptRunning ? (
+                          <Square className="w-3 h-3" />
+                        ) : (
+                          <Play className="w-3 h-3 fill-current" />
+                        )}
+                      </Button>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
         </div>
 
         {/* ── Center Pane: In-App Notes & Checklist (5 cols) ── */}
@@ -489,7 +594,9 @@ export const ModernProjectWorkbench: React.FC = () => {
                           <span className="text-zinc-500">{c.date}</span>
                         </div>
                         <p className="text-xs text-zinc-200 font-medium truncate">{c.message}</p>
-                        <span className="text-[10px] text-zinc-500 font-mono block mt-0.5">{c.author}</span>
+                        <span className="text-[10px] text-zinc-500 font-mono block mt-0.5">
+                          {c.author}
+                        </span>
                       </div>
                     ))}
                   </div>
@@ -528,6 +635,17 @@ export const ModernProjectWorkbench: React.FC = () => {
           project={project}
           open={aiContextDialogOpen}
           onOpenChange={setAiContextDialogOpen}
+        />
+      )}
+      {runConfigDialogOpen && (
+        <RunConfigDialog
+          open={runConfigDialogOpen}
+          onOpenChange={setRunConfigDialogOpen}
+          projectId={project.id}
+          projectName={project.name}
+          projectPath={project.path}
+          existing={editingRunConfig}
+          onSave={handleSaveRunConfig}
         />
       )}
     </div>
