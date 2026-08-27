@@ -498,6 +498,13 @@ export const ModernProjectWorkbench: React.FC = () => {
                       >
                         <Code className="w-3 h-3" />
                       </button>
+                      <button
+                        onClick={() => window.api?.projects?.openInExplorer?.(sub.path)}
+                        className="p-1 rounded text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800 transition-colors"
+                        title="Open in Explorer"
+                      >
+                        <FolderOpen className="w-3 h-3" />
+                      </button>
                     </div>
                   </div>
                 ))}
