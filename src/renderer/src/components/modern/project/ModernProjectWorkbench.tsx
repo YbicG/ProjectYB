@@ -40,6 +40,7 @@ import { EnvManagerDialog } from '../../env/EnvManagerDialog';
 import { ProjectSnapshotDialog } from '../../dashboard/ProjectSnapshotDialog';
 import { AiContextDialog } from '../../dashboard/AiContextDialog';
 import { toast } from 'sonner';
+import { cn } from '@renderer/lib/utils';
 import type { ProjectInfo, SubProject } from '@renderer/types/project';
 import type { GitLogEntry } from '@renderer/types/git';
 

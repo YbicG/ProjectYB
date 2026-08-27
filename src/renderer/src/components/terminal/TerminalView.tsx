@@ -87,6 +87,7 @@ export const TerminalView: React.FC<TerminalViewProps> = ({ terminalId, cwd, isA
     const safeFit = () => {
       if (isCancelled || !container || container.clientWidth <= 0 || container.clientHeight <= 0) return;
       try {
+        if (!term || !term.element || !term.element.isConnected) return;
         const dims = fitAddon.proposeDimensions();
         if (dims && dims.cols > 10 && dims.rows > 3) {
           fitAddon.fit();
@@ -146,8 +147,12 @@ export const TerminalView: React.FC<TerminalViewProps> = ({ terminalId, cwd, isA
       try {
         webglAddonRef.current?.dispose();
       } catch {}
-      fitAddon.dispose();
-      term.dispose();
+      try {
+        fitAddon.dispose();
+      } catch {}
+      try {
+        term.dispose();
+      } catch {}
       xtermRef.current = null;
       fitAddonRef.current = null;
       webglAddonRef.current = null;
@@ -156,13 +161,17 @@ export const TerminalView: React.FC<TerminalViewProps> = ({ terminalId, cwd, isA
 
   // Refit & Refresh when tab becomes active
   useEffect(() => {
-    if (isActive && readyRef.current && fitAddonRef.current && xtermRef.current) {
-      requestAnimationFrame(() => {
-        try {
-          fitAddonRef.current?.fit();
-          xtermRef.current?.refresh(0, (xtermRef.current?.rows ?? 24) - 1);
-        } catch {}
-      });
+    if (isActive && readyRef.current && fitAddonRef.current && xtermRef.current && terminalRef.current) {
+      if (terminalRef.current.clientWidth > 0 && terminalRef.current.clientHeight > 0) {
+        requestAnimationFrame(() => {
+          try {
+            if (xtermRef.current?.element?.isConnected) {
+              fitAddonRef.current?.fit();
+              xtermRef.current?.refresh(0, (xtermRef.current?.rows ?? 24) - 1);
+            }
+          } catch {}
+        });
+      }
     }
   }, [isActive]);
 

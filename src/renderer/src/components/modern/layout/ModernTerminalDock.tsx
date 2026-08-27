@@ -232,9 +232,15 @@ export const ModernTerminalDock: React.FC = () => {
               <div
                 key={t.id}
                 style={{
-                  display: isTabActive ? 'block' : 'none',
-                  height: '100%',
-                  width: '100%'
+                  position: 'absolute',
+                  top: 0,
+                  left: 0,
+                  right: 0,
+                  bottom: 0,
+                  visibility: isTabActive ? 'visible' : 'hidden',
+                  opacity: isTabActive ? 1 : 0,
+                  pointerEvents: isTabActive ? 'auto' : 'none',
+                  zIndex: isTabActive ? 1 : 0
                 }}
               >
                 <TerminalView
