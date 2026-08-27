@@ -55,7 +55,7 @@ export function useKeyboard() {
       }
 
       // Toggle Activity Rail Sidebar: Ctrl+B
-      if ((e.ctrlKey || e.metaKey) && (e.key === 'b' || e.key === 'B')) {
+      if (!isInput && (e.ctrlKey || e.metaKey) && (e.key === 'b' || e.key === 'B')) {
         e.preventDefault()
         useThemeStore.getState().toggleSidebar()
         return
@@ -69,7 +69,7 @@ export function useKeyboard() {
       }
 
       // Quick Scratchpad: Ctrl+N
-      if ((e.ctrlKey || e.metaKey) && e.key === 'n' && !e.shiftKey) {
+      if (!isInput && (e.ctrlKey || e.metaKey) && e.key === 'n' && !e.shiftKey) {
         e.preventDefault()
         setScratchpadModalOpen(!scratchpadModalOpen)
         return
@@ -82,8 +82,8 @@ export function useKeyboard() {
         return
       }
 
-      // Tab switching: Ctrl+1-9
-      if ((e.ctrlKey || e.metaKey) && ['1', '2', '3', '4', '5', '6', '7', '8', '9'].includes(e.key)) {
+      // Tab switching: Ctrl+1-9 (only outside text inputs)
+      if (!isInput && (e.ctrlKey || e.metaKey) && ['1', '2', '3', '4', '5', '6', '7', '8', '9'].includes(e.key)) {
         e.preventDefault()
         const tabs: TabType[] = [
           'dashboard',
@@ -104,28 +104,28 @@ export function useKeyboard() {
       }
 
       // Quick Jump to Optimizer: Ctrl+Shift+O
-      if ((e.ctrlKey || e.metaKey) && e.shiftKey && (e.key === 'O' || e.key === 'o')) {
+      if (!isInput && (e.ctrlKey || e.metaKey) && e.shiftKey && (e.key === 'O' || e.key === 'o')) {
         e.preventDefault()
         setActiveTab('optimizer')
         return
       }
 
       // Quick Jump to Services / Docker: Ctrl+Shift+D
-      if ((e.ctrlKey || e.metaKey) && e.shiftKey && (e.key === 'D' || e.key === 'd')) {
+      if (!isInput && (e.ctrlKey || e.metaKey) && e.shiftKey && (e.key === 'D' || e.key === 'd')) {
         e.preventDefault()
         setActiveTab('services')
         return
       }
 
       // Quick Jump to Dependencies: Ctrl+Shift+P
-      if ((e.ctrlKey || e.metaKey) && e.shiftKey && (e.key === 'P' || e.key === 'p')) {
+      if (!isInput && (e.ctrlKey || e.metaKey) && e.shiftKey && (e.key === 'P' || e.key === 'p')) {
         e.preventDefault()
         setActiveTab('dependencies')
         return
       }
 
       // New Terminal: Ctrl+T
-      if ((e.ctrlKey || e.metaKey) && e.key === 't') {
+      if (!isInput && (e.ctrlKey || e.metaKey) && e.key === 't') {
         e.preventDefault()
         const defaultCwd = useAppStore.getState().scanPaths[0] || 'D:\\Code'
         createTerminal({
@@ -137,7 +137,7 @@ export function useKeyboard() {
       }
 
       // Close Terminal: Ctrl+W
-      if (activeTab === 'terminals' && (e.ctrlKey || e.metaKey) && e.key === 'w' && activeTerminalId) {
+      if (!isInput && activeTab === 'terminals' && (e.ctrlKey || e.metaKey) && e.key === 'w' && activeTerminalId) {
         e.preventDefault()
         killTerminal(activeTerminalId)
         return

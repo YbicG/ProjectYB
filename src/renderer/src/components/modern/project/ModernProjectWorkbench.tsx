@@ -67,19 +67,22 @@ export const ModernProjectWorkbench: React.FC = () => {
     if (project.isGitRepo) {
       setCommitsLoading(true);
       window.api?.git
-        ?.log(project.path, 8)
-        .then((entries: GitLogEntry[]) => setCommits(entries ?? []))
-        .catch(() => {})
-        .finally(() => setCommitsLoading(false));
+        ?.log?.(project.path, 8)
+        ?.then?.((entries: GitLogEntry[]) => setCommits(entries ?? []))
+        ?.catch?.(() => {})
+        ?.finally?.(() => setCommitsLoading(false));
+    } else {
+      setActiveInspectorTab('ai');
+      setCommits([]);
     }
 
     // Load AI context preview
     if (window.api?.projects?.generateAiContext) {
       window.api.projects.generateAiContext(project.path).then((res) => {
-        if (res.success) setAiContextContent(res.content);
+        if (res?.success) setAiContextContent(res.content || '');
       }).catch(() => {});
     }
-  }, [project?.id]);
+  }, [project?.id, project?.isGitRepo]);
 
   if (!project) {
     return (

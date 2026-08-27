@@ -57,7 +57,7 @@ export const ModernSidebar: React.FC = () => {
   const { setSnippetModalOpen } = useSnippetStore();
 
   // Count uncommitted git projects
-  const dirtyGitCount = Array.from(statuses.values()).filter(
+  const dirtyGitCount = Array.from(statuses?.values?.() || []).filter(
     (s) => (s?.staged?.length || 0) + (s?.unstaged?.length || 0) > 0
   ).length;
 

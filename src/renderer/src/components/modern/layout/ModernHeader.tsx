@@ -60,8 +60,8 @@ export const ModernHeader: React.FC = () => {
     }
   };
 
-  const cpuUsage = metrics ? Math.round(metrics.cpu.usage) : 0;
-  const ramUsage = metrics ? Math.round(metrics.memory.percentage) : 0;
+  const cpuUsage = Math.round(metrics?.cpu?.usage || 0);
+  const ramUsage = Math.round(metrics?.memory?.percentage || 0);
 
   return (
     <header className="h-14 px-4 bg-zinc-950/80 backdrop-blur-xl border-b border-zinc-800/80 flex items-center justify-between gap-4 select-none shrink-0 z-10">

@@ -73,11 +73,13 @@ export const ModernBentoDashboard: React.FC = () => {
   // Filter projects
   const filteredProjects = useMemo(() => {
     return projects.filter((p) => {
+      const pName = p.name || '';
+      const pCat = p.category || '';
       const matchesSearch =
         !deferredSearch ||
-        p.name.toLowerCase().includes(deferredSearch.toLowerCase()) ||
-        p.category.toLowerCase().includes(deferredSearch.toLowerCase()) ||
-        (p.tags && p.tags.some((t) => t.toLowerCase().includes(deferredSearch.toLowerCase())));
+        pName.toLowerCase().includes(deferredSearch.toLowerCase()) ||
+        pCat.toLowerCase().includes(deferredSearch.toLowerCase()) ||
+        (Array.isArray(p.tags) && p.tags.some((t) => (t || '').toLowerCase().includes(deferredSearch.toLowerCase())));
 
       const matchesType = selectedType === 'all' || p.type === selectedType;
       return matchesSearch && matchesType;
@@ -85,7 +87,7 @@ export const ModernBentoDashboard: React.FC = () => {
   }, [projects, deferredSearch, selectedType]);
 
   const pinnedProjects = useMemo(() => {
-    return projects.filter((p) => pinnedProjectIds.includes(p.id));
+    return projects.filter((p) => (pinnedProjectIds || []).includes(p.id));
   }, [projects, pinnedProjectIds]);
 
   const handleOpenTerminal = async (project: ProjectInfo) => {
