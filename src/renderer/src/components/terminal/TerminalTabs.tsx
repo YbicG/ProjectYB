@@ -21,11 +21,11 @@ import { ScrollArea, ScrollBar } from '../ui/scroll-area';
 import { Button } from '../ui/button';
 import { Separator } from '../ui/separator';
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger
-} from '../ui/dropdown-menu';
+  ContextMenu,
+  ContextMenuContent,
+  ContextMenuItem,
+  ContextMenuTrigger
+} from '../ui/context-menu';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '../ui/tooltip';
 
 export const TerminalTabs: React.FC = () => {
@@ -120,8 +120,8 @@ export const TerminalTabs: React.FC = () => {
         {displayedTerminals.map((term) => {
           const isActive = activeTerminalId === term.id;
           return (
-            <DropdownMenu key={term.id}>
-              <DropdownMenuTrigger asChild>
+            <ContextMenu key={term.id}>
+              <ContextMenuTrigger asChild>
                 <div
                   onClick={() => setActiveTerminal(term.id)}
                   onDoubleClick={(e) => {
@@ -182,29 +182,29 @@ export const TerminalTabs: React.FC = () => {
                     <X className="w-3.5 h-3.5" />
                   </button>
                 </div>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="start" className="bg-zinc-950 border-zinc-800 text-xs">
-                <DropdownMenuItem onClick={() => handleStartRename(term.id, term.name)}>
+              </ContextMenuTrigger>
+              <ContextMenuContent className="bg-zinc-950 border-zinc-800 text-xs">
+                <ContextMenuItem onClick={() => handleStartRename(term.id, term.name)}>
                   <Edit2 className="w-3.5 h-3.5 mr-2 text-zinc-400" />
                   Rename Tab
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => window.api?.terminal?.write(term.id, '\x0c')}>
+                </ContextMenuItem>
+                <ContextMenuItem onClick={() => window.api?.terminal?.write(term.id, '\x0c')}>
                   <Eraser className="w-3.5 h-3.5 mr-2 text-zinc-400" />
                   Clear Console
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => restartTerminal(term.id)}>
+                </ContextMenuItem>
+                <ContextMenuItem onClick={() => restartTerminal(term.id)}>
                   <RotateCw className="w-3.5 h-3.5 mr-2 text-zinc-400" />
                   Restart Process
-                </DropdownMenuItem>
-                <DropdownMenuItem
+                </ContextMenuItem>
+                <ContextMenuItem
                   onClick={() => removeTerminal(term.id)}
                   className="text-rose-400 hover:text-rose-300"
                 >
                   <Trash2 className="w-3.5 h-3.5 mr-2" />
                   Close Terminal
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
+                </ContextMenuItem>
+              </ContextMenuContent>
+            </ContextMenu>
           );
         })}
       </div>
