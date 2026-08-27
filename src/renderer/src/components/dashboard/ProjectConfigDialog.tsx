@@ -46,6 +46,7 @@ const PROJECT_TYPES: ProjectType[] = [
   'go',
   'dotnet',
   'godot',
+  'docs',
   'git',
   'unknown'
 ]

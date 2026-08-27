@@ -12,7 +12,9 @@ import {
   EyeOff,
   Folder,
   FileCode,
-  Pencil
+  Pencil,
+  BookOpen,
+  Layers
 } from 'lucide-react'
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '../ui/card'
 import { Badge } from '../ui/badge'
@@ -160,22 +162,39 @@ export const ProjectCard: React.FC<ProjectCardProps> = ({ project }) => {
         {/* ── Subprojects / Subfolders Pills ── */}
         {hasSubprojects && (
           <div className="flex flex-wrap gap-1 mt-2">
-            {project.subprojects!.map((sub) => (
-              <Badge
-                key={sub.id || sub.name}
-                variant="secondary"
-                onClick={(e) => {
-                  e.stopPropagation()
-                  handleOpenTerminal(sub)
-                }}
-                className="text-[10px] px-1.5 py-0.5 bg-zinc-900 hover:bg-violet-950/60 border border-zinc-800 hover:border-violet-700 text-zinc-300 hover:text-violet-300 gap-1 cursor-pointer transition-colors font-mono"
-                title={`Click to open terminal in ${sub.relativePath}`}
-              >
-                <Folder className="w-2.5 h-2.5 text-cyan-400" />
-                {sub.name}
-                <span className="text-[8px] text-zinc-500">[{sub.type}]</span>
-              </Badge>
-            ))}
+            {project.subprojects!.map((sub) => {
+              const isDocs = sub.type === 'docs' || sub.name.toLowerCase().includes('doc')
+              const isApp = sub.name.toLowerCase().startsWith('apps') || sub.name.toLowerCase().startsWith('packages')
+              return (
+                <Badge
+                  key={sub.id || sub.name}
+                  variant="secondary"
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    handleOpenTerminal(sub)
+                  }}
+                  className={cn(
+                    "text-[10px] px-1.5 py-0.5 bg-zinc-900 border border-zinc-800 gap-1 cursor-pointer transition-colors font-mono",
+                    isDocs
+                      ? "hover:bg-amber-950/40 hover:border-amber-700 text-zinc-300 hover:text-amber-300"
+                      : isApp
+                      ? "hover:bg-cyan-950/40 hover:border-cyan-700 text-zinc-300 hover:text-cyan-300"
+                      : "hover:bg-violet-950/60 hover:border-violet-700 text-zinc-300 hover:text-violet-300"
+                  )}
+                  title={`Click to open terminal in ${sub.relativePath}`}
+                >
+                  {isDocs ? (
+                    <BookOpen className="w-2.5 h-2.5 text-amber-400" />
+                  ) : isApp ? (
+                    <Layers className="w-2.5 h-2.5 text-cyan-400" />
+                  ) : (
+                    <Folder className="w-2.5 h-2.5 text-violet-400" />
+                  )}
+                  {sub.name}
+                  <span className="text-[8px] text-zinc-500">[{sub.type}]</span>
+                </Badge>
+              )
+            })}
           </div>
         )}
 

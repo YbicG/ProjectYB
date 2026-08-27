@@ -8,20 +8,20 @@ export interface SubProjectInfo {
   name: string;
   path: string;
   relativePath: string;
-  type: 'node' | 'python' | 'rust' | 'go' | 'dotnet' | 'godot' | 'git' | 'unknown';
+  type: 'node' | 'python' | 'rust' | 'go' | 'dotnet' | 'godot' | 'docs' | 'git' | 'unknown';
   scripts?: Record<string, string>;
 }
 
 export interface ProjectYBConfig {
   name?: string;
-  type?: 'node' | 'python' | 'rust' | 'go' | 'dotnet' | 'godot' | 'git' | 'unknown';
+  type?: 'node' | 'python' | 'rust' | 'go' | 'dotnet' | 'godot' | 'docs' | 'git' | 'unknown';
   ignore?: boolean;
   ignored?: boolean;
   tags?: string[];
   subprojects?: Array<{
     name: string;
     path: string;
-    type?: 'node' | 'python' | 'rust' | 'go' | 'dotnet' | 'godot' | 'git' | 'unknown';
+    type?: 'node' | 'python' | 'rust' | 'go' | 'dotnet' | 'godot' | 'docs' | 'git' | 'unknown';
     scripts?: Record<string, string>;
   }>;
   scripts?: Record<string, string>;
@@ -34,7 +34,7 @@ export interface ProjectInfo {
   id: string;
   name: string;
   path: string;
-  type: 'node' | 'python' | 'rust' | 'go' | 'dotnet' | 'godot' | 'git' | 'unknown';
+  type: 'node' | 'python' | 'rust' | 'go' | 'dotnet' | 'godot' | 'docs' | 'git' | 'unknown';
   category: string;
   status: 'running' | 'stopped' | 'error';
   tags: string[];
@@ -50,9 +50,14 @@ export interface ProjectInfo {
 }
 
 const GENERIC_FOLDER_NAMES = new Set([
-  'src', 'client', 'server', 'frontend', 'backend', 'api', 'web', 'app', 'ui',
+  'src', 'client', 'server', 'frontend', 'backend', 'api', 'web', 'app', 'apps', 'ui',
   'services', 'packages', 'microservices', 'mobile', 'desktop', 'core', 'shared',
-  'admin', 'dashboard', 'bot', 'site', 'functions', 'lambda'
+  'admin', 'dashboard', 'bot', 'site', 'functions', 'lambda',
+  'docs', 'doc', 'documentation'
+]);
+
+const CONTAINER_FOLDER_NAMES = new Set([
+  'apps', 'packages', 'services', 'microservices', 'modules'
 ]);
 
 class ProjectScanner {
@@ -130,6 +135,10 @@ class ProjectScanner {
       const hasDotnet = fileNames.some(f => f.endsWith('.sln') || f.endsWith('.csproj'));
       const hasConfig = fileNames.includes('.projectyb.json') || fileNames.includes('.projectyb');
 
+      const folderBaseName = path.basename(folderPath).toLowerCase();
+      const isDocsFolder = ['docs', 'doc', 'documentation'].includes(folderBaseName);
+      const hasDocsFiles = fileNames.some(f => f.endsWith('.md') || f.endsWith('.mdx') || f.endsWith('.rst') || f.endsWith('.txt') || f.endsWith('.html')) || fileNames.includes('mkdocs.yml') || fileNames.includes('conf.py') || fileNames.includes('docusaurus.config.js') || fileNames.includes('docusaurus.config.ts');
+
       let type: ProjectInfo['type'] = 'unknown';
       let isProject = false;
       let scripts: Record<string, string> | undefined;
@@ -137,14 +146,14 @@ class ProjectScanner {
 
       if (hasPkg) {
         isProject = true;
-        type = 'node';
+        type = isDocsFolder ? 'docs' : 'node';
         try {
           const pkgRaw = await fs.promises.readFile(path.join(folderPath, 'package.json'), 'utf8');
           const pkg = JSON.parse(pkgRaw);
           scripts = pkg.scripts;
           dependencies = { ...pkg.dependencies, ...pkg.devDependencies };
         } catch {}
-      } else if (hasPyManifest || (hasAnyPy && GENERIC_FOLDER_NAMES.has(path.basename(folderPath).toLowerCase()))) {
+      } else if (hasPyManifest || (hasAnyPy && GENERIC_FOLDER_NAMES.has(folderBaseName))) {
         isProject = true;
         type = 'python';
       } else if (hasRust) {
@@ -159,6 +168,9 @@ class ProjectScanner {
       } else if (hasDotnet) {
         isProject = true;
         type = 'dotnet';
+      } else if (isDocsFolder && (hasDocsFiles || fileNames.length > 0 || dirNames.length > 0)) {
+        isProject = true;
+        type = 'docs';
       } else if (hasGit) {
         isProject = true;
         type = 'git';
@@ -212,28 +224,64 @@ class ProjectScanner {
               seenPaths.add(subFullPath);
             }
           } else {
-            // Auto-detect generic subfolders
+            // Auto-detect generic subfolders and container folders (e.g. apps/*, packages/*, docs, client, server)
             for (const subDir of dirEntries) {
               const subFullPath = path.join(currentPath, subDir.name);
-              const isGeneric = GENERIC_FOLDER_NAMES.has(subDir.name.toLowerCase());
+              const subNameLower = subDir.name.toLowerCase();
+              const isGeneric = GENERIC_FOLDER_NAMES.has(subNameLower);
+              const isContainer = CONTAINER_FOLDER_NAMES.has(subNameLower);
 
+              // 1. If container folder like apps/ or packages/, inspect nested children
+              if (isContainer) {
+                try {
+                  const containerEntries = await fs.promises.readdir(subFullPath, { withFileTypes: true });
+                  const nestedDirs = containerEntries.filter(e => e.isDirectory() && !this.skipDirs.has(e.name));
+                  for (const nested of nestedDirs) {
+                    const nestedFullPath = path.join(subFullPath, nested.name);
+                    const nestedInspect = await this.inspectFolder(nestedFullPath);
+                    if (nestedInspect.isProject) {
+                      const subName = `${subDir.name}/${nested.name}`;
+                      const relPath = path.join(subDir.name, nested.name).replace(/\\/g, '/');
+                      detectedSubprojects.push({
+                        id: subName,
+                        name: subName,
+                        relativePath: relPath,
+                        path: nestedFullPath,
+                        type: nestedInspect.type,
+                        scripts: nestedInspect.scripts
+                      });
+                      if (nestedInspect.scripts) {
+                        for (const [sName, sCmd] of Object.entries(nestedInspect.scripts)) {
+                          mergedSubScripts[`${nested.name}:${sName}`] = sCmd;
+                        }
+                      }
+                      seenPaths.add(nestedFullPath);
+                      seenPaths.add(subFullPath);
+                    }
+                  }
+                } catch {}
+              }
+
+              // 2. Direct generic subfolder (e.g. client, server, src, docs, apps, ui)
               if (isGeneric) {
                 const subInspect = await this.inspectFolder(subFullPath);
                 if (subInspect.isProject) {
-                  detectedSubprojects.push({
-                    id: subDir.name,
-                    name: subDir.name,
-                    relativePath: subDir.name,
-                    path: subFullPath,
-                    type: subInspect.type,
-                    scripts: subInspect.scripts
-                  });
-                  if (subInspect.scripts) {
-                    for (const [sName, sCmd] of Object.entries(subInspect.scripts)) {
-                      mergedSubScripts[`${subDir.name}:${sName}`] = sCmd;
+                  if (!detectedSubprojects.some(s => s.path === subFullPath)) {
+                    detectedSubprojects.push({
+                      id: subDir.name,
+                      name: subDir.name,
+                      relativePath: subDir.name,
+                      path: subFullPath,
+                      type: subInspect.type,
+                      scripts: subInspect.scripts
+                    });
+                    if (subInspect.scripts) {
+                      for (const [sName, sCmd] of Object.entries(subInspect.scripts)) {
+                        mergedSubScripts[`${subDir.name}:${sName}`] = sCmd;
+                      }
                     }
+                    seenPaths.add(subFullPath);
                   }
-                  seenPaths.add(subFullPath);
                 }
               }
             }
@@ -328,21 +376,54 @@ class ProjectScanner {
 
       for (const subDir of dirEntries) {
         const subFullPath = path.join(folderPath, subDir.name);
-        const isGeneric = GENERIC_FOLDER_NAMES.has(subDir.name.toLowerCase());
+        const subNameLower = subDir.name.toLowerCase();
+        const isGeneric = GENERIC_FOLDER_NAMES.has(subNameLower);
+        const isContainer = CONTAINER_FOLDER_NAMES.has(subNameLower);
+
+        if (isContainer) {
+          try {
+            const containerEntries = await fs.promises.readdir(subFullPath, { withFileTypes: true });
+            const nestedDirs = containerEntries.filter(e => e.isDirectory() && !this.skipDirs.has(e.name));
+            for (const nested of nestedDirs) {
+              const nestedFullPath = path.join(subFullPath, nested.name);
+              const nestedInspect = await this.inspectFolder(nestedFullPath);
+              if (nestedInspect.isProject) {
+                const subName = `${subDir.name}/${nested.name}`;
+                const relPath = path.join(subDir.name, nested.name).replace(/\\/g, '/');
+                detectedSubprojects.push({
+                  id: subName,
+                  name: subName,
+                  relativePath: relPath,
+                  path: nestedFullPath,
+                  type: nestedInspect.type,
+                  scripts: nestedInspect.scripts
+                });
+                if (nestedInspect.scripts) {
+                  for (const [sName, sCmd] of Object.entries(nestedInspect.scripts)) {
+                    mergedSubScripts[`${nested.name}:${sName}`] = sCmd;
+                  }
+                }
+              }
+            }
+          } catch {}
+        }
+
         if (isGeneric) {
           const subInspect = await this.inspectFolder(subFullPath);
           if (subInspect.isProject) {
-            detectedSubprojects.push({
-              id: subDir.name,
-              name: subDir.name,
-              relativePath: subDir.name,
-              path: subFullPath,
-              type: subInspect.type,
-              scripts: subInspect.scripts
-            });
-            if (subInspect.scripts) {
-              for (const [sName, sCmd] of Object.entries(subInspect.scripts)) {
-                mergedSubScripts[`${subDir.name}:${sName}`] = sCmd;
+            if (!detectedSubprojects.some(s => s.path === subFullPath)) {
+              detectedSubprojects.push({
+                id: subDir.name,
+                name: subDir.name,
+                relativePath: subDir.name,
+                path: subFullPath,
+                type: subInspect.type,
+                scripts: subInspect.scripts
+              });
+              if (subInspect.scripts) {
+                for (const [sName, sCmd] of Object.entries(subInspect.scripts)) {
+                  mergedSubScripts[`${subDir.name}:${sName}`] = sCmd;
+                }
               }
             }
           }

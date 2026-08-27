@@ -5,7 +5,7 @@ import { ProjectCard } from './ProjectCard';
 import { useProjectStore } from '@renderer/stores/useProjectStore';
 import { cn } from '@renderer/lib/utils';
 
-const TYPE_FILTERS = ['All', 'Node', 'Python', 'Godot', 'Git', 'Rust', 'Go', '.NET'] as const;
+const TYPE_FILTERS = ['All', 'Node', 'Python', 'Godot', 'Git', 'Rust', 'Go', '.NET', 'Docs'] as const;
 type TypeFilter = typeof TYPE_FILTERS[number];
 
 export const ProjectGrid: React.FC = () => {
@@ -20,7 +20,16 @@ export const ProjectGrid: React.FC = () => {
       p.category?.toLowerCase().includes(q) ||
       (p.tags && p.tags.some(t => t.toLowerCase().includes(q))) ||
       (p.subprojects && p.subprojects.some(s => s.name.toLowerCase().includes(q)));
-    const matchesType = activeType === 'All' || p.type?.toLowerCase() === activeType.toLowerCase();
+    
+    let matchesType = activeType === 'All';
+    if (activeType === '.NET') {
+      matchesType = p.type === 'dotnet';
+    } else if (activeType === 'Docs') {
+      matchesType = p.type === 'docs' || Boolean(p.subprojects?.some(s => s.type === 'docs' || s.name.toLowerCase().includes('doc')));
+    } else if (activeType !== 'All') {
+      matchesType = p.type?.toLowerCase() === activeType.toLowerCase() || Boolean(p.subprojects?.some(s => s.type?.toLowerCase() === activeType.toLowerCase()));
+    }
+
     return matchesSearch && matchesType;
   });
 

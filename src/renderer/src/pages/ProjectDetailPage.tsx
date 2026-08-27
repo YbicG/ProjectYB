@@ -15,7 +15,9 @@ import {
   EyeOff,
   FileCode,
   Folder,
-  Pencil
+  Pencil,
+  BookOpen,
+  Layers
 } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card'
 import { Badge } from '../components/ui/badge'
@@ -41,6 +43,9 @@ const TYPE_COLOURS: Record<string, string> = {
   rust: 'bg-orange-500/15 text-orange-400 border-orange-500/20',
   go: 'bg-cyan-500/15 text-cyan-400 border-cyan-500/20',
   dotnet: 'bg-purple-500/15 text-purple-400 border-purple-500/20',
+  godot: 'bg-indigo-500/15 text-indigo-400 border-indigo-500/20',
+  docs: 'bg-amber-500/15 text-amber-400 border-amber-500/20',
+  git: 'bg-rose-500/15 text-rose-400 border-rose-500/20',
   unknown: 'bg-zinc-800 text-zinc-400 border-zinc-700'
 }
 
@@ -301,46 +306,56 @@ export const ProjectDetailPage: React.FC<ProjectDetailPageProps> = ({ projectId:
             </CardHeader>
             <CardContent className="pt-0 space-y-2">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                {project.subprojects!.map((sub) => (
-                  <div
-                    key={sub.id || sub.name}
-                    className="p-3 rounded-lg bg-zinc-900/70 border border-zinc-800/80 flex items-center justify-between gap-3"
-                  >
-                    <div className="min-w-0 space-y-1">
-                      <div className="flex items-center gap-2">
-                        <Folder className="w-4 h-4 text-cyan-400 shrink-0" />
-                        <span className="font-semibold text-xs text-zinc-100 truncate">{sub.name}</span>
-                        <Badge variant="outline" className="text-[9px] px-1 py-0 uppercase">
-                          {sub.type}
-                        </Badge>
+                {project.subprojects!.map((sub) => {
+                  const isDocs = sub.type === 'docs' || sub.name.toLowerCase().includes('doc')
+                  const isApp = sub.name.toLowerCase().startsWith('apps') || sub.name.toLowerCase().startsWith('packages')
+                  return (
+                    <div
+                      key={sub.id || sub.name}
+                      className="p-3 rounded-lg bg-zinc-900/70 border border-zinc-800/80 flex items-center justify-between gap-3"
+                    >
+                      <div className="min-w-0 space-y-1">
+                        <div className="flex items-center gap-2">
+                          {isDocs ? (
+                            <BookOpen className="w-4 h-4 text-amber-400 shrink-0" />
+                          ) : isApp ? (
+                            <Layers className="w-4 h-4 text-cyan-400 shrink-0" />
+                          ) : (
+                            <Folder className="w-4 h-4 text-violet-400 shrink-0" />
+                          )}
+                          <span className="font-semibold text-xs text-zinc-100 truncate">{sub.name}</span>
+                          <Badge variant="outline" className="text-[9px] px-1 py-0 uppercase">
+                            {sub.type}
+                          </Badge>
+                        </div>
+                        <p className="font-mono text-[10px] text-zinc-500 truncate" title={sub.path}>
+                          {sub.relativePath}
+                        </p>
                       </div>
-                      <p className="font-mono text-[10px] text-zinc-500 truncate" title={sub.path}>
-                        {sub.relativePath}
-                      </p>
-                    </div>
 
-                    <div className="flex items-center gap-1 shrink-0">
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        className="h-7 text-xs px-2 gap-1 border-zinc-700"
-                        onClick={() => handleOpenTerminal(sub)}
-                        title={`Open terminal in ${sub.relativePath}`}
-                      >
-                        <TerminalSquare className="w-3 h-3" />
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        className="h-7 text-xs px-2 text-zinc-400 hover:text-zinc-200"
-                        onClick={() => handleOpenFolder(sub.path)}
-                        title="Open folder in Explorer"
-                      >
-                        <FolderOpen className="w-3 h-3" />
-                      </Button>
+                      <div className="flex items-center gap-1 shrink-0">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="h-7 text-xs px-2 gap-1 border-zinc-700"
+                          onClick={() => handleOpenTerminal(sub)}
+                          title={`Open terminal in ${sub.relativePath}`}
+                        >
+                          <TerminalSquare className="w-3 h-3" />
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className="h-7 text-xs px-2 text-zinc-400 hover:text-zinc-200"
+                          onClick={() => handleOpenFolder(sub.path)}
+                          title="Open folder in Explorer"
+                        >
+                          <FolderOpen className="w-3 h-3" />
+                        </Button>
+                      </div>
                     </div>
-                  </div>
-                ))}
+                  )
+                })}
               </div>
             </CardContent>
           </Card>
