@@ -60,12 +60,34 @@ export function useKeyboard() {
         return
       }
 
+      // Quick Jump to Optimizer: Ctrl+Shift+O
+      if ((e.ctrlKey || e.metaKey) && e.shiftKey && (e.key === 'O' || e.key === 'o')) {
+        e.preventDefault()
+        setActiveTab('optimizer')
+        return
+      }
+
+      // Quick Jump to Services / Docker: Ctrl+Shift+D
+      if ((e.ctrlKey || e.metaKey) && e.shiftKey && (e.key === 'D' || e.key === 'd')) {
+        e.preventDefault()
+        setActiveTab('services')
+        return
+      }
+
+      // Quick Jump to Dependencies: Ctrl+Shift+P
+      if ((e.ctrlKey || e.metaKey) && e.shiftKey && (e.key === 'P' || e.key === 'p')) {
+        e.preventDefault()
+        setActiveTab('dependencies')
+        return
+      }
+
       // New Terminal: Ctrl+T
       if ((e.ctrlKey || e.metaKey) && e.key === 't') {
         e.preventDefault()
+        const defaultCwd = useAppStore.getState().scanPaths[0] || 'D:\\Code'
         createTerminal({
           name: 'Local Terminal',
-          cwd: 'D:\\Code'
+          cwd: defaultCwd
         })
         setActiveTab('terminals')
         return

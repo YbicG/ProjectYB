@@ -20,6 +20,8 @@ interface NotesState {
   setScratchpadModalOpen: (open: boolean) => void;
 }
 
+let globalScratchpadSaveTimer: ReturnType<typeof setTimeout> | null = null;
+
 export const useNotesStore = create<NotesState>((set, get) => ({
   currentPath: null,
   currentNote: null,
@@ -126,11 +128,17 @@ export const useNotesStore = create<NotesState>((set, get) => ({
   },
 
   saveGlobalScratchpad: async (content: string) => {
-    if (!window.api?.notes) return;
     set({ globalScratchpad: content });
-    try {
-      await window.api.notes.setGlobal(content);
-    } catch {}
+    if (!window.api?.notes) return;
+    
+    if (globalScratchpadSaveTimer) {
+      clearTimeout(globalScratchpadSaveTimer);
+    }
+    globalScratchpadSaveTimer = setTimeout(async () => {
+      try {
+        await window.api?.notes?.setGlobal(content);
+      } catch {}
+    }, 300);
   },
 
   setScratchpadModalOpen: (open: boolean) => set({ scratchpadModalOpen: open })

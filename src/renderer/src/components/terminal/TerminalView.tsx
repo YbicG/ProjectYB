@@ -126,5 +126,16 @@ export const TerminalView: React.FC<TerminalViewProps> = ({ terminalId, cwd }) =
     };
   }, [terminalId, cwd]);
 
+  // Live options sync when font/cursor settings change in Appearance/Terminal settings
+  useEffect(() => {
+    if (xtermRef.current) {
+      xtermRef.current.options.fontFamily = terminalFontFamily;
+      xtermRef.current.options.fontSize = terminalFontSize;
+      xtermRef.current.options.cursorStyle = terminalCursorStyle;
+      xtermRef.current.options.cursorBlink = terminalCursorBlink;
+      fitAddonRef.current?.fit();
+    }
+  }, [terminalFontFamily, terminalFontSize, terminalCursorStyle, terminalCursorBlink]);
+
   return <div ref={terminalRef} className="xterm-container bg-zinc-950 h-full w-full overflow-hidden p-1" />;
 };

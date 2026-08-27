@@ -31,8 +31,7 @@ import { useThemeStore } from '@renderer/stores/useThemeStore';
 import { toast } from 'sonner';
 
 export const CommandPalette: React.FC = () => {
-  const [open, setOpen] = useState(false);
-  const { setActiveTab } = useAppStore();
+  const { setActiveTab, commandPaletteOpen, setCommandPaletteOpen } = useAppStore();
   const { projects, selectProject } = useProjectStore();
   const { createTerminal } = useTerminalStore();
   const { profiles, startProfile } = useServiceStore();
@@ -42,19 +41,8 @@ export const CommandPalette: React.FC = () => {
   const { setModalOpen: setHealthModalOpen } = useHealthStore();
   const { setShortcutsModalOpen } = useThemeStore();
 
-  useEffect(() => {
-    const down = (e: KeyboardEvent) => {
-      if (e.key === 'k' && (e.metaKey || e.ctrlKey)) {
-        e.preventDefault();
-        setOpen((open) => !open);
-      }
-    };
-    document.addEventListener('keydown', down);
-    return () => document.removeEventListener('keydown', down);
-  }, []);
-
   const runCommand = (command: () => void) => {
-    setOpen(false);
+    setCommandPaletteOpen(false);
     command();
   };
 
@@ -96,7 +84,7 @@ export const CommandPalette: React.FC = () => {
   };
 
   return (
-    <CommandDialog open={open} onOpenChange={setOpen}>
+    <CommandDialog open={commandPaletteOpen} onOpenChange={setCommandPaletteOpen}>
       <CommandInput placeholder="Type a command or search projects..." />
       <CommandList>
         <CommandEmpty>No results found.</CommandEmpty>

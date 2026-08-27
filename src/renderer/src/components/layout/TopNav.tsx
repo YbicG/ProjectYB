@@ -36,7 +36,7 @@ const tabs = [
 ];
 
 export const TopNav: React.FC = () => {
-  const { activeTab, setActiveTab } = useAppStore();
+  const { activeTab, setActiveTab, setCommandPaletteOpen } = useAppStore();
   const { terminals } = useTerminalStore();
   const { services } = useServiceStore();
   const { statuses } = useGitStore();
@@ -132,8 +132,8 @@ export const TopNav: React.FC = () => {
           variant="ghost"
           size="icon"
           className="h-8 w-8 text-zinc-400 hover:text-zinc-200"
-          onClick={() => document.dispatchEvent(new KeyboardEvent('keydown', { key: 'k', metaKey: true }))}
-          title="Command Palette (Ctrl+K)"
+          onClick={() => setCommandPaletteOpen(true)}
+          title="Command Palette (Ctrl+K, Ctrl+P)"
         >
           <Search className="w-4 h-4" />
         </Button>

@@ -12,6 +12,7 @@ interface AppState {
   theme: 'dark'
   commandPaletteOpen: boolean
   toggleCommandPalette: () => void
+  setCommandPaletteOpen: (open: boolean) => void
 }
 
 export const useAppStore = create<AppState>((set) => ({
@@ -23,5 +24,6 @@ export const useAppStore = create<AppState>((set) => ({
   githubToken: null,
   theme: 'dark',
   commandPaletteOpen: false,
-  toggleCommandPalette: () => set((state) => ({ commandPaletteOpen: !state.commandPaletteOpen }))
+  toggleCommandPalette: () => set((state) => ({ commandPaletteOpen: !state.commandPaletteOpen })),
+  setCommandPaletteOpen: (open) => set({ commandPaletteOpen: open })
 }))

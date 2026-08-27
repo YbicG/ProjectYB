@@ -264,7 +264,13 @@ export const HealthAnalyticsModal: React.FC = () => {
                 </div>
               </div>
             </div>
-          ) : null}
+          ) : (
+            <div className="p-16 text-center text-xs text-zinc-500 flex flex-col items-center gap-2">
+              <Activity className="w-8 h-8 text-zinc-600 mb-1" />
+              <p className="font-semibold text-zinc-300">No workspace projects found</p>
+              <p className="text-zinc-500 max-w-sm">Scan a directory or add projects in Settings to view health scores, commit cadence, and inactive repository alerts.</p>
+            </div>
+          )}
         </ScrollArea>
       </DialogContent>
     </Dialog>
