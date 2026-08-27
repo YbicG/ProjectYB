@@ -24,6 +24,20 @@ interface ThemeState {
   loadPreferences: () => Promise<void>;
 }
 
+export const applyThemeToDOM = (theme: AccentColor, density: Density) => {
+  if (typeof document !== 'undefined') {
+    document.documentElement.setAttribute('data-theme', theme);
+    document.documentElement.setAttribute('data-density', density);
+    document.documentElement.dataset.theme = theme;
+    document.documentElement.dataset.density = density;
+  }
+};
+
+// Initial DOM attribute setup
+if (typeof document !== 'undefined') {
+  applyThemeToDOM('violet', 'comfortable');
+}
+
 export const useThemeStore = create<ThemeState>((set, get) => ({
   accentColor: 'violet',
   density: 'comfortable',
@@ -35,7 +49,7 @@ export const useThemeStore = create<ThemeState>((set, get) => ({
 
   setAccentColor: async (color: AccentColor) => {
     set({ accentColor: color });
-    document.documentElement.dataset.theme = color;
+    applyThemeToDOM(color, get().density);
     try {
       await window.api?.store?.set('theme:accentColor', color);
     } catch {}
@@ -43,7 +57,7 @@ export const useThemeStore = create<ThemeState>((set, get) => ({
 
   setDensity: async (density: Density) => {
     set({ density });
-    document.documentElement.dataset.density = density;
+    applyThemeToDOM(get().accentColor, density);
     try {
       await window.api?.store?.set('theme:density', density);
     } catch {}
@@ -82,21 +96,16 @@ export const useThemeStore = create<ThemeState>((set, get) => ({
   loadPreferences: async () => {
     if (!window.api?.store) return;
     try {
-      const color = (await window.api.store.get('theme:accentColor')) as AccentColor;
-      const density = (await window.api.store.get('theme:density')) as Density;
+      const color = ((await window.api.store.get('theme:accentColor')) as AccentColor) || 'violet';
+      const density = ((await window.api.store.get('theme:density')) as Density) || 'comfortable';
       const font = (await window.api.store.get('terminal:fontFamily')) as string;
       const size = (await window.api.store.get('terminal:fontSize')) as number;
       const cursor = (await window.api.store.get('terminal:cursorStyle')) as TerminalCursorStyle;
       const blink = (await window.api.store.get('terminal:cursorBlink')) as boolean;
 
-      if (color) {
-        set({ accentColor: color });
-        document.documentElement.dataset.theme = color;
-      }
-      if (density) {
-        set({ density });
-        document.documentElement.dataset.density = density;
-      }
+      set({ accentColor: color, density });
+      applyThemeToDOM(color, density);
+
       if (font) set({ terminalFontFamily: font });
       if (size) set({ terminalFontSize: size });
       if (cursor) set({ terminalCursorStyle: cursor });

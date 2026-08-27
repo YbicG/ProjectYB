@@ -72,6 +72,51 @@ export const AppearanceSettings: React.FC = () => {
         </CardContent>
       </Card>
 
+      {/* ── Live Theme Preview Showcase ── */}
+      <Card className="bg-zinc-950 border-zinc-800">
+        <CardHeader className="pb-3">
+          <CardTitle className="text-sm flex items-center gap-2">
+            <Sparkles className="w-4 h-4 text-violet-400" />
+            Live Theme Preview
+          </CardTitle>
+          <CardDescription className="text-xs">
+            Preview how badges, buttons, active highlights, and controls look with the current theme.
+          </CardDescription>
+        </CardHeader>
+
+        <CardContent className="space-y-3 pt-1">
+          <div className="p-4 rounded-lg bg-zinc-900/60 border border-zinc-800 space-y-3">
+            <div className="flex items-center justify-between flex-wrap gap-2">
+              <div className="flex items-center gap-2">
+                <Badge className="bg-violet-600 hover:bg-violet-600 text-white font-mono text-xs">
+                  Active Badge
+                </Badge>
+                <Badge variant="outline" className="border-violet-500 text-violet-400 font-mono text-xs">
+                  Outline Highlight
+                </Badge>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <Button size="sm" className="bg-violet-600 hover:bg-violet-700 text-white text-xs h-7">
+                  Primary Action
+                </Button>
+                <Button size="sm" variant="outline" className="border-zinc-700 text-zinc-300 hover:border-violet-500 hover:text-violet-300 text-xs h-7">
+                  Secondary Action
+                </Button>
+              </div>
+            </div>
+
+            <div className="p-2.5 rounded bg-zinc-950 border border-zinc-800/80 flex items-center justify-between text-xs">
+              <span className="text-zinc-400">Navigation Tab Active Indicator:</span>
+              <span className="text-violet-400 font-semibold flex items-center gap-1.5">
+                <span className="w-2 h-2 rounded-full bg-violet-500 animate-pulse" />
+                Active Tab Accent
+              </span>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
       {/* ── Layout & UI Density ── */}
       <Card className="bg-zinc-950 border-zinc-800">
         <CardHeader className="pb-3">

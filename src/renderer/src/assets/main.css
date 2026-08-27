@@ -1,20 +1,133 @@
 @import 'tailwindcss';
 
 @theme {
-  --color-zinc-950: #09090b;
-  --color-zinc-900: #18181b;
-  --color-zinc-800: #27272a;
+  --color-zinc-950: var(--bg-950, #09090b);
+  --color-zinc-900: var(--bg-900, #18181b);
+  --color-zinc-800: var(--bg-800, #27272a);
   --color-zinc-100: #f4f4f5;
   --color-zinc-50: #fafafa;
+
+  --color-violet-300: var(--accent-300, #c4b5fd);
+  --color-violet-400: var(--accent-400, #a78bfa);
+  --color-violet-500: var(--accent-500, #8b5cf6);
+  --color-violet-600: var(--accent-600, #7c3aed);
+  --color-violet-700: var(--accent-700, #6d28d9);
+  --color-violet-800: var(--accent-800, #5b21b6);
+  --color-violet-900: var(--accent-900, #4c1d95);
+  --color-violet-950: var(--accent-950, #2e1065);
 }
 
-:root {
+:root,
+[data-theme="violet"] {
+  --bg-950: #09090b;
+  --bg-900: #18181b;
+  --bg-800: #27272a;
+  --accent-300: #c4b5fd;
+  --accent-400: #a78bfa;
+  --accent-500: #8b5cf6;
+  --accent-600: #7c3aed;
+  --accent-700: #6d28d9;
+  --accent-800: #5b21b6;
+  --accent-900: #4c1d95;
+  --accent-950: #2e1065;
   color-scheme: dark;
+}
+
+[data-theme="cyan"] {
+  --bg-950: #09090b;
+  --bg-900: #18181b;
+  --bg-800: #27272a;
+  --accent-300: #67e8f9;
+  --accent-400: #22d3ee;
+  --accent-500: #06b6d4;
+  --accent-600: #0891b2;
+  --accent-700: #0e7490;
+  --accent-800: #155e75;
+  --accent-900: #164e63;
+  --accent-950: #083344;
+}
+
+[data-theme="emerald"] {
+  --bg-950: #09090b;
+  --bg-900: #18181b;
+  --bg-800: #27272a;
+  --accent-300: #6ee7b7;
+  --accent-400: #34d399;
+  --accent-500: #10b981;
+  --accent-600: #059669;
+  --accent-700: #047857;
+  --accent-800: #065f46;
+  --accent-900: #064e3b;
+  --accent-950: #022c22;
+}
+
+[data-theme="amber"] {
+  --bg-950: #09090b;
+  --bg-900: #18181b;
+  --bg-800: #27272a;
+  --accent-300: #fcd34d;
+  --accent-400: #fbbf24;
+  --accent-500: #f59e0b;
+  --accent-600: #d97706;
+  --accent-700: #b45309;
+  --accent-800: #92400e;
+  --accent-900: #78350f;
+  --accent-950: #451a03;
+}
+
+[data-theme="rose"] {
+  --bg-950: #09090b;
+  --bg-900: #18181b;
+  --bg-800: #27272a;
+  --accent-300: #fda4af;
+  --accent-400: #fb7185;
+  --accent-500: #f43f5e;
+  --accent-600: #e11d48;
+  --accent-700: #be123c;
+  --accent-800: #9f1239;
+  --accent-900: #881337;
+  --accent-950: #4c0519;
+}
+
+[data-theme="oled"] {
+  --bg-950: #000000;
+  --bg-900: #09090b;
+  --bg-800: #18181b;
+  --accent-300: #fafafa;
+  --accent-400: #f4f4f5;
+  --accent-500: #e4e4e7;
+  --accent-600: #d4d4d8;
+  --accent-700: #a1a1aa;
+  --accent-800: #71717a;
+  --accent-900: #52525b;
+  --accent-950: #27272a;
+}
+
+/* ── Density Modes ── */
+[data-density="compact"] {
+  font-size: 13px;
+}
+
+[data-density="compact"] .p-8 {
+  padding: 1.25rem !important;
+}
+
+[data-density="compact"] .p-6 {
+  padding: 1rem !important;
+}
+
+[data-density="compact"] .gap-4 {
+  gap: 0.625rem !important;
+}
+
+[data-density="compact"] .gap-3 {
+  gap: 0.5rem !important;
 }
 
 body {
   background-color: var(--color-zinc-950);
   color: var(--color-zinc-50);
+  transition: background-color 0.2s ease, color 0.2s ease;
 }
 
 /* Custom scrollbar styles */
