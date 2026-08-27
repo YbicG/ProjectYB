@@ -13,8 +13,8 @@ async function getStore() {
 export async function setupStoreIpc() {
   const s = await getStore();
   ipcMain.handle('store:get', (_, key: string, defaultValue?: any) => s.get(key, defaultValue));
-  ipcMain.on('store:set', (_, key: string, value: any) => s.set(key, value));
-  ipcMain.on('store:delete', (_, key: string) => s.delete(key));
+  ipcMain.handle('store:set', (_, key: string, value: any) => s.set(key, value));
+  ipcMain.handle('store:delete', (_, key: string) => s.delete(key));
 }
 
 export { getStore };
