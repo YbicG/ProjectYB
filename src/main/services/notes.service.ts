@@ -9,18 +9,28 @@ export interface ProjectNoteData {
 }
 
 export class NotesService {
-  private readonly NOTES_FILENAME = '.projectyb-notes.md';
+  /**
+   * Resolves the notes file path for a project, prioritizing .ybicg/notes.md.
+   */
+  private async getNotesFilePath(projectPath: string): Promise<string | null> {
+    const ybicgNotes = path.join(projectPath, '.ybicg', 'notes.md');
+    if (fs.existsSync(ybicgNotes)) return ybicgNotes;
+
+    const legacyNotes = path.join(projectPath, '.projectyb-notes.md');
+    if (fs.existsSync(legacyNotes)) return legacyNotes;
+
+    return null;
+  }
 
   /**
    * Reads markdown notes for a project.
-   * Looks for .projectyb-notes.md in the project directory first.
-   * If not found, falls back to electron-store.
+   * Looks for .ybicg/notes.md or .projectyb-notes.md first, then falls back to electron-store.
    */
   async readProjectNotes(projectPath: string): Promise<ProjectNoteData> {
-    const filePath = path.join(projectPath, this.NOTES_FILENAME);
+    const filePath = await this.getNotesFilePath(projectPath);
 
-    try {
-      if (fs.existsSync(filePath)) {
+    if (filePath) {
+      try {
         const content = await fs.promises.readFile(filePath, 'utf-8');
         const stat = await fs.promises.stat(filePath);
         return {
@@ -28,9 +38,9 @@ export class NotesService {
           updatedAt: stat.mtimeMs,
           filePath
         };
+      } catch (err) {
+        console.warn(`[NotesService] Error reading file notes at ${filePath}:`, err);
       }
-    } catch (err) {
-      console.warn(`[NotesService] Error reading file notes at ${filePath}:`, err);
     }
 
     // Fallback to electron-store
@@ -46,21 +56,25 @@ export class NotesService {
     }
 
     return {
-      content: '# Project Notes\n\n- [ ] Initial project setup\n- [ ] Review documentation\n',
+      content: '# Project Notes & Tasks\n\n- [ ] Initial project setup\n- [ ] Review documentation\n',
       updatedAt: Date.now()
     };
   }
 
   /**
    * Saves markdown notes for a project.
-   * Writes directly to .projectyb-notes.md in the project directory and caches in store.
+   * Writes to <projectPath>/.ybicg/notes.md and caches in store.
    */
   async writeProjectNotes(projectPath: string, content: string): Promise<{ success: boolean; filePath?: string; error?: string }> {
-    const filePath = path.join(projectPath, this.NOTES_FILENAME);
+    const ybicgDir = path.join(projectPath, '.ybicg');
+    const targetFilePath = path.join(ybicgDir, 'notes.md');
 
     try {
       if (fs.existsSync(projectPath)) {
-        await fs.promises.writeFile(filePath, content, 'utf-8');
+        if (!fs.existsSync(ybicgDir)) {
+          await fs.promises.mkdir(ybicgDir, { recursive: true });
+        }
+        await fs.promises.writeFile(targetFilePath, content, 'utf-8');
       }
 
       // Also persist in electron-store as cache
@@ -69,13 +83,13 @@ export class NotesService {
       storedNotes[projectPath] = {
         content,
         updatedAt: Date.now(),
-        filePath: fs.existsSync(filePath) ? filePath : undefined
+        filePath: fs.existsSync(targetFilePath) ? targetFilePath : undefined
       };
       store.set('projectNotes', storedNotes);
 
-      return { success: true, filePath };
+      return { success: true, filePath: targetFilePath };
     } catch (err: any) {
-      console.error(`[NotesService] Error writing notes to ${filePath}:`, err);
+      console.error(`[NotesService] Error writing notes to ${targetFilePath}:`, err);
       return { success: false, error: err.message };
     }
   }

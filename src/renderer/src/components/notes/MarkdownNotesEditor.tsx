@@ -112,8 +112,8 @@ export const MarkdownNotesEditor: React.FC<MarkdownNotesEditorProps> = ({ projec
             </Badge>
           )}
           {currentNote?.filePath && (
-            <span className="text-[10px] text-zinc-500 font-mono hidden md:inline truncate max-w-xs">
-              📁 .projectyb-notes.md
+            <span className="text-[10px] text-zinc-500 font-mono hidden md:inline truncate max-w-xs" title={currentNote.filePath}>
+              📁 .ybicg/notes.md
             </span>
           )}
         </div>

@@ -323,7 +323,7 @@ export const ProjectConfigDialog: React.FC<ProjectConfigDialogProps> = ({
       }
 
       await saveProjectConfig(project.path, finalConfig, activeTab === 'json')
-      toast.success(`Config saved to .projectyb.json for "${finalConfig.name || project.name}"`)
+      toast.success(`Config saved to .ybicg/config.json for "${finalConfig.name || project.name}"`)
       onOpenChange(false)
     } catch (err: any) {
       toast.error(`Failed to save config: ${err.message}`)
@@ -338,7 +338,7 @@ export const ProjectConfigDialog: React.FC<ProjectConfigDialogProps> = ({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="bg-zinc-950 border-zinc-800 text-zinc-100 max-w-3xl w-[90vw] h-[640px] max-h-[90vh] flex flex-col p-0 overflow-hidden shadow-2xl">
         {/* ── Dialog Header ── */}
-        <DialogHeader className="p-4 pb-3 border-b border-zinc-800 shrink-0 bg-zinc-950">
+        <DialogHeader className="p-4 pb-3 border-b border-zinc-800 shrink-0 bg-zinc-950 pr-8">
           <div className="flex items-center justify-between gap-4">
             <div className="flex items-center gap-3 min-w-0">
               <div className="w-8 h-8 rounded-lg bg-violet-950/60 border border-violet-800/60 flex items-center justify-center text-violet-400 shrink-0">
@@ -359,12 +359,12 @@ export const ProjectConfigDialog: React.FC<ProjectConfigDialogProps> = ({
 
             <div className="text-right shrink-0">
               {configPath ? (
-                <span className="text-[11px] text-emerald-400 flex items-center gap-1 font-mono bg-emerald-950/40 border border-emerald-800/40 px-2 py-0.5 rounded">
-                  <FileCheck className="w-3 h-3" /> .projectyb.json
+                <span className="text-[11px] text-emerald-400 flex items-center gap-1 font-mono bg-emerald-950/40 border border-emerald-800/40 px-2 py-0.5 rounded" title={configPath}>
+                  <FileCheck className="w-3 h-3" /> .ybicg/config.json
                 </span>
               ) : (
                 <span className="text-[11px] text-zinc-500 font-mono bg-zinc-900 border border-zinc-800 px-2 py-0.5 rounded">
-                  Will create .projectyb.json
+                  Will create .ybicg/config.json
                 </span>
               )}
             </div>

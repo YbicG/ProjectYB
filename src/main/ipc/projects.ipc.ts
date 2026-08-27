@@ -33,6 +33,10 @@ export function setupProjectsIpc() {
     return projectScanner.writeProjectConfig(folderPath, config, overwrite);
   });
 
+  ipcMain.handle('projects:generateAiContext', async (_, folderPath: string) => {
+    return projectScanner.generateAiContext(folderPath);
+  });
+
   ipcMain.handle('projects:openInExplorer', (_, path: string) => shell.openPath(path));
 
   ipcMain.handle('projects:openInVSCode', (_, targetPath: string) => {

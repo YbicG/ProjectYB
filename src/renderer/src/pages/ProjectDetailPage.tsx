@@ -21,7 +21,8 @@ import {
   Lock,
   Package,
   Boxes,
-  Archive
+  Archive,
+  Bot
 } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card'
 import { Badge } from '../components/ui/badge'
@@ -30,6 +31,7 @@ import { ScrollArea } from '../components/ui/scroll-area'
 import { ProjectConfigDialog } from '../components/dashboard/ProjectConfigDialog'
 import { EnvManagerDialog } from '../components/env/EnvManagerDialog'
 import { ProjectSnapshotDialog } from '../components/dashboard/ProjectSnapshotDialog'
+import { AiContextDialog } from '../components/dashboard/AiContextDialog'
 import { DockerDashboard } from '../components/docker/DockerDashboard'
 import { MarkdownNotesEditor } from '../components/notes/MarkdownNotesEditor'
 import { useProjectStore } from '@renderer/stores/useProjectStore'
@@ -143,6 +145,7 @@ export const ProjectDetailPage: React.FC<ProjectDetailPageProps> = ({ projectId:
   const [configDialogOpen, setConfigDialogOpen] = useState(false)
   const [envDialogOpen, setEnvDialogOpen] = useState(false)
   const [snapshotDialogOpen, setSnapshotDialogOpen] = useState(false)
+  const [aiContextDialogOpen, setAiContextDialogOpen] = useState(false)
   const savedConfigs = useRunConfigStore((s) => s.configs).filter((c) => c.projectId === project?.id)
 
   // Fetch git status + recent commits whenever the selected project changes
@@ -191,7 +194,7 @@ export const ProjectDetailPage: React.FC<ProjectDetailPageProps> = ({ projectId:
     if (!project) return
     if (
       window.confirm(
-        `Ignore "${project.name}"?\nThis will write "ignore": true in .projectyb.json and return to dashboard.`
+        `Ignore "${project.name}"?\nThis will write "ignore": true in .ybicg/config.json and return to dashboard.`
       )
     ) {
       await ignoreProject(project.path)
@@ -299,6 +302,16 @@ export const ProjectDetailPage: React.FC<ProjectDetailPageProps> = ({ projectId:
             >
               <FileCode className="h-4 w-4" />
               Edit Config
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setAiContextDialogOpen(true)}
+              className="gap-1.5 border-violet-500/40 text-violet-300 hover:bg-violet-950/30"
+              title="Generate or view .ybicg/AI_CONTEXT.md instructions for AI assistants"
+            >
+              <Bot className="h-4 w-4 text-violet-400" />
+              AI Context (.ybicg)
             </Button>
             <Button variant="outline" size="sm" onClick={() => handleOpenTerminal()} className="gap-1.5">
               <TerminalSquare className="h-4 w-4" />
@@ -661,6 +674,13 @@ export const ProjectDetailPage: React.FC<ProjectDetailPageProps> = ({ projectId:
       <ProjectSnapshotDialog
         open={snapshotDialogOpen}
         onOpenChange={setSnapshotDialogOpen}
+        project={project}
+      />
+
+      {/* ── AI Context & Guide Dialog ── */}
+      <AiContextDialog
+        open={aiContextDialogOpen}
+        onOpenChange={setAiContextDialogOpen}
         project={project}
       />
     </ScrollArea>

@@ -70,6 +70,10 @@ class ProjectScanner {
 
   async getConfigFilePath(folderPath: string): Promise<string | null> {
     try {
+      const ybicgJson = path.join(folderPath, '.ybicg', 'config.json');
+      if (fs.existsSync(ybicgJson)) return ybicgJson;
+      const ybicgProj = path.join(folderPath, '.ybicg', 'project.json');
+      if (fs.existsSync(ybicgProj)) return ybicgProj;
       const jsonPath = path.join(folderPath, '.projectyb.json');
       if (fs.existsSync(jsonPath)) return jsonPath;
       const dotPath = path.join(folderPath, '.projectyb');
@@ -92,25 +96,150 @@ class ProjectScanner {
   }
 
   async writeProjectConfig(folderPath: string, updates: Partial<ProjectYBConfig>, overwrite: boolean = false): Promise<string> {
-    let configPath = await this.getConfigFilePath(folderPath);
-    let existing: ProjectYBConfig = {};
-
-    if (configPath) {
-      try {
-        const raw = await fs.promises.readFile(configPath, 'utf8');
-        existing = JSON.parse(raw);
-      } catch {}
-    } else {
-      configPath = path.join(folderPath, '.projectyb.json');
+    const ybicgDir = path.join(folderPath, '.ybicg');
+    if (!fs.existsSync(ybicgDir)) {
+      await fs.promises.mkdir(ybicgDir, { recursive: true });
     }
 
+    const legacyConfigPath = await this.getConfigFilePath(folderPath);
+    let existing: ProjectYBConfig = {};
+
+    if (legacyConfigPath) {
+      try {
+        const raw = await fs.promises.readFile(legacyConfigPath, 'utf8');
+        existing = JSON.parse(raw);
+      } catch {}
+    }
+
+    const targetConfigPath = path.join(ybicgDir, 'config.json');
     const merged = overwrite ? updates : { ...existing, ...updates };
-    await fs.promises.writeFile(configPath, JSON.stringify(merged, null, 2), 'utf8');
-    return configPath;
+    await fs.promises.writeFile(targetConfigPath, JSON.stringify(merged, null, 2), 'utf8');
+    return targetConfigPath;
   }
 
   async setIgnored(folderPath: string, ignore: boolean): Promise<string> {
     return this.writeProjectConfig(folderPath, { ignore });
+  }
+
+  /**
+   * Generates or updates the AI_CONTEXT.md file inside <folderPath>/.ybicg/
+   * providing comprehensive context for AI assistants.
+   */
+  async generateAiContext(folderPath: string): Promise<{ success: boolean; filePath: string; content: string }> {
+    const ybicgDir = path.join(folderPath, '.ybicg');
+    if (!fs.existsSync(ybicgDir)) {
+      await fs.promises.mkdir(ybicgDir, { recursive: true });
+    }
+
+    const projectInfo = await this.scanSingleFolder(folderPath);
+    const projectName = projectInfo?.name || path.basename(folderPath);
+    const projectType = projectInfo?.type || 'unknown';
+    const subprojects = projectInfo?.subprojects || [];
+    const scripts = projectInfo?.scripts || {};
+
+    // Ensure .ybicg/config.json exists
+    const configPath = path.join(ybicgDir, 'config.json');
+    if (!fs.existsSync(configPath)) {
+      const initialConfig: ProjectYBConfig = {
+        name: projectName,
+        type: projectType,
+        tags: projectInfo?.tags || [],
+        category: projectInfo?.category || path.basename(path.dirname(folderPath))
+      };
+      await fs.promises.writeFile(configPath, JSON.stringify(initialConfig, null, 2), 'utf8');
+    }
+
+    // Ensure .ybicg/notes.md exists
+    const notesPath = path.join(ybicgDir, 'notes.md');
+    if (!fs.existsSync(notesPath)) {
+      const initialNotes = `# ${projectName} Notes & Tasks\n\n- [ ] Initial project setup\n- [ ] Review architecture\n`;
+      await fs.promises.writeFile(notesPath, initialNotes, 'utf8');
+    }
+
+    const scriptsMarkdown = Object.keys(scripts).length > 0
+      ? Object.entries(scripts).map(([name, cmd]) => `- **\`${name}\`**: \`${cmd}\``).join('\n')
+      : '_No scripts detected (add custom scripts in `.ybicg/config.json`)_';
+
+    const subprojectsMarkdown = subprojects.length > 0
+      ? subprojects.map(s => `- **${s.name}** (\`${s.relativePath}\`): \`${s.type}\``).join('\n')
+      : '_Single-root project structure (no nested subprojects)_';
+
+    const content = `# ProjectYB AI Context & Repository Guide
+> Generated for AI Coding Assistants (Antigravity, Claude, ChatGPT, Cursor, Copilot)
+
+## 📌 Project Overview
+- **Project Name**: ${projectName}
+- **Root Directory**: \`${folderPath}\`
+- **Primary Type/Framework**: \`${projectType}\`
+- **Category Group**: \`${projectInfo?.category || 'General'}\`
+- **Git Managed**: \`${projectInfo?.isGitRepo ? 'Yes' : 'No'}\`
+
+---
+
+## 🏗️ Architecture & Subprojects
+${subprojectsMarkdown}
+
+---
+
+## ⚡ Available Commands & Scripts
+${scriptsMarkdown}
+
+---
+
+## 📁 The \`.ybicg/\` Directory & ProjectYB Overrides
+
+This project uses the **\`.ybicg/\`** directory to configure ProjectYB desktop management and store AI pair-programming context.
+
+### 1. \`.ybicg/config.json\` (Project Configuration Override)
+You (or any AI assistant) can edit \`.ybicg/config.json\` to customize how this project is detected and managed:
+
+\`\`\`json
+{
+  "name": "${projectName}",
+  "type": "${projectType}",
+  "category": "${projectInfo?.category || 'General'}",
+  "tags": ${JSON.stringify(projectInfo?.tags || ['development'])},
+  "scripts": {
+    "dev": "npm run dev",
+    "build": "npm run build"
+  },
+  "subprojects": [
+    { "name": "web", "path": "apps/web", "type": "node" }
+  ],
+  "ignore": false
+}
+\`\`\`
+
+#### Supported Override Fields:
+- **\`name\`**: Custom human-friendly display name in ProjectYB.
+- **\`type\`**: Framework type (\`node\`, \`python\`, \`rust\`, \`go\`, \`dotnet\`, \`godot\`, \`docs\`, \`git\`).
+- **\`category\`**: Grouping tag in the dashboard (e.g. \`Web Apps\`, \`Discord Bots\`, \`APIs\`).
+- **\`tags\`**: Array of searchable tags for filtering.
+- **\`scripts\`**: Key-value pairs of runnable scripts that appear as 1-click buttons in ProjectYB.
+- **\`subprojects\`**: Explicitly define monorepo packages or microservices with their own paths.
+- **\`ignore\`**: Set to \`true\` to hide this repository from the ProjectYB project scanner.
+
+### 2. \`.ybicg/notes.md\` (Project Scratchpad & Task Checklist)
+- Markdown scratchpad rendered live in ProjectYB.
+- Uses standard \`- [ ]\` and \`- [x]\` checkboxes which can be toggled interactively from the app UI.
+
+---
+
+## 🤖 Guidelines for AI Assistants
+When making modifications in this repository:
+1. **Maintain Documentation**: Keep \`.ybicg/AI_CONTEXT.md\` and \`.ybicg/notes.md\` updated when adding major architecture changes or new npm/python scripts.
+2. **Preserve Configs**: If adding subprojects or custom dev workflows, update \`.ybicg/config.json\`.
+3. **Environment**: On Windows environments, use PowerShell or CMD syntax (e.g. use \`;\` instead of \`&&\` in PowerShell).
+`;
+
+    const aiContextPath = path.join(ybicgDir, 'AI_CONTEXT.md');
+    await fs.promises.writeFile(aiContextPath, content, 'utf8');
+
+    return {
+      success: true,
+      filePath: aiContextPath,
+      content
+    };
   }
 
   private async inspectFolder(folderPath: string): Promise<{

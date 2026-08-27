@@ -88,6 +88,7 @@ const api = {
     unignore: (folderPath: string) => ipcRenderer.invoke('projects:unignore', folderPath),
     getConfig: (folderPath: string) => ipcRenderer.invoke('projects:getConfig', folderPath),
     saveConfig: (folderPath: string, config: any, overwrite?: boolean) => ipcRenderer.invoke('projects:saveConfig', folderPath, config, overwrite),
+    generateAiContext: (folderPath: string) => ipcRenderer.invoke('projects:generateAiContext', folderPath),
     getAll: () => ipcRenderer.invoke('projects:getAll'),
     openInExplorer: (path: string) => ipcRenderer.invoke('projects:openInExplorer', path),
     openInVSCode: (path: string) => ipcRenderer.invoke('projects:openInVSCode', path),

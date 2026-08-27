@@ -70,6 +70,7 @@ export interface IElectronAPI {
     unignore(folderPath: string): Promise<string>
     getConfig(folderPath: string): Promise<{ config: any; filePath: string | null }>
     saveConfig(folderPath: string, config: any, overwrite?: boolean): Promise<string>
+    generateAiContext(folderPath: string): Promise<{ success: boolean; filePath: string; content: string }>
     getAll(): Promise<ProjectInfo[]>
     openInExplorer(path: string): Promise<void>
     openInVSCode(path: string): Promise<void>

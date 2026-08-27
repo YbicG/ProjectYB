@@ -271,7 +271,7 @@ export const GeneralSettings: React.FC = () => {
             <CardTitle>Ignored Projects & Configs</CardTitle>
           </div>
           <CardDescription>
-            Projects configured with <code className="text-violet-300 font-mono">.projectyb</code> or <code className="text-violet-300 font-mono">.projectyb.json</code> containing <code className="text-zinc-300 font-mono">"ignore": true</code> are hidden from the dashboard.
+            Projects configured with <code className="text-violet-300 font-mono">.ybicg/config.json</code> containing <code className="text-zinc-300 font-mono">"ignore": true</code> are hidden from the dashboard.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">

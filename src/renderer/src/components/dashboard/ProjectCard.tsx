@@ -103,7 +103,7 @@ export const ProjectCard: React.FC<ProjectCardProps> = ({ project }) => {
   const handleIgnoreProject = async () => {
     if (
       window.confirm(
-        `Ignore project "${project.name}"?\n\nThis will add "ignore": true to its .projectyb.json and hide it from your dashboard.`
+        `Ignore project "${project.name}"?\n\nThis will add "ignore": true to its .ybicg/config.json and hide it from your dashboard.`
       )
     ) {
       try {
@@ -113,7 +113,7 @@ export const ProjectCard: React.FC<ProjectCardProps> = ({ project }) => {
         if (!ignoredList.includes(project.path)) {
           await window.api?.store?.set('ignoredProjects', [...ignoredList, project.path])
         }
-        toast.info(`Ignored "${project.name}". Config updated in .projectyb.json.`)
+        toast.info(`Ignored "${project.name}". Config updated in .ybicg/config.json.`)
       } catch (err) {
         toast.error(`Failed to ignore project`)
       }
@@ -336,7 +336,7 @@ export const ProjectCard: React.FC<ProjectCardProps> = ({ project }) => {
                 <FileCode className="w-3.5 h-3.5 text-violet-400" />
                 <div>
                   <div className="font-medium">Edit Config & Name</div>
-                  <div className="text-[10px] text-zinc-500">.projectyb.json editor</div>
+                  <div className="text-[10px] text-zinc-500">.ybicg/config.json editor</div>
                 </div>
               </DropdownMenuItem>
 
