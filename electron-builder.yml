@@ -1,0 +1,74 @@
+appId: com.ybicg.projectyb
+productName: ProjectYB
+copyright: Copyright © 2026 YbicG
+
+# Icon (Windows uses .ico, others use .png)
+icon: resources/icon.png
+
+directories:
+  buildResources: resources
+  output: dist
+
+# Files to include in the build
+files:
+  - out/**/*
+  - resources/icon.png
+  - resources/icon.ico
+  - package.json
+
+# Extra resources bundled inside the app
+extraResources:
+  - from: resources/icon.png
+    to: resources/icon.png
+  - from: resources/icon.ico
+    to: resources/icon.ico
+
+# macOS
+mac:
+  icon: resources/icon.png
+  category: public.app-category.developer-tools
+  target:
+    - target: dmg
+      arch: [x64, arm64]
+
+# Windows
+win:
+  icon: resources/icon.ico
+  target:
+    - target: nsis
+      arch: [x64]
+  artifactName: ProjectYB-Setup-${version}.exe
+
+# NSIS Windows Installer
+nsis:
+  oneClick: false
+  allowToChangeInstallationDirectory: true
+  allowElevation: true
+  installerIcon: resources/icon.ico
+  uninstallerIcon: resources/icon.ico
+  installerHeaderIcon: resources/icon.ico
+  createDesktopShortcut: true
+  createStartMenuShortcut: true
+  shortcutName: ProjectYB
+  include: null
+  deleteAppDataOnUninstall: false
+  displayLanguageSelector: false
+  installerLanguages:
+    - en_US
+  license: null
+  menuCategory: ProjectYB
+  perMachine: false
+
+# Linux
+linux:
+  icon: resources/icon.png
+  category: Development
+  target:
+    - target: AppImage
+      arch: [x64]
+
+# Publish (optional — comment out if not using auto-update)
+# publish:
+#   provider: github
+#   owner: YbicG
+#   repo: ProjectYB

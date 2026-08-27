@@ -18,6 +18,8 @@ import {
   Activity,
   Layers
 } from 'lucide-react';
+import logoUrl from '../../assets/logo.png';
+
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAppStore, TabType } from '@renderer/stores/useAppStore';
 import { useThemeStore } from '@renderer/stores/useThemeStore';
@@ -124,9 +126,11 @@ export const ModernSidebar: React.FC = () => {
             onClick={() => setActiveTab('dashboard')}
             className="flex items-center gap-2.5 cursor-pointer group min-w-0"
           >
-            <div className="w-8 h-8 rounded-lg bg-zinc-900 border border-zinc-800 flex items-center justify-center text-violet-400 group-hover:border-violet-500/50 group-hover:text-violet-300 group-hover:shadow-[0_0_12px_rgba(139,92,246,0.25)] transition-all shrink-0">
-              <TerminalSquare className="w-4 h-4" />
-            </div>
+            <img
+              src={logoUrl}
+              alt="ProjectYB"
+              className="w-8 h-8 rounded-lg shrink-0 object-cover group-hover:opacity-90 transition-opacity"
+            />
 
             <AnimatePresence>
               {!isSidebarCollapsed && (
