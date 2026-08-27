@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useMemo } from 'react'
 import {
   FileCode,
   Sliders,
@@ -10,7 +10,10 @@ import {
   Tag,
   Terminal,
   AlertCircle,
-  FileCheck
+  FileCheck,
+  Copy,
+  Check,
+  CheckCircle2
 } from 'lucide-react'
 import {
   Dialog,
@@ -28,6 +31,7 @@ import { ScrollArea } from '../ui/scroll-area'
 import type { ProjectInfo, ProjectConfig, ProjectType } from '@renderer/types/project'
 import { useProjectStore } from '@renderer/stores/useProjectStore'
 import { toast } from 'sonner'
+import { cn } from '@renderer/lib/utils'
 
 interface ProjectConfigDialogProps {
   project: ProjectInfo | null
@@ -57,6 +61,7 @@ export const ProjectConfigDialog: React.FC<ProjectConfigDialogProps> = ({
   const [configPath, setConfigPath] = useState<string | null>(null)
   const [isSaving, setIsSaving] = useState(false)
   const [jsonError, setJsonError] = useState<string | null>(null)
+  const [copied, setCopied] = useState(false)
 
   // Form State
   const [name, setName] = useState('')
@@ -145,6 +150,13 @@ export const ProjectConfigDialog: React.FC<ProjectConfigDialogProps> = ({
       })
     }
   }, [project?.path, open])
+
+  // Compute lines and character counts
+  const jsonMeta = useMemo(() => {
+    const lines = rawJson.split('\n').length
+    const chars = rawJson.length
+    return { lines, chars }
+  }, [rawJson])
 
   // Sync from Visual form to JSON tab when switching
   const handleTabChange = (val: string) => {
@@ -251,6 +263,24 @@ export const ProjectConfigDialog: React.FC<ProjectConfigDialogProps> = ({
     setScripts(scripts.filter((_, i) => i !== idx))
   }
 
+  const handleCopyJson = () => {
+    navigator.clipboard.writeText(rawJson)
+    setCopied(true)
+    toast.success('JSON copied to clipboard')
+    setTimeout(() => setCopied(false), 2000)
+  }
+
+  const handleFormatJson = () => {
+    try {
+      setRawJson(JSON.stringify(JSON.parse(rawJson), null, 2))
+      setJsonError(null)
+      toast.info('Formatted JSON')
+    } catch (e: any) {
+      setJsonError(e.message)
+      toast.error(`Cannot format: ${e.message}`)
+    }
+  }
+
   // Save Config
   const handleSave = async () => {
     if (!project) return
@@ -305,34 +335,34 @@ export const ProjectConfigDialog: React.FC<ProjectConfigDialogProps> = ({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="bg-zinc-950 border-zinc-800 text-zinc-100 max-w-2xl max-h-[85vh] flex flex-col p-0 overflow-hidden">
+      <DialogContent className="bg-zinc-950 border-zinc-800 text-zinc-100 max-w-3xl w-[90vw] h-[640px] max-h-[90vh] flex flex-col p-0 overflow-hidden shadow-2xl">
         {/* ── Dialog Header ── */}
-        <DialogHeader className="p-4 pb-3 border-b border-zinc-800 shrink-0">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2.5">
-              <div className="w-8 h-8 rounded-lg bg-violet-950/60 border border-violet-800/60 flex items-center justify-center text-violet-400">
+        <DialogHeader className="p-4 pb-3 border-b border-zinc-800 shrink-0 bg-zinc-950">
+          <div className="flex items-center justify-between gap-4">
+            <div className="flex items-center gap-3 min-w-0">
+              <div className="w-8 h-8 rounded-lg bg-violet-950/60 border border-violet-800/60 flex items-center justify-center text-violet-400 shrink-0">
                 <FileCode className="w-4 h-4" />
               </div>
-              <div>
+              <div className="min-w-0">
                 <DialogTitle className="text-sm font-bold flex items-center gap-2">
                   Project Configuration
                   <Badge variant="outline" className="text-[10px] font-mono border-zinc-700">
                     {project.name}
                   </Badge>
                 </DialogTitle>
-                <DialogDescription className="text-xs text-zinc-500 font-mono truncate max-w-md">
+                <DialogDescription className="text-xs text-zinc-500 font-mono truncate max-w-md" title={project.path}>
                   {project.path}
                 </DialogDescription>
               </div>
             </div>
 
-            <div className="text-right">
+            <div className="text-right shrink-0">
               {configPath ? (
-                <span className="text-[11px] text-emerald-400 flex items-center gap-1 font-mono">
-                  <FileCheck className="w-3 h-3" /> .projectyb.json active
+                <span className="text-[11px] text-emerald-400 flex items-center gap-1 font-mono bg-emerald-950/40 border border-emerald-800/40 px-2 py-0.5 rounded">
+                  <FileCheck className="w-3 h-3" /> .projectyb.json
                 </span>
               ) : (
-                <span className="text-[11px] text-zinc-500 font-mono">
+                <span className="text-[11px] text-zinc-500 font-mono bg-zinc-900 border border-zinc-800 px-2 py-0.5 rounded">
                   Will create .projectyb.json
                 </span>
               )}
@@ -341,8 +371,8 @@ export const ProjectConfigDialog: React.FC<ProjectConfigDialogProps> = ({
         </DialogHeader>
 
         {/* ── Tabs: Visual vs JSON ── */}
-        <Tabs value={activeTab} onValueChange={handleTabChange} className="flex-1 flex flex-col min-h-0">
-          <div className="px-4 border-b border-zinc-800/80 bg-zinc-950 flex items-center justify-between shrink-0">
+        <Tabs value={activeTab} onValueChange={handleTabChange} className="flex-1 flex flex-col min-h-0 overflow-hidden">
+          <div className="px-4 border-b border-zinc-800/80 bg-zinc-950 flex items-center justify-between shrink-0 h-10">
             <TabsList className="bg-zinc-900 border border-zinc-800 h-8 p-0.5">
               <TabsTrigger value="visual" className="text-xs px-3 h-7 gap-1.5 data-[state=active]:bg-zinc-800">
                 <Sliders className="w-3.5 h-3.5" /> Visual Editor
@@ -353,28 +383,48 @@ export const ProjectConfigDialog: React.FC<ProjectConfigDialogProps> = ({
             </TabsList>
 
             {activeTab === 'json' && (
-              <Button
-                variant="ghost"
-                size="sm"
-                className="h-7 text-xs text-violet-400 hover:text-violet-300"
-                onClick={() => {
-                  try {
-                    setRawJson(JSON.stringify(JSON.parse(rawJson), null, 2))
-                    setJsonError(null)
-                  } catch (e: any) {
-                    setJsonError(e.message)
-                  }
-                }}
-              >
-                Format JSON
-              </Button>
+              <div className="flex items-center gap-2">
+                <div className="text-[11px] font-mono text-zinc-500 mr-1 hidden sm:block">
+                  {jsonMeta.lines} lines · {jsonMeta.chars} chars
+                </div>
+
+                {!jsonError ? (
+                  <Badge variant="outline" className="text-[10px] text-emerald-400 border-emerald-800/60 bg-emerald-950/30 gap-1 px-1.5 py-0">
+                    <CheckCircle2 className="w-2.5 h-2.5" /> Valid
+                  </Badge>
+                ) : (
+                  <Badge variant="outline" className="text-[10px] text-rose-400 border-rose-800/60 bg-rose-950/30 gap-1 px-1.5 py-0">
+                    <AlertCircle className="w-2.5 h-2.5" /> Syntax Error
+                  </Badge>
+                )}
+
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-7 text-xs text-zinc-400 hover:text-zinc-200 px-2 gap-1"
+                  onClick={handleCopyJson}
+                  title="Copy JSON"
+                >
+                  {copied ? <Check className="w-3 h-3 text-emerald-400" /> : <Copy className="w-3 h-3" />}
+                  Copy
+                </Button>
+
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-7 text-xs text-violet-400 hover:text-violet-300 px-2 font-medium"
+                  onClick={handleFormatJson}
+                >
+                  Format JSON
+                </Button>
+              </div>
             )}
           </div>
 
           {/* ── Tab Content: Visual ── */}
-          <TabsContent value="visual" className="flex-1 p-0 m-0 overflow-hidden">
-            <ScrollArea className="h-[460px] p-4 space-y-4">
-              <div className="space-y-4">
+          <TabsContent value="visual" className="flex-1 p-0 m-0 overflow-hidden min-h-0 data-[state=active]:flex data-[state=active]:flex-col">
+            <ScrollArea className="flex-1 h-full p-4">
+              <div className="space-y-4 max-w-2xl mx-auto pb-4">
                 {/* ── General Section ── */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                   <div className="space-y-1.5">
@@ -383,7 +433,7 @@ export const ProjectConfigDialog: React.FC<ProjectConfigDialogProps> = ({
                       value={name}
                       onChange={(e) => setName(e.target.value)}
                       placeholder="e.g. E-Commerce Platform"
-                      className="h-8 text-xs bg-zinc-900 border-zinc-800"
+                      className="h-8 text-xs bg-zinc-900 border-zinc-800 font-medium"
                     />
                   </div>
 
@@ -392,7 +442,7 @@ export const ProjectConfigDialog: React.FC<ProjectConfigDialogProps> = ({
                     <select
                       value={type}
                       onChange={(e) => setType(e.target.value as ProjectType)}
-                      className="w-full h-8 bg-zinc-900 border border-zinc-800 rounded px-2.5 text-xs text-zinc-200 outline-none focus:ring-1 focus:ring-violet-500"
+                      className="w-full h-8 bg-zinc-900 border border-zinc-800 rounded px-2.5 text-xs text-zinc-200 outline-none focus:ring-1 focus:ring-violet-500 font-mono"
                     >
                       {PROJECT_TYPES.map((t) => (
                         <option key={t} value={t}>
@@ -488,13 +538,13 @@ export const ProjectConfigDialog: React.FC<ProjectConfigDialogProps> = ({
 
                   <div className="grid grid-cols-12 gap-2 pt-1">
                     <Input
-                      placeholder="Subproject Name (client)"
+                      placeholder="Name (e.g. client)"
                       value={newSubName}
                       onChange={(e) => setNewSubName(e.target.value)}
                       className="col-span-4 h-8 text-xs bg-zinc-900 border-zinc-800"
                     />
                     <Input
-                      placeholder="Folder Path (client)"
+                      placeholder="Folder Path (e.g. client)"
                       value={newSubPath}
                       onChange={(e) => setNewSubPath(e.target.value)}
                       className="col-span-4 h-8 text-xs bg-zinc-900 border-zinc-800 font-mono"
@@ -502,7 +552,7 @@ export const ProjectConfigDialog: React.FC<ProjectConfigDialogProps> = ({
                     <select
                       value={newSubType}
                       onChange={(e) => setNewSubType(e.target.value as ProjectType)}
-                      className="col-span-2 h-8 bg-zinc-900 border border-zinc-800 rounded px-2 text-xs text-zinc-200 outline-none"
+                      className="col-span-2 h-8 bg-zinc-900 border border-zinc-800 rounded px-2 text-xs text-zinc-200 outline-none font-mono"
                     >
                       {PROJECT_TYPES.map((t) => (
                         <option key={t} value={t}>
@@ -555,7 +605,7 @@ export const ProjectConfigDialog: React.FC<ProjectConfigDialogProps> = ({
                       className="col-span-4 h-8 text-xs bg-zinc-900 border-zinc-800 font-mono"
                     />
                     <Input
-                      placeholder="Command (e.g. npm run dev or python main.py)"
+                      placeholder="Command (e.g. npm run dev)"
                       value={newScriptCmd}
                       onChange={(e) => setNewScriptCmd(e.target.value)}
                       className="col-span-6 h-8 text-xs bg-zinc-900 border-zinc-800 font-mono"
@@ -587,28 +637,31 @@ export const ProjectConfigDialog: React.FC<ProjectConfigDialogProps> = ({
             </ScrollArea>
           </TabsContent>
 
-          {/* ── Tab Content: Raw JSON Code Editor ── */}
-          <TabsContent value="json" className="flex-1 p-0 m-0 flex flex-col overflow-hidden">
-            <div className="p-3 bg-zinc-950 flex-1 flex flex-col">
-              <textarea
-                value={rawJson}
-                onChange={(e) => {
-                  setRawJson(e.target.value)
-                  try {
-                    JSON.parse(e.target.value)
-                    setJsonError(null)
-                  } catch (err: any) {
-                    setJsonError(err.message)
-                  }
-                }}
-                className="w-full flex-1 bg-zinc-900/90 border border-zinc-800 rounded p-3 text-xs font-mono text-zinc-100 resize-none outline-none focus:ring-1 focus:ring-violet-500 leading-5"
-                placeholder="{ ... }"
-                spellCheck={false}
-              />
+          {/* ── Tab Content: Raw JSON Code Editor (Full Height Expanded) ── */}
+          <TabsContent value="json" className="flex-1 p-0 m-0 flex flex-col overflow-hidden min-h-0 data-[state=active]:flex data-[state=active]:flex-col">
+            <div className="p-3 bg-zinc-950 flex-1 flex flex-col min-h-0 h-full">
+              <div className="relative flex-1 flex flex-col min-h-0 border border-zinc-800 rounded-lg overflow-hidden bg-zinc-900/90 focus-within:ring-1 focus-within:ring-violet-500">
+                <textarea
+                  value={rawJson}
+                  onChange={(e) => {
+                    setRawJson(e.target.value)
+                    try {
+                      JSON.parse(e.target.value)
+                      setJsonError(null)
+                    } catch (err: any) {
+                      setJsonError(err.message)
+                    }
+                  }}
+                  className="w-full flex-1 h-full min-h-[420px] bg-transparent p-3.5 text-xs font-mono text-zinc-100 resize-none outline-none leading-5 font-normal tracking-wide overflow-y-auto"
+                  placeholder="{ ... }"
+                  spellCheck={false}
+                />
+              </div>
+
               {jsonError && (
-                <div className="mt-2 p-2 bg-rose-950/40 border border-rose-800/50 rounded flex items-center gap-2 text-xs text-rose-300">
-                  <AlertCircle className="w-4 h-4 shrink-0" />
-                  <span className="truncate">{jsonError}</span>
+                <div className="mt-2 p-2 bg-rose-950/60 border border-rose-800/60 rounded flex items-center gap-2 text-xs text-rose-300 shrink-0">
+                  <AlertCircle className="w-4 h-4 shrink-0 text-rose-400" />
+                  <span className="truncate font-mono text-[11px]">{jsonError}</span>
                 </div>
               )}
             </div>
