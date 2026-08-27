@@ -1,5 +1,6 @@
 import { create } from 'zustand'
 import type { GitStatus } from '../types/git'
+import { useNotificationStore } from './useNotificationStore'
 
 interface GitState {
   statuses: Map<string, GitStatus>
@@ -46,8 +47,10 @@ export const useGitStore = create<GitState>((set, get) => ({
       await window.api.git.commit(path, message, stageAll)
       set({ commitMessage: '' })
       await get().fetchStatus(projectId, path)
-    } catch (error) {
+      useNotificationStore.getState().addNotification('Git', 'Commit successful')
+    } catch (error: any) {
       console.error('Failed to commit:', error)
+      useNotificationStore.getState().addNotification('Git Error', `Commit failed: ${error.message}`)
       set({ isLoading: false })
     }
   },
@@ -57,8 +60,10 @@ export const useGitStore = create<GitState>((set, get) => ({
     try {
       await window.api.git.push(path)
       await get().fetchStatus(projectId, path)
-    } catch (error) {
+      useNotificationStore.getState().addNotification('Git', 'Push successful')
+    } catch (error: any) {
       console.error('Failed to push:', error)
+      useNotificationStore.getState().addNotification('Git Error', `Push failed: ${error.message}`)
       set({ isLoading: false })
     }
   },
@@ -68,8 +73,10 @@ export const useGitStore = create<GitState>((set, get) => ({
     try {
       await window.api.git.pull(path)
       await get().fetchStatus(projectId, path)
-    } catch (error) {
+      useNotificationStore.getState().addNotification('Git', 'Pull successful')
+    } catch (error: any) {
       console.error('Failed to pull:', error)
+      useNotificationStore.getState().addNotification('Git Error', `Pull failed: ${error.message}`)
       set({ isLoading: false })
     }
   },

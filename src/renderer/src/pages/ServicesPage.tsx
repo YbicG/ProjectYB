@@ -6,7 +6,22 @@ import { StartupProfiles } from '../components/services/StartupProfiles';
 import { useServiceStore } from '@renderer/stores/useServiceStore';
 
 export const ServicesPage: React.FC = () => {
-  const { runningServices } = useServiceStore();
+  const { runningServices, services, stopService, startService } = useServiceStore();
+
+  const handleStopAll = () => {
+    runningServices.forEach(service => stopService(service.id));
+  };
+
+  const handleStartAll = () => {
+    services.forEach(service => {
+      startService(service.projectId, service.projectName, {
+        id: service.id,
+        name: service.name,
+        command: service.command,
+        autoRestart: service.autoRestart
+      });
+    });
+  };
 
   return (
     <div className="flex h-full w-full bg-zinc-950 text-zinc-50 overflow-hidden">
@@ -18,11 +33,11 @@ export const ServicesPage: React.FC = () => {
           </div>
           
           <div className="flex gap-3">
-            <Button variant="outline" className="border-red-500/20 text-red-400 hover:bg-red-500/10 hover:text-red-400">
+            <Button variant="outline" className="border-red-500/20 text-red-400 hover:bg-red-500/10 hover:text-red-400" onClick={handleStopAll}>
               <Square className="w-4 h-4 mr-2" />
               Stop All
             </Button>
-            <Button className="bg-violet-600 hover:bg-violet-700">
+            <Button className="bg-violet-600 hover:bg-violet-700" onClick={handleStartAll}>
               <Play className="w-4 h-4 mr-2" />
               Start All
             </Button>
