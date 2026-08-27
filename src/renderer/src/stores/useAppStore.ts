@@ -1,0 +1,27 @@
+import { create } from 'zustand'
+
+export type TabType = 'dashboard' | 'terminals' | 'git' | 'services' | 'settings'
+
+interface AppState {
+  activeTab: TabType
+  setActiveTab: (tab: TabType) => void
+  scanPaths: string[]
+  addScanPath: (path: string) => void
+  removeScanPath: (path: string) => void
+  githubToken: string | null
+  theme: 'dark'
+  commandPaletteOpen: boolean
+  toggleCommandPalette: () => void
+}
+
+export const useAppStore = create<AppState>((set) => ({
+  activeTab: 'dashboard',
+  setActiveTab: (tab) => set({ activeTab: tab }),
+  scanPaths: ['D:\\Code'],
+  addScanPath: (path) => set((state) => ({ scanPaths: [...new Set([...state.scanPaths, path])] })),
+  removeScanPath: (path) => set((state) => ({ scanPaths: state.scanPaths.filter((p) => p !== path) })),
+  githubToken: null,
+  theme: 'dark',
+  commandPaletteOpen: false,
+  toggleCommandPalette: () => set((state) => ({ commandPaletteOpen: !state.commandPaletteOpen }))
+}))
