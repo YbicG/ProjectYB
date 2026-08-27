@@ -22,6 +22,7 @@ export interface IElectronAPI {
     write(id: string, data: string): void
     resize(id: string, cols: number, rows: number): void
     kill(id: string): void
+    getBuffer(id: string): Promise<string>
     list(): Promise<TerminalInfo[]>
     onData(id: string, callback: (data: string) => void): () => void
     onExit(id: string, callback: (exitCode: number) => void): () => void

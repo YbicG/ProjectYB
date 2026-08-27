@@ -32,6 +32,7 @@ import { RunConfigDialog } from '../services/RunConfigDialog'
 import { ProjectConfigDialog } from './ProjectConfigDialog'
 import { EnvManagerDialog } from '../env/EnvManagerDialog'
 import { useRunConfigStore } from '@renderer/stores/useRunConfigStore'
+import { useServiceStore } from '@renderer/stores/useServiceStore'
 import { useProjectStore } from '@renderer/stores/useProjectStore'
 import { useAppStore } from '@renderer/stores/useAppStore'
 import { useGitStore } from '@renderer/stores/useGitStore'
@@ -115,19 +116,19 @@ export const ProjectCard: React.FC<ProjectCardProps> = ({ project }) => {
     }
   }
 
-  const handleQuickRun = (cmd?: string, sub?: SubProject) => {
+  const handleQuickRun = async (cmd?: string, sub?: SubProject) => {
     const targetCwd = sub ? sub.path : project.path
-    const termName = sub ? `${project.name} (${sub.name})` : `${project.name} run`
-
-    createTerminal({ name: termName, cwd: targetCwd, projectId: project.id })
-    setActiveTab('terminals')
+    const serviceName = sub ? `${sub.name}` : `${project.name} (dev)`
 
     if (cmd) {
-      setTimeout(() => {
-        const store = useTerminalStore.getState()
-        const tid = store.activeTerminalId
-        if (tid) window.api?.terminal?.write(tid, cmd + '\r')
-      }, 800)
+      await useServiceStore.getState().startService(project.id, project.name, {
+        name: serviceName,
+        command: cmd,
+        cwd: targetCwd
+      })
+      toast.success(`Started service: ${serviceName}`)
+    } else {
+      await handleOpenTerminal(sub)
     }
   }
 
@@ -427,19 +428,30 @@ export const ProjectCard: React.FC<ProjectCardProps> = ({ project }) => {
                       className="cursor-pointer focus:bg-zinc-800 gap-2"
                       onClick={async () => {
                         if (!cmds.length) return
+                        const { startService } = useServiceStore.getState()
                         if (isParallel) {
                           for (let i = 0; i < cmds.length; i++) {
                             const cmd = cmds[i]
                             const termName = cmd.name ? `${cfg.name} (${cmd.name})` : `${cfg.name} #${i + 1}`
-                            await createTerminal({ name: termName, cwd: cfg.cwd || project.path, projectId: project.id, command: cmd.command })
+                            await startService(project.id, project.name, {
+                              id: `${cfg.id}-${cmd.id || i}`,
+                              name: termName,
+                              command: cmd.command,
+                              cwd: cfg.cwd || project.path,
+                              autoRestart: cfg.autoRestart
+                            })
                           }
-                          setActiveTab('terminals')
-                          toast.success(`Launched ${cmds.length} terminals for ${cfg.name}`)
+                          toast.success(`Started ${cmds.length} services for ${cfg.name}`)
                         } else {
                           const combined = cmds.map(c => c.command).join(' ; ')
-                          await createTerminal({ name: cfg.name, cwd: cfg.cwd || project.path, projectId: project.id, command: combined })
-                          setActiveTab('terminals')
-                          toast.success(`Launched ${cfg.name}`)
+                          await startService(project.id, project.name, {
+                            id: cfg.id,
+                            name: cfg.name,
+                            command: combined,
+                            cwd: cfg.cwd || project.path,
+                            autoRestart: cfg.autoRestart
+                          })
+                          toast.success(`Started ${cfg.name}`)
                         }
                       }}
                     >

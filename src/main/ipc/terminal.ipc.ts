@@ -14,5 +14,6 @@ export function setupTerminalIpc(mainWindow: BrowserWindow) {
   ipcMain.on('terminal:write', (_, id: string, data: string) => terminalService.write(id, data));
   ipcMain.on('terminal:resize', (_, id: string, cols: number, rows: number) => terminalService.resize(id, cols, rows));
   ipcMain.on('terminal:kill', (_, id: string) => terminalService.kill(id));
+  ipcMain.handle('terminal:getBuffer', (_, id: string) => terminalService.getBuffer(id));
   ipcMain.handle('terminal:list', () => terminalService.getAllTerminals());
 }

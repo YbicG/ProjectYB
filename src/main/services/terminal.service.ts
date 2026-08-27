@@ -6,6 +6,7 @@ export interface TerminalInstance {
   pty: pty.IPty;
   pid: number;
   cwd: string;
+  buffer: string;
 }
 
 class TerminalService {
@@ -13,23 +14,28 @@ class TerminalService {
 
   spawn(id: string, cwd: string, cols: number, rows: number, shell?: string, onData?: (data: string) => void, onExit?: (exitCode: number) => void) {
     const file = shell || (process.platform === 'win32' ? 'powershell.exe' : 'bash');
+    const args = process.platform === 'win32' && !shell ? ['-NoLogo'] : [];
     try {
-      const ptyProcess = pty.spawn(file, [], {
-        name: 'xterm-color',
-        cols: cols || 80,
+      const ptyProcess = pty.spawn(file, args, {
+        name: 'xterm-256color',
+        cols: cols || 120,
         rows: rows || 30,
         cwd: cwd || process.cwd(),
         env: process.env as any
       });
 
-      this.terminals.set(id, {
+      const instance: TerminalInstance = {
         id,
         pty: ptyProcess,
         pid: ptyProcess.pid,
-        cwd
-      });
+        cwd,
+        buffer: ''
+      };
+
+      this.terminals.set(id, instance);
 
       ptyProcess.onData(data => {
+        instance.buffer = (instance.buffer + data).slice(-300000);
         if (onData) onData(data);
       });
 
@@ -43,6 +49,10 @@ class TerminalService {
       logger.error(`Failed to spawn terminal ${id}`, error);
       throw error;
     }
+  }
+
+  getBuffer(id: string): string {
+    return this.terminals.get(id)?.buffer || '';
   }
 
   write(id: string, data: string) {

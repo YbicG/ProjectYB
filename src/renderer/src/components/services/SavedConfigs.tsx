@@ -42,6 +42,8 @@ export const SavedConfigs: React.FC<SavedConfigsProps> = ({ projectId }) => {
 
     if (!cmds.length) return
 
+    const project = projects.find(p => p.id === config.projectId)
+    const effectiveCwd = config.cwd || project?.path || config.projectPath || 'D:\\Code'
     const mode = overrideMode ?? config.executionMode ?? 'sequential'
 
     if (mode === 'parallel' && cmds.length > 1) {
@@ -53,7 +55,7 @@ export const SavedConfigs: React.FC<SavedConfigsProps> = ({ projectId }) => {
           id: `${config.id}-${cmd.id || i}`,
           name: termName,
           command: cmd.command,
-          cwd: config.cwd,
+          cwd: effectiveCwd,
           autoRestart: config.autoRestart,
         })
       }
@@ -65,7 +67,7 @@ export const SavedConfigs: React.FC<SavedConfigsProps> = ({ projectId }) => {
         id: config.id,
         name: config.name,
         command: combined,
-        cwd: config.cwd,
+        cwd: effectiveCwd,
         autoRestart: config.autoRestart,
       })
       toast.success(`Launched ${config.name} sequentially in 1 terminal`)
@@ -102,8 +104,8 @@ export const SavedConfigs: React.FC<SavedConfigsProps> = ({ projectId }) => {
     : newForProject
 
   return (
-    <div className="flex flex-col h-full">
-      <div className="px-4 py-3 border-b border-zinc-800 flex items-center justify-between">
+    <div className="flex flex-col h-full w-full min-w-0">
+      <div className="px-4 py-3 border-b border-zinc-800 flex items-center justify-between shrink-0">
         <div>
           <h3 className="font-semibold text-sm">Saved Configs</h3>
           <p className="text-[10px] text-zinc-500 mt-0.5">{displayed.length} configuration{displayed.length !== 1 ? 's' : ''}</p>
@@ -118,7 +120,7 @@ export const SavedConfigs: React.FC<SavedConfigsProps> = ({ projectId }) => {
         </Button>
       </div>
 
-      <ScrollArea className="flex-1">
+      <ScrollArea className="flex-1 w-full min-w-0">
         {displayed.length === 0 ? (
           <div className="p-6 text-center space-y-3">
             <Terminal className="w-8 h-8 text-zinc-700 mx-auto" />
@@ -130,7 +132,7 @@ export const SavedConfigs: React.FC<SavedConfigsProps> = ({ projectId }) => {
             </div>
           </div>
         ) : (
-          <div className="p-3 space-y-3">
+          <div className="p-3 space-y-3 w-full min-w-0">
             {displayed.map(config => {
               const cmdList = config.commands?.length
                 ? config.commands.filter(c => c.command.trim())
@@ -143,10 +145,10 @@ export const SavedConfigs: React.FC<SavedConfigsProps> = ({ projectId }) => {
               return (
                 <div
                   key={config.id}
-                  className="group p-3 rounded-lg bg-zinc-900 border border-zinc-800 hover:border-zinc-700 transition-colors space-y-2.5"
+                  className="group p-3 rounded-lg bg-zinc-900 border border-zinc-800 hover:border-zinc-700 transition-colors space-y-2.5 w-full min-w-0 box-border overflow-hidden"
                 >
-                  <div className="flex items-start justify-between gap-2">
-                    <div className="min-w-0">
+                  <div className="flex items-start justify-between gap-2 min-w-0">
+                    <div className="min-w-0 flex-1">
                       <p className="text-sm font-semibold text-zinc-100 truncate">{config.name}</p>
                       {!projectId && (
                         <p className="text-[10px] text-zinc-500 truncate">{config.projectName}</p>
@@ -165,12 +167,12 @@ export const SavedConfigs: React.FC<SavedConfigsProps> = ({ projectId }) => {
                           {mode === 'parallel' ? (
                             <>
                               <Layers className="w-2.5 h-2.5 text-cyan-400" />
-                              {cmdList.length} Terminals
+                              {cmdList.length} Tabs
                             </>
                           ) : (
                             <>
                               <Terminal className="w-2.5 h-2.5 text-violet-400" />
-                              Sequential (1 Tab)
+                              1 Tab
                             </>
                           )}
                         </Badge>
@@ -184,11 +186,11 @@ export const SavedConfigs: React.FC<SavedConfigsProps> = ({ projectId }) => {
                   </div>
 
                   {/* Commands Preview */}
-                  <div className="space-y-1 bg-zinc-950 p-2 rounded border border-zinc-800/80">
+                  <div className="space-y-1 bg-zinc-950 p-2 rounded border border-zinc-800/80 w-full min-w-0 overflow-hidden">
                     {cmdList.map((cmd, idx) => (
-                      <div key={cmd.id || idx} className="flex items-center gap-1.5 text-[11px] font-mono text-zinc-300 truncate">
+                      <div key={cmd.id || idx} className="flex items-center gap-1.5 text-[11px] font-mono text-zinc-300 min-w-0 w-full overflow-hidden">
                         {isMulti && (
-                          <span className="text-[10px] text-zinc-500 font-sans font-medium w-4 shrink-0">
+                          <span className="text-[10px] text-zinc-500 font-sans font-medium w-3.5 shrink-0">
                             {idx + 1}.
                           </span>
                         )}
@@ -197,7 +199,7 @@ export const SavedConfigs: React.FC<SavedConfigsProps> = ({ projectId }) => {
                             {cmd.name}
                           </span>
                         )}
-                        <span className="text-zinc-400 truncate">{cmd.command}</span>
+                        <span className="text-zinc-400 truncate min-w-0 flex-1">{cmd.command}</span>
                       </div>
                     ))}
                   </div>
@@ -209,32 +211,32 @@ export const SavedConfigs: React.FC<SavedConfigsProps> = ({ projectId }) => {
                   )}
 
                   {/* Action Buttons with Multi-Launch Dropdown */}
-                  <div className="flex gap-1 pt-1">
+                  <div className="flex gap-1 pt-1 min-w-0">
                     {!isMulti ? (
                       <Button
                         size="sm"
-                        className="flex-1 h-7 bg-violet-600 hover:bg-violet-700 text-xs font-medium"
+                        className="flex-1 h-7 bg-violet-600 hover:bg-violet-700 text-xs font-medium min-w-0"
                         onClick={() => handleLaunch(config)}
                       >
-                        <Play className="w-3 h-3 mr-1" />
+                        <Play className="w-3 h-3 mr-1 shrink-0" />
                         Launch
                       </Button>
                     ) : (
-                      <div className="flex-1 flex gap-0.5">
+                      <div className="flex-1 min-w-0 flex gap-0.5">
                         <Button
                           size="sm"
-                          className="flex-1 h-7 bg-violet-600 hover:bg-violet-700 text-xs font-medium rounded-r-none"
+                          className="flex-1 min-w-0 h-7 bg-violet-600 hover:bg-violet-700 text-xs font-medium rounded-r-none px-2"
                           onClick={() => handleLaunch(config)}
                           title={`Launch (${mode === 'parallel' ? 'Separate Terminals' : 'Sequential'})`}
                         >
-                          <Play className="w-3 h-3 mr-1" />
-                          Launch ({mode === 'parallel' ? 'Separate' : 'Sequential'})
+                          <Play className="w-3 h-3 mr-1 shrink-0" />
+                          <span className="truncate">Launch ({mode === 'parallel' ? 'Separate' : 'Sequential'})</span>
                         </Button>
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>
                             <Button
                               size="sm"
-                              className="h-7 px-1.5 bg-violet-700 hover:bg-violet-800 text-white rounded-l-none border-l border-violet-500/30"
+                              className="h-7 px-1.5 bg-violet-700 hover:bg-violet-800 text-white rounded-l-none border-l border-violet-500/30 shrink-0"
                               title="More launch options"
                             >
                               <ChevronDown className="w-3 h-3" />
@@ -268,7 +270,7 @@ export const SavedConfigs: React.FC<SavedConfigsProps> = ({ projectId }) => {
 
                     <Button
                       variant="ghost" size="icon"
-                      className="h-7 w-7 text-zinc-500 hover:text-zinc-200"
+                      className="h-7 w-7 text-zinc-500 hover:text-zinc-200 shrink-0"
                       onClick={() => handleEdit(config)}
                       title="Edit Configuration"
                     >
@@ -276,7 +278,7 @@ export const SavedConfigs: React.FC<SavedConfigsProps> = ({ projectId }) => {
                     </Button>
                     <Button
                       variant="ghost" size="icon"
-                      className="h-7 w-7 text-zinc-500 hover:text-red-400"
+                      className="h-7 w-7 text-zinc-500 hover:text-red-400 shrink-0"
                       onClick={() => deleteConfig(config.id)}
                       title="Delete Configuration"
                     >

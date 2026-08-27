@@ -23,12 +23,32 @@ export const TerminalView: React.FC<TerminalViewProps> = ({ terminalId, cwd }) =
       theme: {
         background: '#09090b',
         foreground: '#fafafa',
-        cursor: '#fafafa',
+        cursor: '#a1a1aa',
         selectionBackground: '#3f3f46',
+        black: '#09090b',
+        red: '#ef4444',
+        green: '#22c55e',
+        yellow: '#eab308',
+        blue: '#3b82f6',
+        magenta: '#a855f7',
+        cyan: '#06b6d4',
+        white: '#f4f4f5',
+        brightBlack: '#71717a',
+        brightRed: '#f87171',
+        brightGreen: '#4ade80',
+        brightYellow: '#fde047',
+        brightBlue: '#60a5fa',
+        brightMagenta: '#c084fc',
+        brightCyan: '#22d3ee',
+        brightWhite: '#ffffff',
       },
-      fontFamily: '"Cascadia Code", "Fira Code", Consolas, monospace',
-      fontSize: 14,
+      fontFamily: 'Consolas, "Cascadia Code", "Courier New", monospace',
+      fontSize: 13,
+      lineHeight: 1.2,
+      letterSpacing: 0,
       cursorBlink: true,
+      convertEol: true, // Fixes skewed/staircase terminal output across CLI tools
+      scrollback: 10000,
       allowProposedApi: true,
     });
     
@@ -40,22 +60,33 @@ export const TerminalView: React.FC<TerminalViewProps> = ({ terminalId, cwd }) =
     xtermRef.current = term;
     fitAddonRef.current = fitAddon;
 
-    // Defer fit until the container has dimensions
-    requestAnimationFrame(() => {
+    const safeFit = () => {
+      if (!container || container.clientWidth <= 0 || container.clientHeight <= 0) return;
       try {
-        if (container.clientWidth > 0 && container.clientHeight > 0) {
+        const dims = fitAddon.proposeDimensions();
+        if (dims && dims.cols > 10 && dims.rows > 3) {
           fitAddon.fit();
-          // Sync the pty size with xterm's computed size
           if (window.api?.terminal) {
-            window.api.terminal.resize(terminalId, term.cols, term.rows);
+            window.api.terminal.resize(terminalId, dims.cols, dims.rows);
           }
         }
       } catch {}
+    };
+
+    // Load initial scrollback buffer from backend
+    if (window.api?.terminal?.getBuffer) {
+      window.api.terminal.getBuffer(terminalId).then(buf => {
+        if (buf && xtermRef.current) {
+          xtermRef.current.write(buf);
+        }
+      }).catch(() => {});
+    }
+
+    // Initial safe fit after container layout settles
+    requestAnimationFrame(() => {
+      safeFit();
       readyRef.current = true;
     });
-
-    // DO NOT spawn here — the store's createTerminal already spawned the pty.
-    // Just wire up the data bridges:
 
     // xterm → pty: send keystrokes to the backend
     term.onData((data) => {
@@ -64,7 +95,7 @@ export const TerminalView: React.FC<TerminalViewProps> = ({ terminalId, cwd }) =
       }
     });
 
-    // pty → xterm: display output from the backend
+    // pty → xterm: display real-time output from the backend
     let cleanupOnData: (() => void) | undefined;
     if (window.api?.terminal) {
       cleanupOnData = window.api.terminal.onData(terminalId, (data: string) => {
@@ -72,17 +103,10 @@ export const TerminalView: React.FC<TerminalViewProps> = ({ terminalId, cwd }) =
       });
     }
 
-    const handleResize = () => {
+    const resizeObserver = new ResizeObserver(() => {
       if (!readyRef.current) return;
-      try {
-        fitAddon.fit();
-        if (window.api?.terminal) {
-          window.api.terminal.resize(terminalId, term.cols, term.rows);
-        }
-      } catch {}
-    };
-
-    const resizeObserver = new ResizeObserver(handleResize);
+      requestAnimationFrame(safeFit);
+    });
     resizeObserver.observe(container);
 
     return () => {
@@ -93,5 +117,5 @@ export const TerminalView: React.FC<TerminalViewProps> = ({ terminalId, cwd }) =
     };
   }, [terminalId, cwd]);
 
-  return <div ref={terminalRef} className="xterm-container bg-zinc-950 h-full w-full overflow-hidden" />;
+  return <div ref={terminalRef} className="xterm-container bg-zinc-950 h-full w-full overflow-hidden p-1" />;
 };

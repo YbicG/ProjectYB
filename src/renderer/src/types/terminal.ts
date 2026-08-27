@@ -1,5 +1,6 @@
 export type TerminalStatus = 'running' | 'stopped' | 'starting' | 'error'
 export type TerminalLayout = 'tabs' | 'grid' | 'list'
+export type TerminalFilter = 'all' | 'user' | 'service'
 
 export interface TerminalInstance {
   id: string
@@ -8,6 +9,7 @@ export interface TerminalInstance {
   projectId?: string
   projectName?: string
   serviceId?: string
+  isService?: boolean
   status: TerminalStatus
   pid?: number
   createdAt: number

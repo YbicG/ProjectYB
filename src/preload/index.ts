@@ -8,6 +8,7 @@ const api = {
     resize: (id: string, cols: number, rows: number) =>
       ipcRenderer.send('terminal:resize', id, cols, rows),
     kill: (id: string) => ipcRenderer.send('terminal:kill', id),
+    getBuffer: (id: string) => ipcRenderer.invoke('terminal:getBuffer', id),
     list: () => ipcRenderer.invoke('terminal:list'),
     onData: (id: string, callback: (data: string) => void) => {
       const handler = (_event: any, data: string) => callback(data)

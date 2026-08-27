@@ -1,11 +1,14 @@
 import { create } from 'zustand'
-import type { TerminalInstance, TerminalLayout, TerminalStatus } from '../types/terminal'
+import type { TerminalInstance, TerminalLayout, TerminalStatus, TerminalFilter } from '../types/terminal'
 import { generateId } from '../lib/utils'
 
 interface TerminalOptions {
   name: string
   cwd: string
   projectId?: string
+  projectName?: string
+  serviceId?: string
+  isService?: boolean
   command?: string
 }
 
@@ -13,6 +16,8 @@ interface TerminalState {
   terminals: TerminalInstance[]
   activeTerminalId: string | null
   layout: TerminalLayout
+  filter: TerminalFilter
+  setFilter: (filter: TerminalFilter) => void
   createTerminal: (options: TerminalOptions) => Promise<string>
   killTerminal: (id: string) => void
   restartTerminal: (id: string) => Promise<void>
@@ -27,14 +32,21 @@ export const useTerminalStore = create<TerminalState>((set, get) => ({
   terminals: [],
   activeTerminalId: null,
   layout: 'tabs',
+  filter: 'all',
+
+  setFilter: (filter) => set({ filter }),
   
   createTerminal: async (options) => {
     const id = generateId()
+    const cwd = options.cwd || 'D:\\Code'
     const newTerminal: TerminalInstance = {
       id,
       name: options.name,
-      cwd: options.cwd,
+      cwd,
       projectId: options.projectId,
+      projectName: options.projectName,
+      serviceId: options.serviceId,
+      isService: options.isService ?? false,
       status: 'starting',
       createdAt: Date.now(),
       command: options.command
@@ -48,13 +60,16 @@ export const useTerminalStore = create<TerminalState>((set, get) => ({
     try {
       await window.api.terminal.spawn({
         id,
-        cwd: options.cwd,
-        cols: 80,
-        rows: 24
+        cwd,
+        cols: 120,
+        rows: 30
       })
       
       if (options.command) {
-        window.api.terminal.write(id, `${options.command}\r`)
+        // Allow powershell / bash 250ms to finish initializing prompt before writing
+        setTimeout(() => {
+          window.api.terminal.write(id, `${options.command}\r\n`)
+        }, 250)
       }
       
       set((state) => ({

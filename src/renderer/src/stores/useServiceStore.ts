@@ -2,6 +2,7 @@ import { create } from 'zustand'
 import type { RunningService, StartupProfile, ServiceStatus, ServiceConfig } from '../types/service'
 import { generateId } from '../lib/utils'
 import { useTerminalStore } from './useTerminalStore'
+import { useProjectStore } from './useProjectStore'
 
 interface ProcessStats {
   cpu: number
@@ -31,12 +32,19 @@ export const useServiceStore = create<ServiceState>((set, get) => ({
   
   startService: async (projectId, projectName, config) => {
     const terminalStore = useTerminalStore.getState()
-    const id = generateId()
+    const projectStore = useProjectStore.getState()
+    const id = config.id || generateId()
+    
+    const project = projectStore.projects.find(p => p.id === projectId)
+    const effectiveCwd = config.cwd || project?.path || 'D:\\Code'
     
     const terminalId = await terminalStore.createTerminal({
-      name: config.name,
-      cwd: config.cwd || '',
+      name: `${projectName}: ${config.name}`,
+      cwd: effectiveCwd,
       projectId,
+      projectName,
+      serviceId: id,
+      isService: true,
       command: config.command
     })
     
@@ -47,15 +55,18 @@ export const useServiceStore = create<ServiceState>((set, get) => ({
       projectId,
       projectName,
       terminalId,
-      status: 'starting',
+      status: 'running',
       startedAt: Date.now(),
-      autoRestart: config.autoRestart
+      autoRestart: config.autoRestart ?? false
     }
     
-    set((state) => ({ 
-      services: [...state.services, { ...service, status: 'running' }],
-      runningServices: [...state.services, { ...service, status: 'running' }]
-    }))
+    set((state) => {
+      const filtered = state.services.filter(s => s.id !== id)
+      return { 
+        services: [...filtered, service],
+        runningServices: [...filtered, service]
+      }
+    })
     
     return id
   },
@@ -65,7 +76,9 @@ export const useServiceStore = create<ServiceState>((set, get) => ({
     const service = services.find(s => s.id === id)
     
     if (service) {
-      useTerminalStore.getState().killTerminal(service.terminalId)
+      if (service.terminalId) {
+        useTerminalStore.getState().killTerminal(service.terminalId)
+      }
       set((state) => ({
         services: state.services.filter(s => s.id !== id),
         runningServices: state.services.filter(s => s.id !== id)
@@ -78,12 +91,14 @@ export const useServiceStore = create<ServiceState>((set, get) => ({
     const service = services.find(s => s.id === id)
     
     if (service) {
+      const project = useProjectStore.getState().projects.find(p => p.id === service.projectId)
       stopService(id)
-      await new Promise(r => setTimeout(r, 500))
+      await new Promise(r => setTimeout(r, 600))
       await startService(service.projectId, service.projectName, {
-        id: generateId(),
+        id: service.id,
         name: service.name,
         command: service.command,
+        cwd: project?.path,
         autoRestart: service.autoRestart
       })
     }

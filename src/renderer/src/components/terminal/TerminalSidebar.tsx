@@ -1,5 +1,5 @@
 import React from 'react';
-import { Plus, Edit2, Trash2 } from 'lucide-react';
+import { Plus, Edit2, Trash2, Server, Terminal as TerminalIcon } from 'lucide-react';
 import { useTerminalStore } from '@renderer/stores/useTerminalStore';
 import { useProjectStore } from '@renderer/stores/useProjectStore';
 import { StatusDot } from '../shared/StatusDot';
@@ -9,7 +9,16 @@ import { cn } from '@renderer/lib/utils';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '../ui/dropdown-menu';
 
 export const TerminalSidebar: React.FC = () => {
-  const { terminals, activeTerminalId, setActiveTerminal, createTerminal, removeTerminal, renameTerminal } = useTerminalStore();
+  const {
+    terminals,
+    activeTerminalId,
+    setActiveTerminal,
+    createTerminal,
+    removeTerminal,
+    renameTerminal,
+    filter,
+    setFilter
+  } = useTerminalStore();
   const { projects } = useProjectStore();
 
   const handleRename = (id: string, currentName: string) => {
@@ -19,8 +28,17 @@ export const TerminalSidebar: React.FC = () => {
     }
   };
 
+  const userTerminals = terminals.filter(t => !t.isService);
+  const serviceTerminals = terminals.filter(t => t.isService);
+
+  const displayedTerminals = filter === 'user'
+    ? userTerminals
+    : filter === 'service'
+      ? serviceTerminals
+      : terminals;
+
   // Group terminals by projectId
-  const groups = terminals.reduce<Record<string, typeof terminals>>((acc, term) => {
+  const groups = displayedTerminals.reduce<Record<string, typeof terminals>>((acc, term) => {
     const key = term.projectId ?? '__standalone__';
     if (!acc[key]) acc[key] = [];
     acc[key].push(term);
@@ -28,7 +46,7 @@ export const TerminalSidebar: React.FC = () => {
   }, {});
 
   const getGroupLabel = (key: string): string => {
-    if (key === '__standalone__') return 'Standalone';
+    if (key === '__standalone__') return 'Standalone Shells';
     const project = projects.find(p => p.id === key);
     return project?.name ?? key;
   };
@@ -41,8 +59,42 @@ export const TerminalSidebar: React.FC = () => {
 
   return (
     <div className="flex flex-col h-full w-64 bg-zinc-950 border-r border-zinc-800">
-      <div className="p-3 border-b border-zinc-800">
-        <h3 className="text-xs font-semibold text-zinc-400 uppercase tracking-wider">Open Terminals</h3>
+      <div className="p-3 border-b border-zinc-800 space-y-2">
+        <div className="flex items-center justify-between">
+          <h3 className="text-xs font-semibold text-zinc-400 uppercase tracking-wider">Terminals</h3>
+          <span className="text-[10px] text-zinc-500 font-mono">{displayedTerminals.length}</span>
+        </div>
+
+        {/* Filter Pills */}
+        <div className="flex items-center gap-1 bg-zinc-900 p-0.5 rounded-md border border-zinc-800">
+          <button
+            onClick={() => setFilter('all')}
+            className={cn(
+              "flex-1 text-[11px] py-1 rounded transition-colors text-center font-medium",
+              filter === 'all' ? "bg-zinc-800 text-zinc-100 shadow-sm" : "text-zinc-500 hover:text-zinc-300"
+            )}
+          >
+            All ({terminals.length})
+          </button>
+          <button
+            onClick={() => setFilter('user')}
+            className={cn(
+              "flex-1 text-[11px] py-1 rounded transition-colors text-center font-medium",
+              filter === 'user' ? "bg-zinc-800 text-zinc-100 shadow-sm" : "text-zinc-500 hover:text-zinc-300"
+            )}
+          >
+            Shells ({userTerminals.length})
+          </button>
+          <button
+            onClick={() => setFilter('service')}
+            className={cn(
+              "flex-1 text-[11px] py-1 rounded transition-colors text-center font-medium",
+              filter === 'service' ? "bg-zinc-800 text-zinc-100 shadow-sm" : "text-zinc-500 hover:text-zinc-300"
+            )}
+          >
+            Services ({serviceTerminals.length})
+          </button>
+        </div>
       </div>
       
       <ScrollArea className="flex-1">
@@ -63,20 +115,25 @@ export const TerminalSidebar: React.FC = () => {
                         className={cn(
                           "flex flex-col gap-1 p-2 rounded-md cursor-pointer select-none transition-colors",
                           activeTerminalId === term.id
-                            ? "bg-zinc-800 text-zinc-50"
+                            ? "bg-zinc-800 text-zinc-50 ring-1 ring-violet-500/40"
                             : "text-zinc-400 hover:bg-zinc-900"
                         )}
                       >
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-2 min-w-0">
+                          {term.isService ? (
+                            <Server className="w-3 h-3 text-violet-400 shrink-0" />
+                          ) : (
+                            <TerminalIcon className="w-3 h-3 text-cyan-400 shrink-0" />
+                          )}
                           <StatusDot status={term.status} size="sm" />
-                          <span className="text-sm font-medium truncate">{term.name}</span>
+                          <span className="text-xs font-medium truncate font-mono">{term.name}</span>
                         </div>
-                        <span className="text-xs font-mono text-zinc-500 truncate pl-4">
+                        <span className="text-[10px] font-mono text-zinc-500 truncate pl-5">
                           {term.cwd}
                         </span>
                       </div>
                     </DropdownMenuTrigger>
-                    <DropdownMenuContent align="start" className="bg-zinc-900 border-zinc-800">
+                    <DropdownMenuContent align="start" className="bg-zinc-900 border-zinc-800 text-xs">
                       <DropdownMenuItem
                         onClick={(e) => {
                           e.stopPropagation();
@@ -89,7 +146,7 @@ export const TerminalSidebar: React.FC = () => {
                       </DropdownMenuItem>
                       <DropdownMenuItem
                         onClick={() => removeTerminal(term.id)}
-                        className="cursor-pointer focus:bg-zinc-800 text-red-500 hover:text-red-400"
+                        className="cursor-pointer focus:bg-zinc-800 text-red-400 hover:text-red-300"
                       >
                         <Trash2 className="w-3.5 h-3.5 mr-2" />
                         Kill Terminal
@@ -100,8 +157,8 @@ export const TerminalSidebar: React.FC = () => {
               </div>
             </div>
           ))}
-          {terminals.length === 0 && (
-            <p className="text-xs text-zinc-600 text-center py-4">No terminals open</p>
+          {displayedTerminals.length === 0 && (
+            <p className="text-xs text-zinc-600 text-center py-4">No {filter} terminals open</p>
           )}
         </div>
       </ScrollArea>
@@ -109,11 +166,11 @@ export const TerminalSidebar: React.FC = () => {
       <div className="p-3 border-t border-zinc-800">
         <Button 
           variant="outline" 
-          className="w-full justify-start text-zinc-300"
-          onClick={() => createTerminal({ name: 'New Terminal', cwd: 'D:\\Code' })}
+          className="w-full justify-start text-zinc-300 h-8 text-xs"
+          onClick={() => createTerminal({ name: 'Local Shell', cwd: 'D:\\Code', isService: false })}
         >
-          <Plus className="w-4 h-4 mr-2" />
-          New Terminal
+          <Plus className="w-3.5 h-3.5 mr-2" />
+          New Shell
         </Button>
       </div>
     </div>
