@@ -1,6 +1,8 @@
 import React, { useEffect } from 'react';
 import { AppLayout } from './components/layout/AppLayout';
 import { DashboardPage } from './pages/DashboardPage';
+import { OverviewPage } from './pages/OverviewPage';
+import { ApiTesterPage } from './pages/ApiTesterPage';
 import { TerminalsPage } from './pages/TerminalsPage';
 import { GitPage } from './pages/GitPage';
 import { ServicesPage } from './pages/ServicesPage';
@@ -13,12 +15,16 @@ import { CreateProjectDialog } from './components/templates/CreateProjectDialog'
 import { HealthAnalyticsModal } from './components/health/HealthAnalyticsModal';
 import { ShortcutsCheatSheetModal } from './components/shared/ShortcutsCheatSheetModal';
 import { GlobalScratchpadModal } from './components/notes/GlobalScratchpadModal';
+import { GlobalSearchModal } from './components/search/GlobalSearchModal';
+import { SnippetVaultModal } from './components/snippets/SnippetVaultModal';
 import { useAppStore } from '@renderer/stores/useAppStore';
 import { useProjectStore } from '@renderer/stores/useProjectStore';
 import { useSystemStore } from '@renderer/stores/useSystemStore';
 import { useServiceStore } from '@renderer/stores/useServiceStore';
 import { useTemplateStore } from '@renderer/stores/useTemplateStore';
 import { useThemeStore } from '@renderer/stores/useThemeStore';
+import { useSnippetStore } from '@renderer/stores/useSnippetStore';
+import { useOverviewStore } from '@renderer/stores/useOverviewStore';
 import { useKeyboard } from './hooks/useKeyboard';
 
 export const App: React.FC = () => {
@@ -27,6 +33,8 @@ export const App: React.FC = () => {
   const { scanProjects } = useProjectStore();
   const { startMonitoring, stopMonitoring } = useSystemStore();
   const { loadPreferences } = useThemeStore();
+  const { loadCustomSnippets } = useSnippetStore();
+  const { loadConfig: loadOverviewConfig } = useOverviewStore();
   const { dialogOpen: templateDialogOpen, setDialogOpen: setTemplateDialogOpen } = useTemplateStore();
 
   useEffect(() => {
@@ -34,6 +42,8 @@ export const App: React.FC = () => {
     scanProjects();
     startMonitoring();
     loadPreferences();
+    loadCustomSnippets();
+    loadOverviewConfig();
 
     // Listen for tray re-scan requests
     let unsubScan: (() => void) | undefined;
@@ -62,6 +72,10 @@ export const App: React.FC = () => {
     switch (activeTab) {
       case 'dashboard':
         return <DashboardPage />;
+      case 'overview':
+        return <OverviewPage />;
+      case 'api':
+        return <ApiTesterPage />;
       case 'terminals':
         return <TerminalsPage />;
       case 'git':
@@ -94,6 +108,8 @@ export const App: React.FC = () => {
       <HealthAnalyticsModal />
       <ShortcutsCheatSheetModal />
       <GlobalScratchpadModal />
+      <GlobalSearchModal />
+      <SnippetVaultModal />
     </>
   );
 };

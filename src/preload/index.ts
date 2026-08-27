@@ -219,6 +219,15 @@ const api = {
   health: {
     getOverview: (projects: Array<{ id: string; name: string; path: string; type: string; isGitRepo?: boolean }>) =>
       ipcRenderer.invoke('health:getOverview', projects)
+  },
+  search: {
+    query: (options: any) => ipcRenderer.invoke('search:query', options)
+  },
+  http: {
+    sendRequest: (options: any) => ipcRenderer.invoke('http:sendRequest', options)
+  },
+  archive: {
+    createSnapshot: (options: any) => ipcRenderer.invoke('archive:createSnapshot', options)
   }
 }
 

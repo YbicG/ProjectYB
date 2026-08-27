@@ -16,7 +16,10 @@ import {
   Layers,
   FileText,
   Activity,
-  Keyboard
+  Keyboard,
+  Send,
+  Code2,
+  Maximize2
 } from 'lucide-react';
 import { CommandDialog, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '../ui/command';
 import { useAppStore } from '@renderer/stores/useAppStore';
@@ -28,6 +31,9 @@ import { useWorkspaceStore } from '@renderer/stores/useWorkspaceStore';
 import { useNotesStore } from '@renderer/stores/useNotesStore';
 import { useHealthStore } from '@renderer/stores/useHealthStore';
 import { useThemeStore } from '@renderer/stores/useThemeStore';
+import { useSearchStore } from '@renderer/stores/useSearchStore';
+import { useSnippetStore } from '@renderer/stores/useSnippetStore';
+import { useOverviewStore } from '@renderer/stores/useOverviewStore';
 import { toast } from 'sonner';
 
 export const CommandPalette: React.FC = () => {
@@ -40,6 +46,9 @@ export const CommandPalette: React.FC = () => {
   const { setScratchpadModalOpen } = useNotesStore();
   const { setModalOpen: setHealthModalOpen } = useHealthStore();
   const { setShortcutsModalOpen } = useThemeStore();
+  const { setModalOpen: setSearchModalOpen } = useSearchStore();
+  const { setModalOpen: setSnippetModalOpen } = useSnippetStore();
+  const { toggleFullscreen } = useOverviewStore();
 
   const runCommand = (command: () => void) => {
     setCommandPaletteOpen(false);
@@ -94,6 +103,14 @@ export const CommandPalette: React.FC = () => {
             <LayoutDashboard className="mr-2 h-4 w-4" />
             Dashboard
           </CommandItem>
+          <CommandItem onSelect={() => runCommand(() => setActiveTab('overview'))}>
+            <Radio className="mr-2 h-4 w-4 text-cyan-400" />
+            Mission Control Wallboard
+          </CommandItem>
+          <CommandItem onSelect={() => runCommand(() => setActiveTab('api'))}>
+            <Send className="mr-2 h-4 w-4 text-emerald-400" />
+            HTTP API Tester
+          </CommandItem>
           <CommandItem onSelect={() => runCommand(() => setActiveTab('terminals'))}>
             <TerminalSquare className="mr-2 h-4 w-4" />
             Terminals
@@ -130,6 +147,18 @@ export const CommandPalette: React.FC = () => {
         </CommandGroup>
 
         <CommandGroup heading="Actions">
+          <CommandItem onSelect={() => runCommand(() => setSearchModalOpen(true))}>
+            <Search className="mr-2 h-4 w-4 text-violet-400" />
+            Global Cross-Project Search (Ctrl+Shift+F)
+          </CommandItem>
+          <CommandItem onSelect={() => runCommand(() => setSnippetModalOpen(true))}>
+            <Code2 className="mr-2 h-4 w-4 text-emerald-400" />
+            Command Snippets Vault (Ctrl+Shift+S)
+          </CommandItem>
+          <CommandItem onSelect={() => runCommand(() => { setActiveTab('overview'); toggleFullscreen(); })}>
+            <Maximize2 className="mr-2 h-4 w-4 text-cyan-400" />
+            Toggle Mission Control Fullscreen (F11)
+          </CommandItem>
           <CommandItem onSelect={handleCreateFromTemplate}>
             <Sparkles className="mr-2 h-4 w-4 text-violet-400" />
             Create Project from Template...
@@ -157,10 +186,6 @@ export const CommandPalette: React.FC = () => {
           <CommandItem onSelect={handleOpenNewTerminal}>
             <TerminalSquare className="mr-2 h-4 w-4" />
             Open New Terminal (Ctrl+T)
-          </CommandItem>
-          <CommandItem onSelect={handleStartAllServices}>
-            <Play className="mr-2 h-4 w-4" />
-            Start All Services
           </CommandItem>
         </CommandGroup>
       </CommandList>

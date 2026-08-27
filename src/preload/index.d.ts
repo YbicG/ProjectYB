@@ -155,6 +155,53 @@ export interface IElectronAPI {
   health: {
     getOverview(projects: Array<{ id: string; name: string; path: string; type: string; isGitRepo?: boolean }>): Promise<any>
   }
+  search: {
+    query(options: {
+      query: string
+      projectPaths: Array<{ id: string; name: string; path: string }>
+      isRegex?: boolean
+      isCaseSensitive?: boolean
+      fileExtensions?: string[]
+      maxResultsPerProject?: number
+      maxTotalResults?: number
+    }): Promise<any[]>
+  }
+  http: {
+    sendRequest(options: {
+      method: string
+      url: string
+      headers?: Record<string, string>
+      queryParams?: Record<string, string>
+      body?: string
+      timeoutMs?: number
+    }): Promise<{
+      status: number
+      statusText: string
+      headers: Record<string, string>
+      body: string
+      isJson: boolean
+      durationMs: number
+      sizeBytes: number
+      error?: string
+    }>
+  }
+  archive: {
+    createSnapshot(options: {
+      projectId: string
+      projectPath: string
+      projectName: string
+      destinationDir?: string
+      customName?: string
+    }): Promise<{
+      success: boolean
+      zipPath: string
+      fileName: string
+      fileSizeBytes: number
+      filesCount: number
+      createdAt: string
+      error?: string
+    }>
+  }
 }
 
 declare global {

@@ -1,6 +1,8 @@
 import React from 'react';
 import {
   LayoutDashboard,
+  Radio,
+  Send,
   TerminalSquare,
   GitBranch,
   Server,
@@ -10,7 +12,8 @@ import {
   Search,
   FileText,
   Activity,
-  Keyboard
+  Keyboard,
+  Code2
 } from 'lucide-react';
 import { useAppStore } from '@renderer/stores/useAppStore';
 import { cn } from '@renderer/lib/utils';
@@ -24,9 +27,13 @@ import { useGitStore } from '@renderer/stores/useGitStore';
 import { useNotesStore } from '@renderer/stores/useNotesStore';
 import { useHealthStore } from '@renderer/stores/useHealthStore';
 import { useThemeStore } from '@renderer/stores/useThemeStore';
+import { useSearchStore } from '@renderer/stores/useSearchStore';
+import { useSnippetStore } from '@renderer/stores/useSnippetStore';
 
 const tabs = [
   { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
+  { id: 'overview', label: 'Mission Control', icon: Radio },
+  { id: 'api', label: 'API Tester', icon: Send },
   { id: 'terminals', label: 'Terminals', icon: TerminalSquare },
   { id: 'git', label: 'Git', icon: GitBranch },
   { id: 'services', label: 'Services', icon: Server },
@@ -43,6 +50,8 @@ export const TopNav: React.FC = () => {
   const { setScratchpadModalOpen } = useNotesStore();
   const { setModalOpen: setHealthModalOpen } = useHealthStore();
   const { setShortcutsModalOpen } = useThemeStore();
+  const { setModalOpen: setSearchModalOpen } = useSearchStore();
+  const { setModalOpen: setSnippetModalOpen } = useSnippetStore();
 
   const activeTerminalsCount = terminals.filter(t => t.status === 'running').length;
   const runningServicesCount = services.filter(s => s.status === 'running').length;
@@ -80,7 +89,7 @@ export const TopNav: React.FC = () => {
                 isActive ? "text-zinc-50" : "text-zinc-400"
               )}
             >
-              <Icon className="w-4 h-4 shrink-0" />
+              <Icon className={cn("w-4 h-4 shrink-0", tab.id === 'overview' && isActive && "text-cyan-400 animate-pulse")} />
               <span className="hidden sm:inline">{tab.label}</span>
               {badgeCount > 0 && (
                 <span className="ml-0.5 sm:ml-1 bg-violet-500/20 text-violet-300 py-0.2 sm:py-0.5 px-1.5 sm:px-2 rounded-full text-[9px] sm:text-[10px] font-bold">
@@ -96,22 +105,46 @@ export const TopNav: React.FC = () => {
       </div>
       
       {/* ── Right Controls ── */}
-      <div className="flex items-center gap-1 sm:gap-2 shrink-0">
+      <div className="flex items-center gap-1 sm:gap-1.5 shrink-0">
         <div className="hidden xs:block">
           <WorkspaceSelector />
         </div>
         <SystemMonitor />
         
+        {/* Global Search (Ctrl+Shift+F) */}
         <Button
           variant="ghost"
           size="icon"
           className="h-7 w-7 sm:h-8 sm:w-8 text-zinc-400 hover:text-violet-300"
+          onClick={() => setSearchModalOpen(true)}
+          title="Global Cross-Project Search (Ctrl+Shift+F)"
+        >
+          <Search className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+        </Button>
+
+        {/* Snippets Vault (Ctrl+Shift+S) */}
+        <Button
+          variant="ghost"
+          size="icon"
+          className="h-7 w-7 sm:h-8 sm:w-8 text-zinc-400 hover:text-emerald-300"
+          onClick={() => setSnippetModalOpen(true)}
+          title="Command Snippets Vault (Ctrl+Shift+S)"
+        >
+          <Code2 className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+        </Button>
+
+        {/* Scratchpad (Ctrl+N) */}
+        <Button
+          variant="ghost"
+          size="icon"
+          className="h-7 w-7 sm:h-8 sm:w-8 text-zinc-400 hover:text-amber-300"
           onClick={() => setScratchpadModalOpen(true)}
           title="Global Scratchpad (Ctrl+N)"
         >
           <FileText className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
         </Button>
 
+        {/* Health Radar */}
         <Button
           variant="ghost"
           size="icon"
@@ -122,6 +155,7 @@ export const TopNav: React.FC = () => {
           <Activity className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
         </Button>
 
+        {/* Shortcuts Cheat Sheet (Ctrl+/) */}
         <Button
           variant="ghost"
           size="icon"
@@ -132,15 +166,6 @@ export const TopNav: React.FC = () => {
           <Keyboard className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
         </Button>
 
-        <Button
-          variant="ghost"
-          size="icon"
-          className="h-7 w-7 sm:h-8 sm:w-8 text-zinc-400 hover:text-zinc-200"
-          onClick={() => setCommandPaletteOpen(true)}
-          title="Command Palette (Ctrl+K, Ctrl+P)"
-        >
-          <Search className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
-        </Button>
         <NotificationCenter />
       </div>
     </div>

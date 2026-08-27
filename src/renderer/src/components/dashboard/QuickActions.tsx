@@ -1,11 +1,13 @@
 import React, { useState, useRef } from 'react';
-import { TerminalSquare, RefreshCw, Code, FolderPlus, X, Check, Loader2, Sparkles, HardDrive } from 'lucide-react';
+import { TerminalSquare, RefreshCw, Code, FolderPlus, X, Check, Loader2, Sparkles, HardDrive, Search, Code2 } from 'lucide-react';
 import { Button } from '../ui/button';
 import { Input } from '../ui/input';
 import { useProjectStore } from '@renderer/stores/useProjectStore';
 import { useTerminalStore } from '@renderer/stores/useTerminalStore';
 import { useTemplateStore } from '@renderer/stores/useTemplateStore';
 import { useAppStore } from '@renderer/stores/useAppStore';
+import { useSearchStore } from '@renderer/stores/useSearchStore';
+import { useSnippetStore } from '@renderer/stores/useSnippetStore';
 import { toast } from 'sonner';
 
 export const QuickActions: React.FC = () => {
@@ -138,6 +140,24 @@ export const QuickActions: React.FC = () => {
       <Button variant="outline" className="justify-start h-10 w-full" onClick={handleOpenVSCode}>
         <Code className="w-4 h-4 mr-2" />
         Open VS Code
+      </Button>
+
+      <Button
+        variant="outline"
+        className="justify-start h-10 w-full text-violet-300/90 border-violet-900/40 bg-violet-950/10 hover:bg-violet-950/30"
+        onClick={() => useSearchStore.getState().setModalOpen(true)}
+      >
+        <Search className="w-4 h-4 mr-2 text-violet-400" />
+        Global Search (Ctrl+Shift+F)
+      </Button>
+
+      <Button
+        variant="outline"
+        className="justify-start h-10 w-full text-emerald-300/90 border-emerald-900/40 bg-emerald-950/10 hover:bg-emerald-950/30"
+        onClick={() => useSnippetStore.getState().setModalOpen(true)}
+      >
+        <Code2 className="w-4 h-4 mr-2 text-emerald-400" />
+        Snippets Vault (Ctrl+Shift+S)
       </Button>
 
       <Button

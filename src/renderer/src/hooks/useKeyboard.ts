@@ -3,6 +3,9 @@ import { useAppStore } from '../stores/useAppStore'
 import { useTerminalStore } from '../stores/useTerminalStore'
 import { useNotesStore } from '../stores/useNotesStore'
 import { useThemeStore } from '../stores/useThemeStore'
+import { useSearchStore } from '../stores/useSearchStore'
+import { useSnippetStore } from '../stores/useSnippetStore'
+import { useOverviewStore } from '../stores/useOverviewStore'
 import type { TabType } from '../stores/useAppStore'
 
 export function useKeyboard() {
@@ -12,6 +15,9 @@ export function useKeyboard() {
   const { createTerminal, killTerminal, activeTerminalId } = useTerminalStore()
   const { setScratchpadModalOpen, scratchpadModalOpen } = useNotesStore()
   const { setShortcutsModalOpen, shortcutsModalOpen } = useThemeStore()
+  const { setModalOpen: setSearchModalOpen, isModalOpen: searchModalOpen } = useSearchStore()
+  const { setModalOpen: setSnippetModalOpen, isModalOpen: snippetModalOpen } = useSnippetStore()
+  const { toggleFullscreen } = useOverviewStore()
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -19,6 +25,27 @@ export function useKeyboard() {
         e.target instanceof HTMLInputElement ||
         e.target instanceof HTMLTextAreaElement ||
         (e.target as HTMLElement)?.isContentEditable
+
+      // Global Search: Ctrl+Shift+F
+      if ((e.ctrlKey || e.metaKey) && e.shiftKey && (e.key === 'F' || e.key === 'f')) {
+        e.preventDefault()
+        setSearchModalOpen(!searchModalOpen)
+        return
+      }
+
+      // Command Snippets Vault: Ctrl+Shift+S
+      if ((e.ctrlKey || e.metaKey) && e.shiftKey && (e.key === 'S' || e.key === 's')) {
+        e.preventDefault()
+        setSnippetModalOpen(!snippetModalOpen)
+        return
+      }
+
+      // Wallboard Fullscreen Toggle: F11 (when on overview tab or global)
+      if (e.key === 'F11') {
+        e.preventDefault()
+        toggleFullscreen()
+        return
+      }
 
       // Command palette: Ctrl+K or Ctrl+P
       if ((e.ctrlKey || e.metaKey) && (e.key === 'k' || e.key === 'p')) {
@@ -41,11 +68,13 @@ export function useKeyboard() {
         return
       }
 
-      // Tab switching: Ctrl+1-7
-      if ((e.ctrlKey || e.metaKey) && ['1', '2', '3', '4', '5', '6', '7'].includes(e.key)) {
+      // Tab switching: Ctrl+1-9
+      if ((e.ctrlKey || e.metaKey) && ['1', '2', '3', '4', '5', '6', '7', '8', '9'].includes(e.key)) {
         e.preventDefault()
         const tabs: TabType[] = [
           'dashboard',
+          'overview',
+          'api',
           'terminals',
           'git',
           'services',
@@ -111,6 +140,9 @@ export function useKeyboard() {
     killTerminal,
     activeTerminalId,
     scratchpadModalOpen,
-    shortcutsModalOpen
+    shortcutsModalOpen,
+    searchModalOpen,
+    snippetModalOpen,
+    toggleFullscreen
   ])
 }

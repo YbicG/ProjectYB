@@ -8,31 +8,35 @@ export const ShortcutsCheatSheetModal: React.FC = () => {
 
   const shortcutGroups = [
     {
-      title: 'Navigation',
+      title: 'Navigation (Ctrl+1..9)',
       items: [
-        { keys: ['Ctrl', '1'], label: 'Jump to Dashboard' },
-        { keys: ['Ctrl', '2'], label: 'Jump to Terminals' },
-        { keys: ['Ctrl', '3'], label: 'Jump to Git & GitHub' },
-        { keys: ['Ctrl', '4'], label: 'Jump to Services & Ports' },
-        { keys: ['Ctrl', '5'], label: 'Jump to Dependencies & Security' },
-        { keys: ['Ctrl', '6'], label: 'Jump to Disk Optimizer' },
-        { keys: ['Ctrl', '7'], label: 'Jump to Settings' }
+        { keys: ['Ctrl', '1'], label: 'Dashboard' },
+        { keys: ['Ctrl', '2'], label: 'Mission Control Wallboard' },
+        { keys: ['Ctrl', '3'], label: 'HTTP API Tester' },
+        { keys: ['Ctrl', '4'], label: 'Terminals' },
+        { keys: ['Ctrl', '5'], label: 'Git & GitHub' },
+        { keys: ['Ctrl', '6'], label: 'Services & Ports' },
+        { keys: ['Ctrl', '7'], label: 'Dependencies & Security' },
+        { keys: ['Ctrl', '8'], label: 'Disk Optimizer' },
+        { keys: ['Ctrl', '9'], label: 'Settings' }
       ]
     },
     {
-      title: 'Terminals & Tools',
+      title: 'Search, Tools & Vaults',
       items: [
-        { keys: ['Ctrl', 'T'], label: 'New Terminal in active workspace' },
+        { keys: ['Ctrl', 'Shift', 'F'], label: 'Global Cross-Project Search' },
+        { keys: ['Ctrl', 'Shift', 'S'], label: 'Command Snippets Vault' },
+        { keys: ['F11'], label: 'Toggle Fullscreen Wallboard Mode' },
         { keys: ['Ctrl', 'K'], label: 'Open Command Palette' },
-        { keys: ['Ctrl', 'P'], label: 'Search & jump to project' },
         { keys: ['Ctrl', 'N'], label: 'Open Global Quick Scratchpad' },
         { keys: ['Ctrl', '/'], label: 'Toggle Keyboard Shortcuts' }
       ]
     },
     {
-      title: 'Project Actions',
+      title: 'Terminals & Workspaces',
       items: [
-        { keys: ['Ctrl', 'E'], label: 'Open Environment Vault (.env)' },
+        { keys: ['Ctrl', 'T'], label: 'New Terminal in active workspace' },
+        { keys: ['Ctrl', 'W'], label: 'Close Active Terminal' },
         { keys: ['Ctrl', 'Shift', 'D'], label: 'Docker Compose Dashboard' },
         { keys: ['Ctrl', 'Shift', 'O'], label: 'Disk Space Optimizer' }
       ]
@@ -41,7 +45,7 @@ export const ShortcutsCheatSheetModal: React.FC = () => {
 
   return (
     <Dialog open={shortcutsModalOpen} onOpenChange={setShortcutsModalOpen}>
-      <DialogContent className="bg-zinc-950 border-zinc-800 text-zinc-100 max-w-xl">
+      <DialogContent className="bg-zinc-950 border-zinc-800 text-zinc-100 max-w-xl max-h-[90vh] overflow-y-auto">
         <DialogHeader className="pb-3 border-b border-zinc-800">
           <DialogTitle className="text-base flex items-center gap-2">
             <Keyboard className="w-5 h-5 text-violet-400" />

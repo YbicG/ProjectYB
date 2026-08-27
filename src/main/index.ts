@@ -17,6 +17,9 @@ import { setupDiskIpc } from './ipc/disk.ipc';
 import { setupWorkspaceIpc } from './ipc/workspace.ipc';
 import { setupNotesIpc } from './ipc/notes.ipc';
 import { setupHealthIpc } from './ipc/health.ipc';
+import { setupSearchIpc } from './ipc/search.ipc';
+import { setupHttpIpc } from './ipc/http.ipc';
+import { setupArchiveIpc } from './ipc/archive.ipc';
 import { terminalService } from './services/terminal.service';
 import { systemMonitor } from './services/system-monitor';
 import { trayService } from './services/tray.service';
@@ -71,6 +74,9 @@ async function createWindow() {
   setupWorkspaceIpc();
   setupNotesIpc();
   setupHealthIpc();
+  setupSearchIpc();
+  setupHttpIpc();
+  setupArchiveIpc();
   
   try {
     await setupStoreIpc();

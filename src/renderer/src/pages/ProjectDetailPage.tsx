@@ -20,7 +20,8 @@ import {
   Layers,
   Lock,
   Package,
-  Boxes
+  Boxes,
+  Archive
 } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card'
 import { Badge } from '../components/ui/badge'
@@ -28,6 +29,7 @@ import { Button } from '../components/ui/button'
 import { ScrollArea } from '../components/ui/scroll-area'
 import { ProjectConfigDialog } from '../components/dashboard/ProjectConfigDialog'
 import { EnvManagerDialog } from '../components/env/EnvManagerDialog'
+import { ProjectSnapshotDialog } from '../components/dashboard/ProjectSnapshotDialog'
 import { DockerDashboard } from '../components/docker/DockerDashboard'
 import { MarkdownNotesEditor } from '../components/notes/MarkdownNotesEditor'
 import { useProjectStore } from '@renderer/stores/useProjectStore'
@@ -140,6 +142,7 @@ export const ProjectDetailPage: React.FC<ProjectDetailPageProps> = ({ projectId:
   const [commitsLoading, setCommitsLoading] = useState(false)
   const [configDialogOpen, setConfigDialogOpen] = useState(false)
   const [envDialogOpen, setEnvDialogOpen] = useState(false)
+  const [snapshotDialogOpen, setSnapshotDialogOpen] = useState(false)
   const savedConfigs = useRunConfigStore((s) => s.configs).filter((c) => c.projectId === project?.id)
 
   // Fetch git status + recent commits whenever the selected project changes
@@ -308,6 +311,16 @@ export const ProjectDetailPage: React.FC<ProjectDetailPageProps> = ({ projectId:
             <Button variant="outline" size="sm" onClick={() => handleOpenFolder()} className="gap-1.5">
               <FolderOpen className="h-4 w-4" />
               Folder
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setSnapshotDialogOpen(true)}
+              className="gap-1.5 border-violet-500/40 text-violet-300 hover:bg-violet-950/30"
+              title="Create clean project .zip archive"
+            >
+              <Archive className="h-4 w-4" />
+              Snapshot
             </Button>
           </div>
         </div>
@@ -616,6 +629,13 @@ export const ProjectDetailPage: React.FC<ProjectDetailPageProps> = ({ projectId:
         onOpenChange={setEnvDialogOpen}
         projectPath={project.path}
         projectName={project.name}
+      />
+
+      {/* ── Project Clean Snapshot Dialog ── */}
+      <ProjectSnapshotDialog
+        open={snapshotDialogOpen}
+        onOpenChange={setSnapshotDialogOpen}
+        project={project}
       />
     </ScrollArea>
   )
