@@ -15,7 +15,8 @@ import {
   Pencil,
   BookOpen,
   Layers,
-  Lock
+  Lock,
+  Star
 } from 'lucide-react'
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '../ui/card'
 import { Badge } from '../ui/badge'
@@ -51,7 +52,8 @@ export const ProjectCard: React.FC<ProjectCardProps> = ({ project }) => {
   const fetchStatus = useGitStore((s) => s.fetchStatus)
   const { createTerminal } = useTerminalStore()
   const { addConfig } = useRunConfigStore()
-  const { ignoreProject, selectProject } = useProjectStore()
+  const { ignoreProject, selectProject, pinnedProjectIds, togglePinProject } = useProjectStore()
+  const isPinned = pinnedProjectIds.includes(project.id)
 
   const [runConfigDialogOpen, setRunConfigDialogOpen] = useState(false)
   const [projectConfigDialogOpen, setProjectConfigDialogOpen] = useState(false)
@@ -154,6 +156,21 @@ export const ProjectCard: React.FC<ProjectCardProps> = ({ project }) => {
               title="Edit project name & config"
             >
               <Pencil className="w-3 h-3" />
+            </button>
+            <button
+              onClick={(e) => {
+                e.stopPropagation()
+                togglePinProject(project.id)
+              }}
+              className={cn(
+                "p-0.5 rounded transition-all",
+                isPinned
+                  ? "text-amber-400 opacity-100"
+                  : "opacity-0 group-hover:opacity-100 text-zinc-500 hover:text-amber-400"
+              )}
+              title={isPinned ? "Unpin project" : "Pin project to top"}
+            >
+              <Star className={cn("w-3 h-3", isPinned && "fill-amber-400")} />
             </button>
           </div>
 

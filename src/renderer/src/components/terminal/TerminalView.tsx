@@ -2,6 +2,7 @@ import React, { useEffect, useRef } from 'react';
 import { Terminal } from '@xterm/xterm';
 import { FitAddon } from '@xterm/addon-fit';
 import '@xterm/xterm/css/xterm.css';
+import { useThemeStore } from '@renderer/stores/useThemeStore';
 
 interface TerminalViewProps {
   terminalId: string;
@@ -13,6 +14,13 @@ export const TerminalView: React.FC<TerminalViewProps> = ({ terminalId, cwd }) =
   const xtermRef = useRef<Terminal | null>(null);
   const fitAddonRef = useRef<FitAddon | null>(null);
   const readyRef = useRef(false);
+
+  const {
+    terminalFontFamily,
+    terminalFontSize,
+    terminalCursorStyle,
+    terminalCursorBlink
+  } = useThemeStore();
 
   useEffect(() => {
     if (!terminalRef.current) return;
@@ -42,11 +50,12 @@ export const TerminalView: React.FC<TerminalViewProps> = ({ terminalId, cwd }) =
         brightCyan: '#22d3ee',
         brightWhite: '#ffffff',
       },
-      fontFamily: 'Consolas, "Cascadia Code", "Courier New", monospace',
-      fontSize: 13,
+      fontFamily: terminalFontFamily,
+      fontSize: terminalFontSize,
+      cursorStyle: terminalCursorStyle,
+      cursorBlink: terminalCursorBlink,
       lineHeight: 1.2,
       letterSpacing: 0,
-      cursorBlink: true,
       convertEol: true, // Fixes skewed/staircase terminal output across CLI tools
       scrollback: 10000,
       allowProposedApi: true,

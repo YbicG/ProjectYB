@@ -1,6 +1,8 @@
 import { useEffect } from 'react'
 import { useAppStore } from '../stores/useAppStore'
 import { useTerminalStore } from '../stores/useTerminalStore'
+import { useNotesStore } from '../stores/useNotesStore'
+import { useThemeStore } from '../stores/useThemeStore'
 import type { TabType } from '../stores/useAppStore'
 
 export function useKeyboard() {
@@ -8,43 +10,85 @@ export function useKeyboard() {
   const setActiveTab = useAppStore((state) => state.setActiveTab)
   const activeTab = useAppStore((state) => state.activeTab)
   const { createTerminal, killTerminal, activeTerminalId } = useTerminalStore()
+  const { setScratchpadModalOpen, scratchpadModalOpen } = useNotesStore()
+  const { setShortcutsModalOpen, shortcutsModalOpen } = useThemeStore()
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      // Command palette: Ctrl+K
-      if (e.ctrlKey && e.key === 'k') {
+      const isInput =
+        e.target instanceof HTMLInputElement ||
+        e.target instanceof HTMLTextAreaElement ||
+        (e.target as HTMLElement)?.isContentEditable
+
+      // Command palette: Ctrl+K or Ctrl+P
+      if ((e.ctrlKey || e.metaKey) && (e.key === 'k' || e.key === 'p')) {
         e.preventDefault()
         toggleCommandPalette()
+        return
       }
-      
-      // Tab switching: Ctrl+1-5
-      if (e.ctrlKey && ['1', '2', '3', '4', '5'].includes(e.key)) {
+
+      // Quick Scratchpad: Ctrl+N
+      if ((e.ctrlKey || e.metaKey) && e.key === 'n' && !e.shiftKey) {
         e.preventDefault()
-        const tabs: TabType[] = ['dashboard', 'terminals', 'git', 'services', 'settings']
-        const index = parseInt(e.key) - 1
-        setActiveTab(tabs[index])
+        setScratchpadModalOpen(!scratchpadModalOpen)
+        return
       }
-      
-      // Terminal actions
-      if (activeTab === 'terminals') {
-        // New Terminal: Ctrl+T
-        if (e.ctrlKey && e.key === 't') {
-          e.preventDefault()
-          createTerminal({
-            name: 'Local Terminal',
-            cwd: 'D:\\Code'
-          })
+
+      // Keyboard shortcuts modal: Ctrl+/ or ? (when not inside an input)
+      if (((e.ctrlKey || e.metaKey) && e.key === '/') || (!isInput && e.key === '?')) {
+        e.preventDefault()
+        setShortcutsModalOpen(!shortcutsModalOpen)
+        return
+      }
+
+      // Tab switching: Ctrl+1-7
+      if ((e.ctrlKey || e.metaKey) && ['1', '2', '3', '4', '5', '6', '7'].includes(e.key)) {
+        e.preventDefault()
+        const tabs: TabType[] = [
+          'dashboard',
+          'terminals',
+          'git',
+          'services',
+          'dependencies',
+          'optimizer',
+          'settings'
+        ]
+        const index = parseInt(e.key, 10) - 1
+        if (tabs[index]) {
+          setActiveTab(tabs[index])
         }
-        
-        // Close Terminal: Ctrl+W
-        if (e.ctrlKey && e.key === 'w' && activeTerminalId) {
-          e.preventDefault()
-          killTerminal(activeTerminalId)
-        }
+        return
+      }
+
+      // New Terminal: Ctrl+T
+      if ((e.ctrlKey || e.metaKey) && e.key === 't') {
+        e.preventDefault()
+        createTerminal({
+          name: 'Local Terminal',
+          cwd: 'D:\\Code'
+        })
+        setActiveTab('terminals')
+        return
+      }
+
+      // Close Terminal: Ctrl+W
+      if (activeTab === 'terminals' && (e.ctrlKey || e.metaKey) && e.key === 'w' && activeTerminalId) {
+        e.preventDefault()
+        killTerminal(activeTerminalId)
+        return
       }
     }
 
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [toggleCommandPalette, setActiveTab, activeTab, createTerminal, killTerminal, activeTerminalId])
+  }, [
+    toggleCommandPalette,
+    setActiveTab,
+    activeTab,
+    createTerminal,
+    killTerminal,
+    activeTerminalId,
+    scratchpadModalOpen,
+    shortcutsModalOpen
+  ])
 }

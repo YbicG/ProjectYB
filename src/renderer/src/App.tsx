@@ -10,11 +10,15 @@ import { OptimizerPage } from './pages/OptimizerPage';
 import { ProjectDetailPage } from './pages/ProjectDetailPage';
 import { CommandPalette } from './components/shared/CommandPalette';
 import { CreateProjectDialog } from './components/templates/CreateProjectDialog';
+import { HealthAnalyticsModal } from './components/health/HealthAnalyticsModal';
+import { ShortcutsCheatSheetModal } from './components/shared/ShortcutsCheatSheetModal';
+import { GlobalScratchpadModal } from './components/notes/GlobalScratchpadModal';
 import { useAppStore } from '@renderer/stores/useAppStore';
 import { useProjectStore } from '@renderer/stores/useProjectStore';
 import { useSystemStore } from '@renderer/stores/useSystemStore';
 import { useServiceStore } from '@renderer/stores/useServiceStore';
 import { useTemplateStore } from '@renderer/stores/useTemplateStore';
+import { useThemeStore } from '@renderer/stores/useThemeStore';
 import { useKeyboard } from './hooks/useKeyboard';
 
 export const App: React.FC = () => {
@@ -22,12 +26,14 @@ export const App: React.FC = () => {
   const { activeTab } = useAppStore();
   const { scanProjects } = useProjectStore();
   const { startMonitoring, stopMonitoring } = useSystemStore();
+  const { loadPreferences } = useThemeStore();
   const { dialogOpen: templateDialogOpen, setDialogOpen: setTemplateDialogOpen } = useTemplateStore();
 
   useEffect(() => {
     // Initial load
     scanProjects();
     startMonitoring();
+    loadPreferences();
 
     // Listen for tray re-scan requests
     let unsubScan: (() => void) | undefined;
@@ -85,6 +91,9 @@ export const App: React.FC = () => {
         open={templateDialogOpen}
         onOpenChange={setTemplateDialogOpen}
       />
+      <HealthAnalyticsModal />
+      <ShortcutsCheatSheetModal />
+      <GlobalScratchpadModal />
     </>
   );
 };

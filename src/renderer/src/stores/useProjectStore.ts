@@ -11,10 +11,12 @@ interface ProjectFilters {
 interface ProjectState {
   projects: ProjectInfo[]
   selectedProjectId: string | null
+  pinnedProjectIds: string[]
   searchQuery: string
   activeFilters: ProjectFilters
   isScanning: boolean
   scanProjects: () => Promise<void>
+  togglePinProject: (id: string) => Promise<void>
   setSearchQuery: (query: string) => void
   setFilter: (key: keyof ProjectFilters, values: any[]) => void
   getFilteredProjects: () => ProjectInfo[]
@@ -30,6 +32,7 @@ interface ProjectState {
 export const useProjectStore = create<ProjectState>((set, get) => ({
   projects: [],
   selectedProjectId: null,
+  pinnedProjectIds: [],
   searchQuery: '',
   activeFilters: {},
   isScanning: false,
@@ -61,10 +64,28 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
         }
       }
 
-      set({ projects: allProjects, isScanning: false })
+      // Load pinned project IDs
+      const savedPinned = ((await window.api.store.get('pinnedProjects')) as string[] | undefined) || []
+
+      set({ projects: allProjects, pinnedProjectIds: savedPinned, isScanning: false })
     } catch (error) {
       console.error('Failed to scan projects', error)
       set({ isScanning: false })
+    }
+  },
+
+  togglePinProject: async (id: string) => {
+    const { pinnedProjectIds } = get()
+    const isPinned = pinnedProjectIds.includes(id)
+    const nextPinned = isPinned ? pinnedProjectIds.filter((p) => p !== id) : [...pinnedProjectIds, id]
+
+    set({ pinnedProjectIds: nextPinned })
+    try {
+      if (window.api?.store) {
+        await window.api.store.set('pinnedProjects', nextPinned)
+      }
+    } catch (err) {
+      console.error('Failed to save pinned projects:', err)
     }
   },
 

@@ -9,29 +9,37 @@ const TYPE_FILTERS = ['All', 'Node', 'Python', 'Godot', 'Git', 'Rust', 'Go', '.N
 type TypeFilter = typeof TYPE_FILTERS[number];
 
 export const ProjectGrid: React.FC = () => {
-  const { projects, isScanning } = useProjectStore();
+  const { projects, isScanning, pinnedProjectIds } = useProjectStore();
   const [search, setSearch] = useState('');
   const [activeType, setActiveType] = useState<TypeFilter>('All');
 
-  const filteredProjects = projects.filter(p => {
-    const q = search.toLowerCase();
-    const matchesSearch = !q ||
-      p.name.toLowerCase().includes(q) ||
-      p.category?.toLowerCase().includes(q) ||
-      (p.tags && p.tags.some(t => t.toLowerCase().includes(q))) ||
-      (p.subprojects && p.subprojects.some(s => s.name.toLowerCase().includes(q)));
-    
-    let matchesType = activeType === 'All';
-    if (activeType === '.NET') {
-      matchesType = p.type === 'dotnet';
-    } else if (activeType === 'Docs') {
-      matchesType = p.type === 'docs' || Boolean(p.subprojects?.some(s => s.type === 'docs' || s.name.toLowerCase().includes('doc')));
-    } else if (activeType !== 'All') {
-      matchesType = p.type?.toLowerCase() === activeType.toLowerCase() || Boolean(p.subprojects?.some(s => s.type?.toLowerCase() === activeType.toLowerCase()));
-    }
+  const filteredProjects = projects
+    .filter(p => {
+      const q = search.toLowerCase();
+      const matchesSearch = !q ||
+        p.name.toLowerCase().includes(q) ||
+        p.category?.toLowerCase().includes(q) ||
+        (p.tags && p.tags.some(t => t.toLowerCase().includes(q))) ||
+        (p.subprojects && p.subprojects.some(s => s.name.toLowerCase().includes(q)));
+      
+      let matchesType = activeType === 'All';
+      if (activeType === '.NET') {
+        matchesType = p.type === 'dotnet';
+      } else if (activeType === 'Docs') {
+        matchesType = p.type === 'docs' || Boolean(p.subprojects?.some(s => s.type === 'docs' || s.name.toLowerCase().includes('doc')));
+      } else if (activeType !== 'All') {
+        matchesType = p.type?.toLowerCase() === activeType.toLowerCase() || Boolean(p.subprojects?.some(s => s.type?.toLowerCase() === activeType.toLowerCase()));
+      }
 
-    return matchesSearch && matchesType;
-  });
+      return matchesSearch && matchesType;
+    })
+    .sort((a, b) => {
+      const aPinned = pinnedProjectIds.includes(a.id);
+      const bPinned = pinnedProjectIds.includes(b.id);
+      if (aPinned && !bPinned) return -1;
+      if (!aPinned && bPinned) return 1;
+      return a.name.localeCompare(b.name);
+    });
 
   return (
     <div className="flex flex-col h-full">

@@ -29,6 +29,7 @@ import { ScrollArea } from '../components/ui/scroll-area'
 import { ProjectConfigDialog } from '../components/dashboard/ProjectConfigDialog'
 import { EnvManagerDialog } from '../components/env/EnvManagerDialog'
 import { DockerDashboard } from '../components/docker/DockerDashboard'
+import { MarkdownNotesEditor } from '../components/notes/MarkdownNotesEditor'
 import { useProjectStore } from '@renderer/stores/useProjectStore'
 import { useAppStore } from '@renderer/stores/useAppStore'
 import { useGitStore } from '@renderer/stores/useGitStore'
@@ -572,6 +573,9 @@ export const ProjectDetailPage: React.FC<ProjectDetailPageProps> = ({ projectId:
             </CardContent>
           </Card>
         )}
+
+        {/* ── Project Notes & Tasks ── */}
+        <MarkdownNotesEditor projectPath={project.path} projectName={project.name} />
 
         {/* ── Recent commits ── */}
         {project.isGitRepo && (

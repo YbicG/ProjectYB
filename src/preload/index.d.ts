@@ -146,6 +146,15 @@ export interface IElectronAPI {
     saveStack(stack: any): Promise<any[]>
     deleteStack(stackId: string): Promise<any[]>
   }
+  notes: {
+    read(projectPath: string): Promise<{ content: string; updatedAt: number; filePath?: string }>
+    write(projectPath: string, content: string): Promise<{ success: boolean; filePath?: string; error?: string }>
+    getGlobal(): Promise<string>
+    setGlobal(content: string): Promise<boolean>
+  }
+  health: {
+    getOverview(projects: Array<{ id: string; name: string; path: string; type: string; isGitRepo?: boolean }>): Promise<any>
+  }
 }
 
 declare global {

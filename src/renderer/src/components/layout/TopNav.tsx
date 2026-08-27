@@ -1,5 +1,17 @@
 import React from 'react';
-import { LayoutDashboard, TerminalSquare, GitBranch, Server, Package, HardDrive, Settings, Search } from 'lucide-react';
+import {
+  LayoutDashboard,
+  TerminalSquare,
+  GitBranch,
+  Server,
+  Package,
+  HardDrive,
+  Settings,
+  Search,
+  FileText,
+  Activity,
+  Keyboard
+} from 'lucide-react';
 import { useAppStore } from '@renderer/stores/useAppStore';
 import { cn } from '@renderer/lib/utils';
 import { SystemMonitor } from '../shared/SystemMonitor';
@@ -9,6 +21,9 @@ import { Button } from '../ui/button';
 import { useTerminalStore } from '@renderer/stores/useTerminalStore';
 import { useServiceStore } from '@renderer/stores/useServiceStore';
 import { useGitStore } from '@renderer/stores/useGitStore';
+import { useNotesStore } from '@renderer/stores/useNotesStore';
+import { useHealthStore } from '@renderer/stores/useHealthStore';
+import { useThemeStore } from '@renderer/stores/useThemeStore';
 
 const tabs = [
   { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
@@ -25,6 +40,9 @@ export const TopNav: React.FC = () => {
   const { terminals } = useTerminalStore();
   const { services } = useServiceStore();
   const { statuses } = useGitStore();
+  const { setScratchpadModalOpen } = useNotesStore();
+  const { setModalOpen: setHealthModalOpen } = useHealthStore();
+  const { setShortcutsModalOpen } = useThemeStore();
 
   const activeTerminalsCount = terminals.filter(t => t.status === 'running').length;
   const runningServicesCount = services.filter(s => s.status === 'running').length;
@@ -76,11 +94,48 @@ export const TopNav: React.FC = () => {
         })}
       </div>
       
-      <div className="flex items-center gap-3">
+      <div className="flex items-center gap-2">
         <WorkspaceSelector />
         <SystemMonitor />
-        <Button variant="ghost" size="icon" onClick={() => document.dispatchEvent(new KeyboardEvent('keydown', { key: 'k', metaKey: true }))}>
-          <Search className="w-5 h-5" />
+        
+        <Button
+          variant="ghost"
+          size="icon"
+          className="h-8 w-8 text-zinc-400 hover:text-violet-300"
+          onClick={() => setScratchpadModalOpen(true)}
+          title="Global Scratchpad (Ctrl+N)"
+        >
+          <FileText className="w-4 h-4" />
+        </Button>
+
+        <Button
+          variant="ghost"
+          size="icon"
+          className="h-8 w-8 text-zinc-400 hover:text-cyan-300"
+          onClick={() => setHealthModalOpen(true)}
+          title="Health & Activity Radar"
+        >
+          <Activity className="w-4 h-4" />
+        </Button>
+
+        <Button
+          variant="ghost"
+          size="icon"
+          className="h-8 w-8 text-zinc-400 hover:text-zinc-200"
+          onClick={() => setShortcutsModalOpen(true)}
+          title="Keyboard Shortcuts (Ctrl+/)"
+        >
+          <Keyboard className="w-4 h-4" />
+        </Button>
+
+        <Button
+          variant="ghost"
+          size="icon"
+          className="h-8 w-8 text-zinc-400 hover:text-zinc-200"
+          onClick={() => document.dispatchEvent(new KeyboardEvent('keydown', { key: 'k', metaKey: true }))}
+          title="Command Palette (Ctrl+K)"
+        >
+          <Search className="w-4 h-4" />
         </Button>
         <NotificationCenter />
       </div>

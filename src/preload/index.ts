@@ -208,6 +208,17 @@ const api = {
     getStacks: () => ipcRenderer.invoke('workspaces:getStacks'),
     saveStack: (stack: any) => ipcRenderer.invoke('workspaces:saveStack', stack),
     deleteStack: (stackId: string) => ipcRenderer.invoke('workspaces:deleteStack', stackId)
+  },
+  notes: {
+    read: (projectPath: string) => ipcRenderer.invoke('notes:read', projectPath),
+    write: (projectPath: string, content: string) =>
+      ipcRenderer.invoke('notes:write', { projectPath, content }),
+    getGlobal: () => ipcRenderer.invoke('notes:getGlobal'),
+    setGlobal: (content: string) => ipcRenderer.invoke('notes:setGlobal', content)
+  },
+  health: {
+    getOverview: (projects: Array<{ id: string; name: string; path: string; type: string; isGitRepo?: boolean }>) =>
+      ipcRenderer.invoke('health:getOverview', projects)
   }
 }
 

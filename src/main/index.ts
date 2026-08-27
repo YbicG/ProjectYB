@@ -15,6 +15,8 @@ import { setupDependencyIpc } from './ipc/dependency.ipc';
 import { setupDockerIpc } from './ipc/docker.ipc';
 import { setupDiskIpc } from './ipc/disk.ipc';
 import { setupWorkspaceIpc } from './ipc/workspace.ipc';
+import { setupNotesIpc } from './ipc/notes.ipc';
+import { setupHealthIpc } from './ipc/health.ipc';
 import { terminalService } from './services/terminal.service';
 import { systemMonitor } from './services/system-monitor';
 import { trayService } from './services/tray.service';
@@ -67,6 +69,8 @@ async function createWindow() {
   setupDockerIpc();
   setupDiskIpc();
   setupWorkspaceIpc();
+  setupNotesIpc();
+  setupHealthIpc();
   
   try {
     await setupStoreIpc();

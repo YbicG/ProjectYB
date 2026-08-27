@@ -2,6 +2,8 @@ import React, { useState } from 'react';
 import { Settings, Github, Monitor, TerminalSquare } from 'lucide-react';
 import { GeneralSettings } from '../components/settings/GeneralSettings';
 import { GitHubSettings } from '../components/settings/GitHubSettings';
+import { AppearanceSettings } from '../components/settings/AppearanceSettings';
+import { TerminalSettings } from '../components/settings/TerminalSettings';
 
 export const SettingsPage: React.FC = () => {
   const [activeTab, setActiveTab] = useState('general');
@@ -40,12 +42,8 @@ export const SettingsPage: React.FC = () => {
       <div className="flex-1 overflow-y-auto p-8 bg-zinc-950/50">
         {activeTab === 'general' && <GeneralSettings />}
         {activeTab === 'github' && <GitHubSettings />}
-        {activeTab === 'appearance' && (
-          <div className="text-zinc-500">Appearance settings coming soon.</div>
-        )}
-        {activeTab === 'terminal' && (
-          <div className="text-zinc-500">Terminal settings coming soon.</div>
-        )}
+        {activeTab === 'appearance' && <AppearanceSettings />}
+        {activeTab === 'terminal' && <TerminalSettings />}
       </div>
     </div>
   );

@@ -1,5 +1,23 @@
 import React, { useEffect, useState } from 'react';
-import { TerminalSquare, Server, GitBranch, Settings, LayoutDashboard, Search, Play, FolderOpen, Code, Sparkles, Radio, Package, HardDrive, Layers } from 'lucide-react';
+import {
+  TerminalSquare,
+  Server,
+  GitBranch,
+  Settings,
+  LayoutDashboard,
+  Search,
+  Play,
+  FolderOpen,
+  Code,
+  Sparkles,
+  Radio,
+  Package,
+  HardDrive,
+  Layers,
+  FileText,
+  Activity,
+  Keyboard
+} from 'lucide-react';
 import { CommandDialog, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '../ui/command';
 import { useAppStore } from '@renderer/stores/useAppStore';
 import { useProjectStore } from '@renderer/stores/useProjectStore';
@@ -7,6 +25,9 @@ import { useTerminalStore } from '@renderer/stores/useTerminalStore';
 import { useServiceStore } from '@renderer/stores/useServiceStore';
 import { useTemplateStore } from '@renderer/stores/useTemplateStore';
 import { useWorkspaceStore } from '@renderer/stores/useWorkspaceStore';
+import { useNotesStore } from '@renderer/stores/useNotesStore';
+import { useHealthStore } from '@renderer/stores/useHealthStore';
+import { useThemeStore } from '@renderer/stores/useThemeStore';
 import { toast } from 'sonner';
 
 export const CommandPalette: React.FC = () => {
@@ -17,6 +38,9 @@ export const CommandPalette: React.FC = () => {
   const { profiles, startProfile } = useServiceStore();
   const { setDialogOpen: setTemplateDialogOpen } = useTemplateStore();
   const { openEditor: openWorkspaceEditor } = useWorkspaceStore();
+  const { setScratchpadModalOpen } = useNotesStore();
+  const { setModalOpen: setHealthModalOpen } = useHealthStore();
+  const { setShortcutsModalOpen } = useThemeStore();
 
   useEffect(() => {
     const down = (e: KeyboardEvent) => {
@@ -122,6 +146,18 @@ export const CommandPalette: React.FC = () => {
             <Sparkles className="mr-2 h-4 w-4 text-violet-400" />
             Create Project from Template...
           </CommandItem>
+          <CommandItem onSelect={() => runCommand(() => setScratchpadModalOpen(true))}>
+            <FileText className="mr-2 h-4 w-4 text-violet-400" />
+            Open Global Quick Scratchpad (Ctrl+N)
+          </CommandItem>
+          <CommandItem onSelect={() => runCommand(() => setHealthModalOpen(true))}>
+            <Activity className="mr-2 h-4 w-4 text-cyan-400" />
+            View Project Health & Activity Radar
+          </CommandItem>
+          <CommandItem onSelect={() => runCommand(() => setShortcutsModalOpen(true))}>
+            <Keyboard className="mr-2 h-4 w-4 text-amber-400" />
+            View Keyboard Shortcuts (Ctrl+/)
+          </CommandItem>
           <CommandItem onSelect={() => runCommand(() => openWorkspaceEditor())}>
             <Layers className="mr-2 h-4 w-4 text-violet-400" />
             Create Workspace Stack...
@@ -132,7 +168,7 @@ export const CommandPalette: React.FC = () => {
           </CommandItem>
           <CommandItem onSelect={handleOpenNewTerminal}>
             <TerminalSquare className="mr-2 h-4 w-4" />
-            Open New Terminal
+            Open New Terminal (Ctrl+T)
           </CommandItem>
           <CommandItem onSelect={handleStartAllServices}>
             <Play className="mr-2 h-4 w-4" />
