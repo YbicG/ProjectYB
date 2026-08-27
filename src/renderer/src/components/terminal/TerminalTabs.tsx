@@ -1,10 +1,32 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Plus, X, Server, Terminal as TerminalIcon, Edit2, RotateCw, Trash2, Eraser } from 'lucide-react';
+import {
+  Plus,
+  X,
+  Server,
+  Terminal as TerminalIcon,
+  Edit2,
+  RotateCw,
+  Trash2,
+  Eraser,
+  PanelRight,
+  PanelBottom,
+  Columns,
+  LayoutGrid,
+  List
+} from 'lucide-react';
 import { useTerminalStore } from '@renderer/stores/useTerminalStore';
 import { StatusDot } from '../shared/StatusDot';
 import { cn } from '@renderer/lib/utils';
 import { ScrollArea, ScrollBar } from '../ui/scroll-area';
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '../ui/dropdown-menu';
+import { Button } from '../ui/button';
+import { Separator } from '../ui/separator';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger
+} from '../ui/dropdown-menu';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '../ui/tooltip';
 
 export const TerminalTabs: React.FC = () => {
   const {
@@ -16,7 +38,9 @@ export const TerminalTabs: React.FC = () => {
     renameTerminal,
     restartTerminal,
     filter,
-    setFilter
+    setFilter,
+    layout,
+    setLayout
   } = useTerminalStore();
 
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -44,45 +68,58 @@ export const TerminalTabs: React.FC = () => {
 
   const userTerminals = terminals.filter((t) => !t.isService);
   const serviceTerminals = terminals.filter((t) => t.isService);
-  const displayedTerminals = filter === 'user' ? userTerminals : filter === 'service' ? serviceTerminals : terminals;
+  const displayedTerminals =
+    filter === 'user' ? userTerminals : filter === 'service' ? serviceTerminals : terminals;
 
   return (
-    <div className="flex items-center h-10 bg-zinc-950 border-b border-zinc-800">
-      {/* ── Sub-Filter Controls ── */}
-      <div className="flex items-center gap-1 px-2 border-r border-zinc-800 shrink-0">
-        <button
-          onClick={() => setFilter('all')}
-          className={cn(
-            'px-2 py-0.5 rounded text-[10px] font-medium transition-colors',
-            filter === 'all' ? 'bg-zinc-800 text-zinc-100 font-semibold' : 'text-zinc-500 hover:text-zinc-300'
-          )}
+    <div className="h-12 px-2.5 bg-zinc-950 border-b border-zinc-800/80 flex items-center justify-between gap-2 select-none shrink-0">
+      {/* ── Left: Quick Terminal Controls (New & Split) ── */}
+      <div className="flex items-center gap-1 shrink-0">
+        <Button
+          size="sm"
+          variant="outline"
+          onClick={() => createTerminal({ name: 'Terminal', cwd: 'D:\\Code' })}
+          className="h-8 px-2.5 text-xs bg-zinc-900/80 border-zinc-800 text-zinc-200 hover:border-violet-500/40 hover:text-violet-300 gap-1.5 font-medium shadow-sm"
+          title="New Terminal (Ctrl+T)"
         >
-          All ({terminals.length})
-        </button>
-        <button
-          onClick={() => setFilter('user')}
-          className={cn(
-            'px-2 py-0.5 rounded text-[10px] font-medium transition-colors',
-            filter === 'user' ? 'bg-cyan-950/60 text-cyan-300 border border-cyan-800/40 font-semibold' : 'text-zinc-500 hover:text-zinc-300'
-          )}
+          <Plus className="w-3.5 h-3.5 text-violet-400" />
+          <span className="hidden sm:inline">New Tab</span>
+        </Button>
+
+        <Button
+          variant="ghost"
+          size="icon"
+          className="h-8 w-8 text-zinc-400 hover:text-zinc-100 hover:bg-zinc-900"
+          onClick={() => {
+            createTerminal({ name: 'Terminal', cwd: 'D:\\Code' });
+            setLayout('grid');
+          }}
+          title="Split Terminal Horizontal"
         >
-          User ({userTerminals.length})
-        </button>
-        <button
-          onClick={() => setFilter('service')}
-          className={cn(
-            'px-2 py-0.5 rounded text-[10px] font-medium transition-colors',
-            filter === 'service' ? 'bg-violet-950/60 text-violet-300 border border-violet-800/40 font-semibold' : 'text-zinc-500 hover:text-zinc-300'
-          )}
+          <PanelRight className="w-4 h-4" />
+        </Button>
+
+        <Button
+          variant="ghost"
+          size="icon"
+          className="h-8 w-8 text-zinc-400 hover:text-zinc-100 hover:bg-zinc-900"
+          onClick={() => {
+            createTerminal({ name: 'Terminal', cwd: 'D:\\Code' });
+            setLayout('grid');
+          }}
+          title="Split Terminal Vertical"
         >
-          Services ({serviceTerminals.length})
-        </button>
+          <PanelBottom className="w-4 h-4" />
+        </Button>
+
+        <Separator orientation="vertical" className="h-5 mx-1 bg-zinc-800" />
       </div>
 
-      {/* ── Scrollable Tab Bar ── */}
-      <ScrollArea className="flex-1 whitespace-nowrap h-full">
-        <div className="flex h-full w-max">
-          {displayedTerminals.map((term) => (
+      {/* ── Center: Scrollable Spacious Tabs ── */}
+      <div className="flex-1 flex items-center gap-1.5 overflow-x-auto min-w-0 py-1">
+        {displayedTerminals.map((term) => {
+          const isActive = activeTerminalId === term.id;
+          return (
             <DropdownMenu key={term.id}>
               <DropdownMenuTrigger asChild>
                 <div
@@ -92,18 +129,26 @@ export const TerminalTabs: React.FC = () => {
                     handleStartRename(term.id, term.name);
                   }}
                   className={cn(
-                    'group flex items-center gap-2 px-3 h-full border-r border-zinc-800 text-xs cursor-pointer select-none min-w-[130px] max-w-[220px] transition-colors',
-                    activeTerminalId === term.id
-                      ? 'bg-zinc-900 text-zinc-50 font-medium ring-1 ring-inset ring-violet-500/30'
-                      : 'bg-zinc-950 text-zinc-400 hover:bg-zinc-900/50'
+                    'group flex items-center gap-2 h-8 px-3 rounded-lg text-xs font-mono cursor-pointer transition-all shrink-0 min-w-[140px] max-w-[220px] border shadow-sm',
+                    isActive
+                      ? 'bg-zinc-850 text-zinc-100 font-semibold border-zinc-700 ring-1 ring-violet-500/40 shadow-violet-950/20'
+                      : 'bg-zinc-900/60 text-zinc-400 hover:text-zinc-200 hover:bg-zinc-900 border-zinc-800/80'
                   )}
                 >
                   {term.isService ? (
-                    <Server className="w-3 h-3 text-violet-400 shrink-0" />
+                    <Server className="w-3.5 h-3.5 text-violet-400 shrink-0" />
                   ) : (
-                    <TerminalIcon className="w-3 h-3 text-cyan-400 shrink-0" />
+                    <TerminalIcon className="w-3.5 h-3.5 text-cyan-400 shrink-0" />
                   )}
-                  <StatusDot status={term.status} size="sm" />
+
+                  <span
+                    className={cn(
+                      'w-2 h-2 rounded-full shrink-0',
+                      term.status === 'running'
+                        ? 'bg-emerald-400 shadow-[0_0_6px_rgba(52,211,153,0.6)]'
+                        : 'bg-zinc-500'
+                    )}
+                  />
 
                   {editingId === term.id ? (
                     <input
@@ -116,11 +161,11 @@ export const TerminalTabs: React.FC = () => {
                         if (e.key === 'Enter') handleFinishRename();
                         if (e.key === 'Escape') setEditingId(null);
                       }}
-                      className="bg-zinc-800 text-zinc-100 px-1 py-0.5 rounded text-[11px] font-mono w-full outline-none"
+                      className="bg-zinc-800 text-zinc-100 px-1.5 py-0.5 rounded text-xs font-mono w-full outline-none ring-1 ring-violet-500"
                       onClick={(e) => e.stopPropagation()}
                     />
                   ) : (
-                    <span className="truncate flex-1 font-mono text-[11px]">{term.name}</span>
+                    <span className="truncate flex-1 font-mono text-xs">{term.name}</span>
                   )}
 
                   <button
@@ -129,12 +174,12 @@ export const TerminalTabs: React.FC = () => {
                       removeTerminal(term.id);
                     }}
                     className={cn(
-                      'p-0.5 rounded-sm opacity-0 group-hover:opacity-100 hover:bg-zinc-800 hover:text-red-400 transition-all shrink-0',
-                      activeTerminalId === term.id && 'opacity-100'
+                      'p-1 rounded opacity-0 group-hover:opacity-100 hover:bg-zinc-800 hover:text-rose-400 transition-all shrink-0',
+                      isActive && 'opacity-70'
                     )}
                     title="Close terminal"
                   >
-                    <X className="w-3 h-3" />
+                    <X className="w-3.5 h-3.5" />
                   </button>
                 </div>
               </DropdownMenuTrigger>
@@ -151,25 +196,102 @@ export const TerminalTabs: React.FC = () => {
                   <RotateCw className="w-3.5 h-3.5 mr-2 text-zinc-400" />
                   Restart Process
                 </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => removeTerminal(term.id)} className="text-red-400 hover:text-red-300">
+                <DropdownMenuItem
+                  onClick={() => removeTerminal(term.id)}
+                  className="text-rose-400 hover:text-rose-300"
+                >
                   <Trash2 className="w-3.5 h-3.5 mr-2" />
                   Close Terminal
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
-          ))}
-        </div>
-        <ScrollBar orientation="horizontal" className="hidden" />
-      </ScrollArea>
+          );
+        })}
+      </div>
 
-      {/* ── New Tab Button ── */}
-      <button
-        onClick={() => createTerminal({ name: 'Local', cwd: 'D:\\Code' })}
-        className="px-3 h-full border-l border-zinc-800 text-zinc-400 hover:text-zinc-50 hover:bg-zinc-900 transition-colors shrink-0"
-        title="Open new terminal (Ctrl+T)"
-      >
-        <Plus className="w-4 h-4" />
-      </button>
+      {/* ── Right: Clear, Restart, and Layout Modes ── */}
+      <div className="flex items-center gap-1 shrink-0">
+        {activeTerminalId && (
+          <>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8 text-zinc-400 hover:text-zinc-100 hover:bg-zinc-900"
+              onClick={() => window.api?.terminal?.write(activeTerminalId, '\x0c')}
+              title="Clear Console"
+            >
+              <Eraser className="w-3.5 h-3.5" />
+            </Button>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8 text-zinc-400 hover:text-zinc-100 hover:bg-zinc-900"
+              onClick={() => restartTerminal(activeTerminalId)}
+              title="Restart Terminal"
+            >
+              <RotateCw className="w-3.5 h-3.5" />
+            </Button>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8 text-zinc-400 hover:text-rose-400 hover:bg-rose-950/30"
+              onClick={() => removeTerminal(activeTerminalId)}
+              title="Kill Terminal (Ctrl+W)"
+            >
+              <Trash2 className="w-3.5 h-3.5" />
+            </Button>
+            <Separator orientation="vertical" className="h-5 mx-1 bg-zinc-800" />
+          </>
+        )}
+
+        {/* Layout Switcher (Tabs, Grid, List) */}
+        <div className="flex items-center bg-zinc-900/90 rounded-lg p-0.5 border border-zinc-800">
+          <Button
+            variant="ghost"
+            size="icon"
+            className={cn(
+              'h-7 w-7 rounded-md',
+              layout === 'tabs'
+                ? 'bg-zinc-800 text-zinc-100 font-semibold shadow-sm'
+                : 'text-zinc-400 hover:text-zinc-200'
+            )}
+            onClick={() => setLayout('tabs')}
+            title="Tabs Layout"
+          >
+            <Columns className="w-3.5 h-3.5" />
+          </Button>
+
+          <Button
+            variant="ghost"
+            size="icon"
+            className={cn(
+              'h-7 w-7 rounded-md',
+              layout === 'grid'
+                ? 'bg-zinc-800 text-zinc-100 font-semibold shadow-sm'
+                : 'text-zinc-400 hover:text-zinc-200'
+            )}
+            onClick={() => setLayout('grid')}
+            title="Split Grid Layout"
+          >
+            <LayoutGrid className="w-3.5 h-3.5" />
+          </Button>
+
+          <Button
+            variant="ghost"
+            size="icon"
+            className={cn(
+              'h-7 w-7 rounded-md',
+              layout === 'list'
+                ? 'bg-zinc-800 text-zinc-100 font-semibold shadow-sm'
+                : 'text-zinc-400 hover:text-zinc-200'
+            )}
+            onClick={() => setLayout('list')}
+            title="Sidebar List Layout"
+          >
+            <List className="w-3.5 h-3.5" />
+          </Button>
+        </div>
+      </div>
     </div>
   );
 };

@@ -124,8 +124,8 @@ export const ModernSidebar: React.FC = () => {
             onClick={() => setActiveTab('dashboard')}
             className="flex items-center gap-2.5 cursor-pointer group min-w-0"
           >
-            <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-violet-600 to-indigo-500 flex items-center justify-center text-white font-black text-sm shadow-md shadow-violet-900/30 group-hover:scale-105 transition-transform shrink-0">
-              YB
+            <div className="w-8 h-8 rounded-lg bg-zinc-900 border border-zinc-800 flex items-center justify-center text-violet-400 group-hover:border-violet-500/50 group-hover:text-violet-300 group-hover:shadow-[0_0_12px_rgba(139,92,246,0.25)] transition-all shrink-0">
+              <TerminalSquare className="w-4 h-4" />
             </div>
 
             <AnimatePresence>
