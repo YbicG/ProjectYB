@@ -22,7 +22,7 @@ class ProjectScanner {
   private watcher: chokidar.FSWatcher | null = null;
   private skipDirs = new Set(['node_modules', '.git', 'dist', 'build', '__pycache__', '.next', '.venv']);
 
-  async scanDirectory(rootPaths: string[], maxDepth: number = 4): Promise<ProjectInfo[]> {
+  async scanDirectory(rootPaths: string[], maxDepth: number = 4, mode: 'git' | 'all' = 'git'): Promise<ProjectInfo[]> {
     const projects: ProjectInfo[] = [];
 
     const scan = async (currentPath: string, depth: number) => {
@@ -40,6 +40,10 @@ class ProjectScanner {
         else if (files.includes('Cargo.toml')) { isProject = true; type = 'rust'; }
         else if (files.includes('go.mod')) { isProject = true; type = 'go'; }
         else if (files.includes('.git')) { isProject = true; type = 'unknown'; }
+
+        if (mode === 'all' && depth === 1) {
+          isProject = true;
+        }
 
         if (isProject) {
           const name = path.basename(currentPath);
@@ -71,6 +75,8 @@ class ProjectScanner {
           });
         }
 
+        if (mode === 'all' && depth >= 1) return;
+
         for (const entry of entries) {
           if (entry.isDirectory() && !this.skipDirs.has(entry.name)) {
             await scan(path.join(currentPath, entry.name), depth + 1);
@@ -86,6 +92,50 @@ class ProjectScanner {
     }
 
     return projects;
+  }
+
+  async scanSingleFolder(folderPath: string): Promise<ProjectInfo | null> {
+    try {
+      const stat = await fs.promises.stat(folderPath);
+      if (!stat.isDirectory()) return null;
+
+      const entries = await fs.promises.readdir(folderPath, { withFileTypes: true });
+      let type: ProjectInfo['type'] = 'unknown';
+      const files = entries.filter(e => e.isFile()).map(e => e.name);
+
+      if (files.includes('package.json')) { type = 'node'; }
+      else if (files.includes('requirements.txt') || files.includes('pyproject.toml')) { type = 'python'; }
+      else if (files.includes('Cargo.toml')) { type = 'rust'; }
+      else if (files.includes('go.mod')) { type = 'go'; }
+
+      const name = path.basename(folderPath);
+      const category = path.basename(path.dirname(folderPath));
+
+      let scripts, dependencies;
+      if (type === 'node') {
+        try {
+          const pkgStr = await fs.promises.readFile(path.join(folderPath, 'package.json'), 'utf8');
+          const pkg = JSON.parse(pkgStr);
+          scripts = pkg.scripts;
+          dependencies = { ...pkg.dependencies, ...pkg.devDependencies };
+        } catch (e) {}
+      }
+
+      return {
+        name,
+        path: folderPath,
+        type,
+        category,
+        scripts,
+        dependencies,
+        id: folderPath,
+        status: 'stopped' as const,
+        tags: [],
+        runningServices: []
+      };
+    } catch (error) {
+      return null;
+    }
   }
 
   watchForChanges(rootPaths: string[], callback: (event: string, filePath: string) => void) {

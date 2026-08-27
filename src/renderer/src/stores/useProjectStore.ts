@@ -20,6 +20,7 @@ interface ProjectState {
   getFilteredProjects: () => ProjectInfo[]
   selectProject: (id: string | null) => void
   updateProjectConfig: (id: string, config: Partial<ProjectConfig>) => void
+  addManualProject: (folderPath: string) => Promise<void>
 }
 
 export const useProjectStore = create<ProjectState>((set, get) => ({
@@ -31,16 +32,51 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
   scanProjects: async () => {
     set({ isScanning: true })
     try {
-      if (!window.api?.projects) {
-        console.warn('window.api.projects not available — running outside Electron?')
+      if (!window.api?.projects || !window.api?.store) {
+        console.warn('window.api missing — running outside Electron?')
         set({ projects: [], isScanning: false })
         return
       }
-      const projects = await window.api.projects.scan()
-      set({ projects: projects || [], isScanning: false })
+      
+      const rootPaths = await window.api.store.get('scanPaths') as string[] | undefined
+      const mode = await window.api.store.get('scanMode') as 'git' | 'all' | undefined
+      
+      const scannedProjects = await window.api.projects.scan({ rootPaths, mode })
+      
+      // Also get manual projects to append them
+      const manualPaths = await window.api.store.get('manualProjects') as string[] | undefined
+      const allProjects = [...(scannedProjects || [])]
+      
+      if (manualPaths && manualPaths.length > 0) {
+        for (const mPath of manualPaths) {
+          const mProj = await window.api.projects.addManual(mPath)
+          if (mProj && !allProjects.some(p => p.id === mProj.id)) {
+            allProjects.push(mProj)
+          }
+        }
+      }
+      
+      set({ projects: allProjects, isScanning: false })
     } catch (error) {
       console.error('Failed to scan projects', error)
       set({ isScanning: false })
+    }
+  },
+  addManualProject: async (folderPath: string) => {
+    try {
+      if (!window.api?.projects) return
+      const project = await window.api.projects.addManual(folderPath)
+      if (project) {
+        set((state) => {
+          const exists = state.projects.some(p => p.id === project.id)
+          if (exists) {
+            return { projects: state.projects.map(p => p.id === project.id ? project : p) }
+          }
+          return { projects: [...state.projects, project] }
+        })
+      }
+    } catch (error) {
+      console.error('Failed to add manual project', error)
     }
   },
   setSearchQuery: (searchQuery) => set({ searchQuery }),

@@ -3,10 +3,19 @@ import { projectScanner } from '../services/project-scanner';
 import { spawn } from 'child_process';
 import * as os from 'os';
 
+import { getStore } from '../ipc/store.ipc';
+
 export function setupProjectsIpc() {
-  ipcMain.handle('projects:scan', async (_, rootPaths?: string[]) => {
-    const paths = rootPaths && rootPaths.length > 0 ? rootPaths : ['D:\\Code'];
-    return projectScanner.scanDirectory(paths);
+  ipcMain.handle('projects:scan', async (_, options?: { rootPaths?: string[], mode?: 'git' | 'all' }) => {
+    const store = await getStore();
+    const savedPaths = store.get('scanPaths', ['D:\\Code']) as string[];
+    const rootPaths = options?.rootPaths ?? savedPaths;
+    const mode = options?.mode ?? (store.get('scanMode', 'git') as 'git' | 'all');
+    return projectScanner.scanDirectory(rootPaths, 4, mode);
+  });
+
+  ipcMain.handle('projects:addManual', async (_, folderPath: string) => {
+    return projectScanner.scanSingleFolder(folderPath);
   });
 
   ipcMain.handle('projects:openInExplorer', (_, path: string) => shell.openPath(path));

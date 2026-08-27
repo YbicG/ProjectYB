@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { FolderPlus, Trash2 } from 'lucide-react';
+import { FolderPlus, Trash2, Plus } from 'lucide-react';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '../ui/card';
 import { Button } from '../ui/button';
 import { Input } from '../ui/input';
@@ -9,10 +9,15 @@ const DEFAULT_SCAN_PATHS = ['D:\\Code'];
 
 export const GeneralSettings: React.FC = () => {
   const [scanPaths, setScanPaths] = useState<string[]>(DEFAULT_SCAN_PATHS);
+  const [scanPathModes, setScanPathModes] = useState<Record<string, 'git' | 'all'>>({});
   const [newPath, setNewPath] = useState('');
+  
+  const [manualProjects, setManualProjects] = useState<string[]>([]);
+  const [newManualPath, setNewManualPath] = useState('');
+  
   const [defaultShell, setDefaultShell] = useState('powershell.exe');
   const [autoRestore, setAutoRestore] = useState(true);
-  const { scanProjects } = useProjectStore();
+  const { scanProjects, addManualProject } = useProjectStore();
 
   // Load settings from store on mount
   useEffect(() => {
@@ -21,8 +26,16 @@ export const GeneralSettings: React.FC = () => {
       try {
         const saved = await window.api.store.get('scanPaths');
         if (saved && Array.isArray(saved) && saved.length > 0) setScanPaths(saved);
+        
+        const modes = await window.api.store.get('scanPathModes');
+        if (modes) setScanPathModes(modes as Record<string, 'git' | 'all'>);
+        
+        const manual = await window.api.store.get('manualProjects');
+        if (manual && Array.isArray(manual)) setManualProjects(manual);
+        
         const shell = await window.api.store.get('defaultShell');
         if (shell) setDefaultShell(shell as string);
+        
         const restore = await window.api.store.get('autoRestore');
         if (restore !== undefined) setAutoRestore(restore as boolean);
       } catch {}
@@ -30,40 +43,69 @@ export const GeneralSettings: React.FC = () => {
     loadSettings();
   }, []);
 
-  const saveScanPaths = async (paths: string[]) => {
+  const saveScanPaths = async (paths: string[], modes: Record<string, 'git' | 'all'>) => {
     setScanPaths(paths);
+    setScanPathModes(modes);
     if (window.api?.store) {
       await window.api.store.set('scanPaths', paths);
+      await window.api.store.set('scanPathModes', modes);
+      await window.api.store.set('scanMode', 'git'); // default global fallback
     }
   };
 
-  const addPath = async () => {
-    if (window.api?.window) {
+  const addPath = async (mode: 'git' | 'all') => {
+    let pathToAdd = newPath.trim();
+    
+    if (!pathToAdd && window.api?.window) {
       // Use Electron dialog to pick a folder
       try {
         const result = await (window as any).api.dialog?.showOpenDialog?.({
           properties: ['openDirectory']
         });
         if (result && !result.canceled && result.filePaths?.[0]) {
-          const selected = result.filePaths[0];
-          if (!scanPaths.includes(selected)) {
-            await saveScanPaths([...scanPaths, selected]);
-          }
-          return;
+          pathToAdd = result.filePaths[0];
         }
       } catch {}
     }
     
-    // Fallback: use the text input
-    if (newPath.trim() && !scanPaths.includes(newPath.trim())) {
-      await saveScanPaths([...scanPaths, newPath.trim()]);
+    if (pathToAdd && !scanPaths.includes(pathToAdd)) {
+      const newPaths = [...scanPaths, pathToAdd];
+      const newModes = { ...scanPathModes, [pathToAdd]: mode };
+      await saveScanPaths(newPaths, newModes);
       setNewPath('');
+      scanProjects();
     }
   };
 
   const removePath = async (pathToRemove: string) => {
     const updated = scanPaths.filter(p => p !== pathToRemove);
-    await saveScanPaths(updated.length > 0 ? updated : DEFAULT_SCAN_PATHS);
+    const updatedModes = { ...scanPathModes };
+    delete updatedModes[pathToRemove];
+    await saveScanPaths(updated.length > 0 ? updated : DEFAULT_SCAN_PATHS, updatedModes);
+    scanProjects();
+  };
+
+  const addManual = async () => {
+    const pathToAdd = newManualPath.trim();
+    if (pathToAdd && !manualProjects.includes(pathToAdd)) {
+      const updated = [...manualProjects, pathToAdd];
+      setManualProjects(updated);
+      if (window.api?.store) {
+        await window.api.store.set('manualProjects', updated);
+      }
+      setNewManualPath('');
+      await addManualProject(pathToAdd);
+      scanProjects();
+    }
+  };
+
+  const removeManual = async (pathToRemove: string) => {
+    const updated = manualProjects.filter(p => p !== pathToRemove);
+    setManualProjects(updated);
+    if (window.api?.store) {
+      await window.api.store.set('manualProjects', updated);
+    }
+    scanProjects();
   };
 
   const handleShellChange = async (shell: string) => {
@@ -96,6 +138,9 @@ export const GeneralSettings: React.FC = () => {
             {scanPaths.map(path => (
               <div key={path} className="flex items-center gap-2 bg-zinc-900 border border-zinc-800 p-2 rounded-md">
                 <Input value={path} readOnly className="h-8 bg-transparent border-0 focus-visible:ring-0 text-zinc-300" />
+                <span className="text-xs px-2 py-1 bg-zinc-800 text-zinc-400 rounded">
+                  {scanPathModes[path] || 'git'}
+                </span>
                 <Button
                   variant="ghost"
                   size="icon"
@@ -113,22 +158,70 @@ export const GeneralSettings: React.FC = () => {
               placeholder="Enter path or click Add to browse..."
               value={newPath}
               onChange={(e) => setNewPath(e.target.value)}
-              onKeyDown={(e) => e.key === 'Enter' && addPath()}
-              className="h-9 bg-zinc-900 border-zinc-800 text-zinc-300"
+              className="h-9 bg-zinc-900 border-zinc-800 text-zinc-300 flex-1"
             />
             <Button
               variant="outline"
               className="border-dashed border-zinc-700 hover:border-zinc-500 shrink-0"
-              onClick={addPath}
+              onClick={() => addPath('git')}
             >
               <FolderPlus className="w-4 h-4 mr-2" />
-              Add
+              Git Projects
+            </Button>
+            <Button
+              variant="outline"
+              className="border-dashed border-zinc-700 hover:border-zinc-500 shrink-0"
+              onClick={() => addPath('all')}
+            >
+              <FolderPlus className="w-4 h-4 mr-2" />
+              All Subfolders
             </Button>
           </div>
 
           <Button variant="secondary" className="w-full" onClick={rescanProjects}>
             Re-scan Projects
           </Button>
+        </CardContent>
+      </Card>
+
+      <Card className="bg-zinc-950 border-zinc-800">
+        <CardHeader>
+          <CardTitle>Manual Projects</CardTitle>
+          <CardDescription>Manually added project folders.</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="space-y-2">
+            {manualProjects.map(path => (
+              <div key={path} className="flex items-center gap-2 bg-zinc-900 border border-zinc-800 p-2 rounded-md">
+                <Input value={path} readOnly className="h-8 bg-transparent border-0 focus-visible:ring-0 text-zinc-300" />
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-8 w-8 text-zinc-400 hover:text-red-500"
+                  onClick={() => removeManual(path)}
+                >
+                  <Trash2 className="w-4 h-4" />
+                </Button>
+              </div>
+            ))}
+          </div>
+          <div className="flex items-center gap-2">
+            <Input
+              placeholder="Enter precise project path..."
+              value={newManualPath}
+              onChange={(e) => setNewManualPath(e.target.value)}
+              onKeyDown={(e) => e.key === 'Enter' && addManual()}
+              className="h-9 bg-zinc-900 border-zinc-800 text-zinc-300 flex-1"
+            />
+            <Button
+              variant="outline"
+              className="border-dashed border-zinc-700 hover:border-zinc-500 shrink-0"
+              onClick={addManual}
+            >
+              <Plus className="w-4 h-4 mr-2" />
+              Add Project
+            </Button>
+          </div>
         </CardContent>
       </Card>
 

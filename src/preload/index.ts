@@ -59,7 +59,8 @@ const api = {
       ipcRenderer.invoke('github:initAndPush', localPath, repoName, isPrivate)
   },
   projects: {
-    scan: () => ipcRenderer.invoke('projects:scan'),
+    scan: (options?: { rootPaths?: string[], mode?: 'git' | 'all' }) => ipcRenderer.invoke('projects:scan', options),
+    addManual: (folderPath: string) => ipcRenderer.invoke('projects:addManual', folderPath),
     getAll: () => ipcRenderer.invoke('projects:getAll'),
     openInExplorer: (path: string) => ipcRenderer.invoke('projects:openInExplorer', path),
     openInVSCode: (path: string) => ipcRenderer.invoke('projects:openInVSCode', path),
