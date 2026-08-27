@@ -35,6 +35,7 @@ import { useAppStore } from '@renderer/stores/useAppStore'
 import { useGitStore } from '@renderer/stores/useGitStore'
 import { useTerminalStore } from '@renderer/stores/useTerminalStore'
 import type { ProjectInfo, SubProject } from '@renderer/types/project'
+import { cn } from '@renderer/lib/utils'
 import { toast } from 'sonner'
 
 interface ProjectCardProps {
