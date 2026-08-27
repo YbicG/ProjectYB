@@ -28,7 +28,7 @@ export const ModernHeader: React.FC = () => {
   const { metrics } = useSystemStore();
   const { runningServices } = useServiceStore();
   const { ports } = usePortStore();
-  const { setSearchModalOpen } = useSearchStore();
+  const { setModalOpen: setSearchModalOpen } = useSearchStore();
   const { setShortcutsModalOpen } = useThemeStore();
 
   const selectedProject = projects.find((p) => p.id === selectedProjectId);
