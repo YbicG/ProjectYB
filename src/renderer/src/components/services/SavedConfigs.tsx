@@ -27,10 +27,21 @@ export const SavedConfigs: React.FC<SavedConfigsProps> = ({ projectId }) => {
   const displayed = projectId ? configs.filter(c => c.projectId === projectId) : configs
 
   const handleLaunch = async (config: RunConfig) => {
+    const cmds = config.commands?.length
+      ? config.commands.map(c => c.command).filter(Boolean)
+      : config.command
+        ? [config.command]
+        : []
+
+    if (!cmds.length) return
+
+    // Join all commands into one sequential run in a single terminal
+    const combined = cmds.join(' ; ')
+
     await startService(config.projectId, config.projectName, {
       id: config.id,
       name: config.name,
-      command: config.command,
+      command: combined,
       cwd: config.cwd,
       autoRestart: config.autoRestart,
     })

@@ -1,13 +1,22 @@
 import { create } from 'zustand'
 import { generateId } from '../lib/utils'
 
+export interface CommandEntry {
+  id: string
+  name: string
+  command: string
+}
+
 export interface RunConfig {
   id: string
   projectId: string
   projectName: string
   projectPath: string
   name: string
-  command: string
+  /** Legacy single-command field (kept for backwards compat) */
+  command?: string
+  /** Multi-command list — each entry spawns its own terminal tab */
+  commands: CommandEntry[]
   cwd?: string
   env?: Record<string, string>
   autoRestart?: boolean
