@@ -36,7 +36,7 @@ export const ProjectCard: React.FC<ProjectCardProps> = ({ project }) => {
           </div>
         </div>
         <div className="flex flex-wrap gap-1 mt-2">
-          {project.tags.map(tag => (
+          {(project.tags || []).map(tag => (
             <Badge key={tag} variant="secondary" className="text-[10px] px-1.5 py-0">
               {tag}
             </Badge>

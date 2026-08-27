@@ -4,10 +4,14 @@ import * as chokidar from 'chokidar';
 import { logger } from '../utils/logger';
 
 export interface ProjectInfo {
+  id: string;
   name: string;
   path: string;
   type: 'node' | 'python' | 'rust' | 'go' | 'unknown';
   category: string;
+  status: 'running' | 'stopped' | 'error';
+  tags: string[];
+  runningServices: string[];
   scripts?: any;
   dependencies?: any;
   branch?: string;
@@ -53,7 +57,18 @@ class ProjectScanner {
             }
           }
 
-          projects.push({ name, path: currentPath, type, category, scripts, dependencies });
+          projects.push({
+            name,
+            path: currentPath,
+            type,
+            category,
+            scripts,
+            dependencies,
+            id: currentPath,
+            status: 'stopped' as const,
+            tags: [],
+            runningServices: []
+          });
         }
 
         for (const entry of entries) {
