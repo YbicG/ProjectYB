@@ -45,36 +45,32 @@ export const TerminalView: React.FC<TerminalViewProps> = ({ terminalId, cwd }) =
       try {
         if (container.clientWidth > 0 && container.clientHeight > 0) {
           fitAddon.fit();
+          // Sync the pty size with xterm's computed size
+          if (window.api?.terminal) {
+            window.api.terminal.resize(terminalId, term.cols, term.rows);
+          }
         }
       } catch {}
       readyRef.current = true;
     });
 
-    const initTerminal = async () => {
-      if (!window.api?.terminal) return;
-      
-      try {
-        await window.api.terminal.spawn({
-          id: terminalId,
-          cwd,
-          cols: term.cols || 80,
-          rows: term.rows || 24
-        });
-        
-        term.onData((data) => {
-          window.api.terminal.write(terminalId, data);
-        });
+    // DO NOT spawn here — the store's createTerminal already spawned the pty.
+    // Just wire up the data bridges:
 
-        window.api.terminal.onData(terminalId, (data: string) => {
-          term.write(data);
-        });
-      } catch (err) {
-        console.error('Failed to init terminal:', err);
-        term.write('\r\n\x1b[31mFailed to spawn terminal process\x1b[0m\r\n');
+    // xterm → pty: send keystrokes to the backend
+    term.onData((data) => {
+      if (window.api?.terminal) {
+        window.api.terminal.write(terminalId, data);
       }
-    };
+    });
 
-    initTerminal();
+    // pty → xterm: display output from the backend
+    let cleanupOnData: (() => void) | undefined;
+    if (window.api?.terminal) {
+      cleanupOnData = window.api.terminal.onData(terminalId, (data: string) => {
+        term.write(data);
+      });
+    }
 
     const handleResize = () => {
       if (!readyRef.current) return;
@@ -92,9 +88,7 @@ export const TerminalView: React.FC<TerminalViewProps> = ({ terminalId, cwd }) =
     return () => {
       readyRef.current = false;
       resizeObserver.disconnect();
-      if (window.api?.terminal) {
-        window.api.terminal.kill(terminalId);
-      }
+      if (cleanupOnData) cleanupOnData();
       term.dispose();
     };
   }, [terminalId, cwd]);
