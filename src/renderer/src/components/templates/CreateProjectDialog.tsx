@@ -95,8 +95,8 @@ export const CreateProjectDialog: React.FC<CreateProjectDialogProps> = ({ open, 
 
   // Listen for IPC logs
   useEffect(() => {
-    if (window.api && (window.api as any).on) {
-      const unsub = (window.api as any).on('templates:log', (line: string) => {
+    if (window.api?.templates?.onLog) {
+      const unsub = window.api.templates.onLog((line: string) => {
         appendLog(line)
       })
       return () => unsub?.()

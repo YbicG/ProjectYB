@@ -1,3 +1,4 @@
+import React, { useState, useRef } from 'react';
 import { TerminalSquare, RefreshCw, Code, FolderPlus, X, Check, Loader2, Sparkles } from 'lucide-react';
 import { Button } from '../ui/button';
 import { Input } from '../ui/input';

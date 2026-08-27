@@ -90,7 +90,14 @@ const api = {
     getAll: () => ipcRenderer.invoke('projects:getAll'),
     openInExplorer: (path: string) => ipcRenderer.invoke('projects:openInExplorer', path),
     openInVSCode: (path: string) => ipcRenderer.invoke('projects:openInVSCode', path),
-    openTerminal: (path: string) => ipcRenderer.invoke('projects:openTerminal', path)
+    openTerminal: (path: string) => ipcRenderer.invoke('projects:openTerminal', path),
+    onTriggerScan: (callback: () => void) => {
+      const handler = () => callback()
+      ipcRenderer.on('projects:triggerScan', handler)
+      return () => {
+        ipcRenderer.removeListener('projects:triggerScan', handler)
+      }
+    }
   },
   system: {
     getMetrics: () => ipcRenderer.invoke('system:getMetrics'),

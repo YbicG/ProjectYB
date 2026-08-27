@@ -169,11 +169,15 @@ class EnvService {
             });
           } else if (
             e.isDirectory() &&
-            !['node_modules', '.git', 'dist', 'build', '.next', '.venv', 'vendor'].includes(e.name) &&
-            ['src', 'client', 'server', 'apps', 'packages', 'services', 'api', 'web', 'frontend', 'backend'].includes(e.name.toLowerCase())
+            !['node_modules', '.git', 'dist', 'build', '.next', '.venv', 'vendor', '.turbo'].includes(e.name)
           ) {
-            // Check submodules 1-level deep
-            await scanDir(path.join(dirPath, e.name), relBase ? `${relBase}/${e.name}` : e.name);
+            const isContainer = ['apps', 'packages', 'services', 'modules'].includes(e.name.toLowerCase());
+            const isKnownSub = ['src', 'client', 'server', 'api', 'web', 'frontend', 'backend', 'docs'].includes(e.name.toLowerCase());
+            const isInsideContainer = ['apps', 'packages', 'services', 'modules'].some(c => relBase.toLowerCase().split(/[\\/]/).includes(c));
+
+            if (isContainer || isKnownSub || isInsideContainer) {
+              await scanDir(path.join(dirPath, e.name), relBase ? `${relBase}/${e.name}` : e.name);
+            }
           }
         }
       } catch (err) {
@@ -308,9 +312,18 @@ class EnvService {
     const sourceMap = new Map(sourceEntries.map((e) => [e.key, e]));
 
     let addedCount = 0;
+    const isTargetExample = targetFilePath.toLowerCase().includes('.example') || targetFilePath.toLowerCase().includes('-example');
+
     for (const k of keys) {
       if (!targetKeySet.has(k) && sourceMap.has(k)) {
-        targetEntries.push(sourceMap.get(k)!);
+        const sourceEntry = sourceMap.get(k)!;
+        const entry: EnvEntry = { ...sourceEntry };
+        
+        if (isTargetExample && entry.isSecret) {
+          entry.value = `your_${entry.key.toLowerCase()}_here`;
+        }
+
+        targetEntries.push(entry);
         addedCount++;
       }
     }

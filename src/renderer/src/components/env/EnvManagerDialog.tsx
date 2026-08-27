@@ -107,19 +107,28 @@ export const EnvManagerDialog: React.FC<EnvManagerDialogProps> = ({
     toast.success(`Added ${cleanKey}`)
   }
 
+  const targetPath = activeFilePath || `${projectPath}/.env`
+
   const handleSave = async () => {
-    if (!activeFilePath) return
     if (activeTab === 'raw') {
-      await saveEnvFile(activeFilePath, [], rawContent)
+      await saveEnvFile(targetPath, [], rawContent)
     } else {
-      await saveEnvFile(activeFilePath, activeEntries)
+      await saveEnvFile(targetPath, activeEntries)
     }
+    await loadEnvFiles(projectPath)
   }
 
   const handleGenerateExample = async () => {
     if (!activeFilePath) return
     await generateExample(activeFilePath)
     await loadEnvFiles(projectPath)
+  }
+
+  const handleCreateNewFile = async (fileName: string) => {
+    const newPath = `${projectPath}/${fileName}`
+    await saveEnvFile(newPath, [], '# Environment Variables\n')
+    await loadEnvFiles(projectPath)
+    await loadEnvFile(newPath)
   }
 
   const filteredEntries = activeEntries.map((entry, index) => ({ entry, index })).filter(({ entry }) => {
@@ -187,7 +196,7 @@ export const EnvManagerDialog: React.FC<EnvManagerDialogProps> = ({
                   className="bg-zinc-900 border border-zinc-800 rounded px-3 py-1.5 text-xs text-zinc-200 font-mono outline-none focus:ring-1 focus:ring-violet-500"
                 >
                   {envFiles.length === 0 ? (
-                    <option value="">No .env files found</option>
+                    <option value={`${projectPath}/.env`}>.env (new file)</option>
                   ) : (
                     envFiles.map((f) => (
                       <option key={f.path} value={f.path}>

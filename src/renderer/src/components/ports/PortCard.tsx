@@ -27,7 +27,11 @@ export const PortCard: React.FC<PortCardProps> = ({ portInfo }) => {
   const [copied, setCopied] = useState(false)
   const [isKilling, setIsKilling] = useState(false)
 
-  const isDevPort = COMMON_DEV_PORTS.has(portInfo.port)
+  const isDevPort =
+    COMMON_DEV_PORTS.has(portInfo.port) ||
+    ['node.exe', 'node', 'python.exe', 'python', 'go.exe', 'cargo.exe', 'mysqld.exe', 'postgres.exe', 'redis-server.exe', 'deno.exe', 'bun.exe', 'java.exe', 'php.exe'].includes(
+      (portInfo.processName || '').toLowerCase()
+    )
   const isSystemProcess = portInfo.pid <= 4 || portInfo.processName === 'System' || portInfo.processName === 'Idle'
 
   const handleOpenBrowser = () => {

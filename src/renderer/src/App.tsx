@@ -25,8 +25,19 @@ export const App: React.FC = () => {
     // Initial load
     scanProjects();
     startMonitoring();
+
+    // Listen for tray re-scan requests
+    let unsubScan: (() => void) | undefined;
+    if (window.api?.projects?.onTriggerScan) {
+      unsubScan = window.api.projects.onTriggerScan(() => {
+        scanProjects();
+      });
+    }
     
-    return () => stopMonitoring();
+    return () => {
+      stopMonitoring();
+      unsubScan?.();
+    };
   }, []);
 
   const renderPage = () => {

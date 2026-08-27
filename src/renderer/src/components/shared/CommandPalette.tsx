@@ -1,3 +1,4 @@
+import React, { useEffect, useState } from 'react';
 import { TerminalSquare, Server, GitBranch, Settings, LayoutDashboard, Search, Play, FolderOpen, Code, Sparkles, Radio } from 'lucide-react';
 import { CommandDialog, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '../ui/command';
 import { useAppStore } from '@renderer/stores/useAppStore';

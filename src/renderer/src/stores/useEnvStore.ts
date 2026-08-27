@@ -49,15 +49,18 @@ export const useEnvStore = create<EnvState>((set, get) => ({
   isComparing: false,
 
   loadEnvFiles: async (projectPath: string) => {
-    set({ isLoading: true })
+    set({ isLoading: true, envFiles: [] })
     try {
       if (!window.api?.env) return
       const files = await window.api.env.listFiles(projectPath)
       set({ envFiles: files, isLoading: false })
-      if (files.length > 0 && !get().activeFilePath) {
+      if (files.length > 0) {
         // Auto-select .env if exists, otherwise first file
         const defaultFile = files.find((f) => f.name === '.env') || files[0]
         await get().loadEnvFile(defaultFile.path)
+      } else {
+        const defaultPath = `${projectPath}/.env`
+        set({ activeFilePath: defaultPath, activeEntries: [], rawContent: '', revealedKeys: [] })
       }
     } catch (err: any) {
       console.error('Failed to load env files:', err)

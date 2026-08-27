@@ -30,16 +30,25 @@ export const EnvCompareDialog: React.FC<EnvCompareDialogProps> = ({ open, onOpen
     syncMissingKeys
   } = useEnvStore()
 
-  const [targetFile, setTargetFile] = useState<string>(() => {
-    // Default target to .env.example or second file
-    const example = envFiles.find((f) => f.isExample)
-    if (example && example.path !== activeFilePath) return example.path
-    const other = envFiles.find((f) => f.path !== activeFilePath)
-    return other ? other.path : ''
-  })
-
+  const [targetFile, setTargetFile] = useState<string>('')
   const [selectedKeysToSync, setSelectedKeysToSync] = useState<string[]>([])
   const [showValues, setShowValues] = useState(false)
+
+  React.useEffect(() => {
+    if (open && activeFilePath && envFiles.length > 0) {
+      const example = envFiles.find((f) => f.isExample && f.path !== activeFilePath)
+      if (example) {
+        setTargetFile(example.path)
+        compareEnvs(activeFilePath, example.path)
+      } else {
+        const other = envFiles.find((f) => f.path !== activeFilePath)
+        if (other) {
+          setTargetFile(other.path)
+          compareEnvs(activeFilePath, other.path)
+        }
+      }
+    }
+  }, [open, activeFilePath, envFiles])
 
   const handleStartCompare = () => {
     if (activeFilePath && targetFile) {

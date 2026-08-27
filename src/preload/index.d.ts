@@ -73,6 +73,7 @@ export interface IElectronAPI {
     openInExplorer(path: string): Promise<void>
     openInVSCode(path: string): Promise<void>
     openTerminal(path: string): Promise<void>
+    onTriggerScan(callback: () => void): () => void
   }
   system: {
     getMetrics(): Promise<SystemMetrics>

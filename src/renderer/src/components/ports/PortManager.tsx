@@ -42,12 +42,18 @@ export const PortManager: React.FC = () => {
     findSuggestedPort(start)
   }
 
-  const devPortsCount = ports.filter((p) => COMMON_DEV_PORTS.has(p.port)).length
+  const isDevPort = (p: any) => {
+    if (COMMON_DEV_PORTS.has(p.port)) return true
+    const name = (p.processName || '').toLowerCase()
+    return ['node.exe', 'node', 'python.exe', 'python', 'go.exe', 'cargo.exe', 'mysqld.exe', 'postgres.exe', 'redis-server.exe', 'deno.exe', 'bun.exe', 'java.exe', 'php.exe'].includes(name)
+  }
+
+  const devPortsCount = ports.filter(isDevPort).length
 
   const filteredPorts = ports.filter((p) => {
     // Filter mode
-    if (filter === 'dev' && !COMMON_DEV_PORTS.has(p.port)) return false
-    if (filter === 'system' && (COMMON_DEV_PORTS.has(p.port) || (p.pid > 4 && p.processName !== 'System'))) return false
+    if (filter === 'dev' && !isDevPort(p)) return false
+    if (filter === 'system' && isDevPort(p)) return false
 
     // Search query
     if (!search.trim()) return true
