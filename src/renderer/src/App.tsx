@@ -20,6 +20,7 @@ import { ShortcutsCheatSheetModal } from './components/shared/ShortcutsCheatShee
 import { GlobalScratchpadModal } from './components/notes/GlobalScratchpadModal';
 import { GlobalSearchModal } from './components/search/GlobalSearchModal';
 import { SnippetVaultModal } from './components/snippets/SnippetVaultModal';
+import { ErrorBoundary } from './components/shared/ErrorBoundary';
 import { useAppStore } from '@renderer/stores/useAppStore';
 import { useProjectStore } from '@renderer/stores/useProjectStore';
 import { useSystemStore } from '@renderer/stores/useSystemStore';
@@ -128,9 +129,17 @@ export const App: React.FC = () => {
   return (
     <>
       {uiMode === 'modern' ? (
-        <ModernAppLayout>{renderModernPage()}</ModernAppLayout>
+        <ModernAppLayout>
+          <ErrorBoundary fallbackTitle="Modern Workspace Error">
+            {renderModernPage()}
+          </ErrorBoundary>
+        </ModernAppLayout>
       ) : (
-        <AppLayout>{renderClassicPage()}</AppLayout>
+        <AppLayout>
+          <ErrorBoundary fallbackTitle="Classic Workspace Error">
+            {renderClassicPage()}
+          </ErrorBoundary>
+        </AppLayout>
       )}
 
       <CommandPalette />
