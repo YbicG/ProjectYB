@@ -259,59 +259,6 @@ export const ModernProjectWorkbench: React.FC = () => {
         </div>
       </div>
 
-      {/* ── Subprojects & Monorepo Shelf (PROMINENT FULL WIDTH) ── */}
-      {project.subprojects && project.subprojects.length > 0 && (
-        <div className="px-4 py-2.5 bg-zinc-900/50 border-b border-zinc-800 flex items-center gap-2.5 overflow-x-auto shrink-0 select-none">
-          <div className="flex items-center gap-1.5 text-xs font-semibold text-zinc-300 shrink-0 mr-1">
-            <Layers className="w-4 h-4 text-violet-400" />
-            <span>Monorepo Subprojects</span>
-            <Badge
-              variant="outline"
-              className="text-[10px] px-1.5 py-0 border-violet-500/40 text-violet-300 font-mono"
-            >
-              {project.subprojects.length}
-            </Badge>
-          </div>
-
-          <div className="flex items-center gap-2 min-w-0">
-            {project.subprojects.map((sub) => (
-              <div
-                key={sub.name}
-                className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-zinc-900/90 border border-zinc-800 hover:border-violet-500/40 hover:bg-zinc-850 transition-all text-xs shrink-0 group shadow-sm"
-              >
-                <FolderOpen className="w-3.5 h-3.5 text-cyan-400 shrink-0" />
-                <div className="min-w-0">
-                  <span className="font-semibold text-zinc-100 font-mono truncate">{sub.name}</span>
-                  <span className="text-[10px] text-zinc-500 font-mono ml-1.5">({sub.relativePath})</span>
-                </div>
-                <div className="flex items-center gap-1 ml-2 pl-2 border-l border-zinc-800">
-                  <button
-                    onClick={() => handleOpenTerminal(sub)}
-                    className="p-1 rounded text-zinc-400 hover:text-cyan-300 hover:bg-zinc-800 transition-colors"
-                    title="Open Subproject Terminal"
-                  >
-                    <Terminal className="w-3.5 h-3.5" />
-                  </button>
-                  <button
-                    onClick={() => window.api?.projects?.openInVSCode?.(sub.path)}
-                    className="p-1 rounded text-zinc-400 hover:text-violet-300 hover:bg-zinc-800 transition-colors"
-                    title="Open in VS Code"
-                  >
-                    <Code className="w-3.5 h-3.5" />
-                  </button>
-                  <button
-                    onClick={() => window.api?.projects?.openInExplorer?.(sub.path)}
-                    className="p-1 rounded text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800 transition-colors"
-                    title="Open Folder"
-                  >
-                    <FolderOpen className="w-3.5 h-3.5" />
-                  </button>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
 
       {/* ── 3-Pane Workbench Body ── */}
       <div className="flex-1 grid grid-cols-1 lg:grid-cols-12 min-h-0 overflow-hidden">
@@ -514,8 +461,51 @@ export const ModernProjectWorkbench: React.FC = () => {
           </div>
         </div>
 
-        {/* ── Center Pane: In-App Notes & Checklist (5 cols) ── */}
-        <div className="lg:col-span-5 border-r border-zinc-800/80 bg-zinc-950 p-3 flex flex-col min-h-0 overflow-hidden">
+        {/* ── Center Pane: Subprojects + Notes/Scratchpad (5 cols) ── */}
+        <div className="lg:col-span-5 border-r border-zinc-800/80 bg-zinc-950 p-3 flex flex-col min-h-0 overflow-hidden gap-3">
+          {/* Subprojects (above scratchpad) */}
+          {project.subprojects && project.subprojects.length > 0 && (
+            <div className="shrink-0 space-y-2">
+              <div className="flex items-center gap-1.5">
+                <Layers className="w-3 h-3 text-violet-400" />
+                <span className="text-[10px] uppercase font-semibold text-zinc-400 tracking-wider">
+                  Monorepo Subprojects ({project.subprojects.length})
+                </span>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
+                {project.subprojects.map((sub) => (
+                  <div
+                    key={sub.name}
+                    className="flex items-center gap-2 px-2.5 py-1.5 rounded-lg bg-zinc-900/80 border border-zinc-800 hover:border-zinc-700 transition-colors text-xs group"
+                  >
+                    <FolderOpen className="w-3.5 h-3.5 text-cyan-400 shrink-0" />
+                    <div className="min-w-0 flex-1">
+                      <span className="font-semibold text-zinc-200 font-mono truncate block">{sub.name}</span>
+                      <span className="text-[10px] text-zinc-500 font-mono truncate block">{sub.relativePath}</span>
+                    </div>
+                    <div className="flex items-center gap-0.5 shrink-0 opacity-60 group-hover:opacity-100 transition-opacity">
+                      <button
+                        onClick={() => handleOpenTerminal(sub)}
+                        className="p-1 rounded text-zinc-400 hover:text-cyan-300 hover:bg-zinc-800 transition-colors"
+                        title="Open Terminal"
+                      >
+                        <Terminal className="w-3 h-3" />
+                      </button>
+                      <button
+                        onClick={() => window.api?.projects?.openInVSCode?.(sub.path)}
+                        className="p-1 rounded text-zinc-400 hover:text-violet-300 hover:bg-zinc-800 transition-colors"
+                        title="Open in VS Code"
+                      >
+                        <Code className="w-3 h-3" />
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Notes / Scratchpad */}
           <div className="flex-1 overflow-hidden">
             <MarkdownNotesEditor projectPath={project.path} projectName={project.name} />
           </div>
