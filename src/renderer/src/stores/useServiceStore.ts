@@ -17,6 +17,7 @@ interface ServiceState {
   stopService: (id: string) => void
   restartService: (id: string) => Promise<void>
   updateServiceStats: (id: string, stats: ProcessStats) => void
+  updateAllServiceStats: (statsMap: Record<string, { cpu: number; memory: number }>) => void
   addProfile: (profile: StartupProfile) => void
   removeProfile: (id: string) => void
   startProfile: (profileId: string) => Promise<void>
@@ -48,6 +49,8 @@ export const useServiceStore = create<ServiceState>((set, get) => ({
       command: config.command
     })
     
+    const term = useTerminalStore.getState().terminals.find(t => t.id === terminalId)
+    
     const service: RunningService = {
       id,
       name: config.name,
@@ -55,6 +58,7 @@ export const useServiceStore = create<ServiceState>((set, get) => ({
       projectId,
       projectName,
       terminalId,
+      pid: term?.pid,
       status: 'running',
       startedAt: Date.now(),
       autoRestart: config.autoRestart ?? false
@@ -110,6 +114,28 @@ export const useServiceStore = create<ServiceState>((set, get) => ({
       cpuUsage: stats.cpu,
       memoryUsage: stats.memory
     } : s);
+    return {
+      services: updatedServices,
+      runningServices: updatedServices
+    };
+  }),
+
+  updateAllServiceStats: (statsMap) => set((state) => {
+    let hasChanged = false;
+    const updatedServices = state.services.map(s => {
+      const stat = statsMap[s.terminalId] || (s.pid ? statsMap[s.pid] : undefined);
+      if (!stat) return s;
+      if (s.cpuUsage !== stat.cpu || s.memoryUsage !== stat.memory) {
+        hasChanged = true;
+        return {
+          ...s,
+          cpuUsage: stat.cpu,
+          memoryUsage: stat.memory
+        };
+      }
+      return s;
+    });
+    if (!hasChanged) return state;
     return {
       services: updatedServices,
       runningServices: updatedServices

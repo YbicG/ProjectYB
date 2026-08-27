@@ -84,8 +84,8 @@ export const ServiceCard: React.FC<ServiceCardProps> = ({ service }) => {
 
           <div className="flex items-center justify-between text-[11px] text-zinc-500 font-mono">
             <span title="Process Uptime">Up: {uptime}</span>
-            {service.cpuUsage !== undefined && <span>CPU: {service.cpuUsage}%</span>}
-            {service.memoryUsage !== undefined && <span>RAM: {service.memoryUsage}MB</span>}
+            <span>CPU: {service.cpuUsage ?? 0}%</span>
+            <span>RAM: {service.memoryUsage ?? 0}MB</span>
           </div>
 
           <div className="flex gap-2 mt-1 pt-1 border-t border-zinc-800/60">

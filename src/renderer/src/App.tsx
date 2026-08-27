@@ -11,6 +11,7 @@ import { CreateProjectDialog } from './components/templates/CreateProjectDialog'
 import { useAppStore } from '@renderer/stores/useAppStore';
 import { useProjectStore } from '@renderer/stores/useProjectStore';
 import { useSystemStore } from '@renderer/stores/useSystemStore';
+import { useServiceStore } from '@renderer/stores/useServiceStore';
 import { useTemplateStore } from '@renderer/stores/useTemplateStore';
 import { useKeyboard } from './hooks/useKeyboard';
 
@@ -33,10 +34,19 @@ export const App: React.FC = () => {
         scanProjects();
       });
     }
+
+    // Listen for service live process CPU & RAM stats
+    let unsubStats: (() => void) | undefined;
+    if (window.api?.system?.onServiceStats) {
+      unsubStats = window.api.system.onServiceStats((statsMap) => {
+        useServiceStore.getState().updateAllServiceStats(statsMap);
+      });
+    }
     
     return () => {
       stopMonitoring();
       unsubScan?.();
+      unsubStats?.();
     };
   }, []);
 

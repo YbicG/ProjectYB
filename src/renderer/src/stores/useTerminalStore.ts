@@ -58,7 +58,7 @@ export const useTerminalStore = create<TerminalState>((set, get) => ({
     }))
 
     try {
-      await window.api.terminal.spawn({
+      const pid = await window.api.terminal.spawn({
         id,
         cwd,
         cols: 120,
@@ -73,7 +73,7 @@ export const useTerminalStore = create<TerminalState>((set, get) => ({
       }
       
       set((state) => ({
-        terminals: state.terminals.map(t => t.id === id ? { ...t, status: 'running' } : t)
+        terminals: state.terminals.map(t => t.id === id ? { ...t, status: 'running', pid } : t)
       }))
     } catch (error) {
       console.error('Failed to create terminal:', error)

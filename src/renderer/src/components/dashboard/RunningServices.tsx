@@ -47,8 +47,8 @@ export const RunningServices: React.FC = () => {
                 </div>
                 
                 <div className="flex items-center gap-3 text-[10px] font-mono text-zinc-400 mb-2">
-                  <span>CPU: {service.cpu || '0'}%</span>
-                  <span>RAM: {service.ram || '0'}MB</span>
+                  <span>CPU: {service.cpuUsage ?? 0}%</span>
+                  <span>RAM: {service.memoryUsage ?? 0}MB</span>
                 </div>
                 
                 <div className="flex gap-1 absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity bg-zinc-900 p-0.5 rounded shadow-sm">

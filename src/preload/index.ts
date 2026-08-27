@@ -109,6 +109,13 @@ const api = {
       return () => {
         ipcRenderer.removeListener('system:metrics', handler)
       }
+    },
+    onServiceStats: (callback: (stats: Record<string, { cpu: number; memory: number }>) => void) => {
+      const handler = (_event: any, stats: any) => callback(stats)
+      ipcRenderer.on('system:service-stats', handler)
+      return () => {
+        ipcRenderer.removeListener('system:service-stats', handler)
+      }
     }
   },
   store: {

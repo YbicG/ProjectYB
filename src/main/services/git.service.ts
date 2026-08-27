@@ -1,13 +1,40 @@
 import simpleGit, { SimpleGit } from 'simple-git';
+import * as fs from 'fs';
+import * as path from 'path';
 
 class GitService {
-  private git(path: string): SimpleGit {
-    return simpleGit(path, { maxConcurrentProcesses: 4 }).env('GIT_TERMINAL_PROMPT', '0');
+  private git(repoPath: string): SimpleGit {
+    return simpleGit(repoPath, { maxConcurrentProcesses: 4 }).env('GIT_TERMINAL_PROMPT', '0');
   }
 
-  async getStatus(path: string) {
+  async isGitRepo(targetPath: string): Promise<boolean> {
+    if (!targetPath) return false;
     try {
-      const status = await this.git(path).status();
+      // 1. Direct .git folder or file check in target directory
+      const gitDir = path.join(targetPath, '.git');
+      if (fs.existsSync(gitDir)) {
+        return true;
+      }
+
+      // 2. Check if git rev-parse --show-toplevel points exactly to targetPath
+      const topLevel = await this.git(targetPath).revparse(['--show-toplevel']);
+      if (topLevel) {
+        const normTop = path.resolve(topLevel).toLowerCase().replace(/\\/g, '/');
+        const normTarget = path.resolve(targetPath).toLowerCase().replace(/\\/g, '/');
+        return normTop === normTarget;
+      }
+      return false;
+    } catch {
+      return false;
+    }
+  }
+
+  async getStatus(targetPath: string) {
+    if (!(await this.isGitRepo(targetPath))) {
+      return null;
+    }
+    try {
+      const status = await this.git(targetPath).status();
       const staged: Array<{ path: string; status: 'modified' | 'added' | 'deleted' | 'renamed' }> = [];
       const unstaged: Array<{ path: string; status: 'modified' | 'added' | 'deleted' }> = [];
 
@@ -100,11 +127,18 @@ class GitService {
   }
 
   async getBranches(path: string) {
-    const branches = await this.git(path).branchLocal();
-    return {
-      current: branches.current,
-      all: branches.all
-    };
+    if (!(await this.isGitRepo(path))) {
+      return { current: '', all: [] };
+    }
+    try {
+      const branches = await this.git(path).branchLocal();
+      return {
+        current: branches.current,
+        all: branches.all
+      };
+    } catch {
+      return { current: '', all: [] };
+    }
   }
 
   async checkoutBranch(path: string, name: string, createNew: boolean = false) {
@@ -146,6 +180,9 @@ class GitService {
   }
 
   async getDiff(path: string, staged: boolean = false) {
+    if (!(await this.isGitRepo(path))) {
+      return '';
+    }
     try {
       if (staged) return await this.git(path).diff(['--cached']);
       return await this.git(path).diff();
@@ -155,6 +192,9 @@ class GitService {
   }
 
   async getFileDiff(path: string, filePath: string, staged: boolean = false) {
+    if (!(await this.isGitRepo(path))) {
+      return '';
+    }
     const git = this.git(path);
     try {
       if (staged) {
@@ -181,6 +221,9 @@ class GitService {
   }
 
   async getCommitDiff(path: string, commitHash: string) {
+    if (!(await this.isGitRepo(path))) {
+      return '';
+    }
     try {
       const git = this.git(path);
       return await git.show([commitHash]);
@@ -190,6 +233,9 @@ class GitService {
   }
 
   async stash(path: string, action: 'push' | 'pop' | 'list' | 'apply' | 'drop', message?: string, index: number = 0) {
+    if (!(await this.isGitRepo(path))) {
+      return action === 'list' ? [] : undefined;
+    }
     const git = this.git(path);
     if (action === 'push') {
       const args = ['push'];
@@ -217,6 +263,9 @@ class GitService {
   }
 
   async log(path: string, limit: number = 50) {
+    if (!(await this.isGitRepo(path))) {
+      return [];
+    }
     try {
       const raw = await this.git(path).log({ maxCount: limit });
       return (raw.all || []).map((entry) => ({
@@ -232,14 +281,6 @@ class GitService {
     }
   }
 
-  async isGitRepo(path: string) {
-    try {
-      return await this.git(path).checkIsRepo();
-    } catch {
-      return false;
-    }
-  }
-
   async init(path: string) {
     return await this.git(path).init();
   }
@@ -249,6 +290,9 @@ class GitService {
   }
 
   async getRemotes(path: string) {
+    if (!(await this.isGitRepo(path))) {
+      return [];
+    }
     try {
       return await this.git(path).getRemotes(true);
     } catch {

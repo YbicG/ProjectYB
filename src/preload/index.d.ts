@@ -80,6 +80,7 @@ export interface IElectronAPI {
     getMetrics(): Promise<SystemMetrics>
     getProcessStats(pids: number[]): Promise<ProcessStats[]>
     onMetrics(callback: (metrics: SystemMetrics) => void): () => void
+    onServiceStats(callback: (stats: Record<string, { cpu: number; memory: number }>) => void): () => void
   }
   store: {
     get(key: string, defaultValue?: any): Promise<any>
