@@ -9,7 +9,7 @@ import { TerminalSquare } from 'lucide-react';
 import { Button } from '../components/ui/button';
 
 export const TerminalsPage: React.FC = () => {
-  const { terminals, layout, activeTerminalId, addTerminal } = useTerminalStore();
+  const { terminals, layout, activeTerminalId, createTerminal } = useTerminalStore();
 
   if (terminals.length === 0) {
     return (
@@ -17,7 +17,7 @@ export const TerminalsPage: React.FC = () => {
         <TerminalSquare className="w-16 h-16 mb-4 text-zinc-800" />
         <h2 className="text-lg font-medium text-zinc-300 mb-2">No Terminals Open</h2>
         <p className="text-sm text-zinc-500 mb-6">Create a new terminal to get started.</p>
-        <Button onClick={() => addTerminal({ name: 'Local', cwd: '.' })} className="bg-violet-600 hover:bg-violet-700">
+        <Button onClick={() => createTerminal({ name: 'Local', cwd: '.' })} className="bg-violet-600 hover:bg-violet-700">
           New Terminal
         </Button>
       </div>

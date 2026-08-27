@@ -10,6 +10,7 @@ interface ProcessStats {
 
 interface ServiceState {
   services: RunningService[]
+  runningServices: RunningService[]
   profiles: StartupProfile[]
   startService: (projectId: string, projectName: string, config: ServiceConfig) => Promise<string>
   stopService: (id: string) => void
@@ -25,6 +26,7 @@ interface ServiceState {
 
 export const useServiceStore = create<ServiceState>((set, get) => ({
   services: [],
+  runningServices: [],
   profiles: [],
   
   startService: async (projectId, projectName, config) => {
