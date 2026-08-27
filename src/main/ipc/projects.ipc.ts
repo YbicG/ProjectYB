@@ -15,9 +15,14 @@ export function setupProjectsIpc() {
     spawn(os.platform() === 'win32' ? 'code.cmd' : 'code', [path], { detached: true, stdio: 'ignore' }).unref();
   });
 
+  // Open an external terminal window at the given path
   ipcMain.handle('projects:openTerminal', (_, path: string) => {
     if (os.platform() === 'win32') {
-      spawn('cmd.exe', ['/c', 'start', 'powershell.exe'], { cwd: path, detached: true, stdio: 'ignore' }).unref();
+      // Start PowerShell already cd'd into the project directory
+      spawn('cmd.exe', ['/c', 'start', 'powershell.exe', '-NoExit', '-Command', `Set-Location '${path}'`], {
+        detached: true,
+        stdio: 'ignore'
+      }).unref();
     } else {
       spawn('bash', [], { cwd: path, detached: true, stdio: 'ignore' }).unref();
     }

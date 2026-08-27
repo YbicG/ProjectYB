@@ -1,9 +1,10 @@
 import React from 'react';
-import { TerminalSquare, GitBranch, Code, FolderOpen, Play, Clock } from 'lucide-react';
+import { TerminalSquare, GitBranch, Code, FolderOpen, Play, Clock, MonitorPlay, ExternalLink, ChevronDown } from 'lucide-react';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '../ui/card';
 import { Badge } from '../ui/badge';
 import { Button } from '../ui/button';
 import { StatusDot } from '../shared/StatusDot';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '../ui/dropdown-menu';
 import { useAppStore } from '@renderer/stores/useAppStore';
 import { useGitStore } from '@renderer/stores/useGitStore';
 import { useTerminalStore } from '@renderer/stores/useTerminalStore';
@@ -33,6 +34,12 @@ export const ProjectCard: React.FC<ProjectCardProps> = ({ project }) => {
   const handleOpenTerminal = async () => {
     await createTerminal({ name: project.name, cwd: project.path, projectId: project.id });
     setActiveTab('terminals');
+  };
+
+  const handleOpenExternalTerminal = () => {
+    if (window.api?.projects) {
+      window.api.projects.openTerminal(project.path);
+    }
   };
 
   const handleOpenVSCode = () => {
@@ -98,9 +105,36 @@ export const ProjectCard: React.FC<ProjectCardProps> = ({ project }) => {
       
       <CardFooter className="pt-0 flex items-center justify-between border-t border-zinc-800/50 mt-auto px-4 py-3 opacity-80 group-hover:opacity-100 transition-opacity">
         <div className="flex gap-1">
-          <Button variant="ghost" size="icon" className="h-8 w-8 hover:bg-zinc-800" title="Open Terminal" onClick={handleOpenTerminal}>
-            <TerminalSquare className="w-4 h-4" />
-          </Button>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" size="icon" className="h-8 w-8 hover:bg-zinc-800" title="Open Terminal">
+                <TerminalSquare className="w-4 h-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="start" className="w-48 bg-zinc-900 border-zinc-800">
+              <DropdownMenuItem
+                className="gap-2 cursor-pointer focus:bg-zinc-800"
+                onClick={handleOpenTerminal}
+              >
+                <MonitorPlay className="w-4 h-4 text-violet-400" />
+                <div>
+                  <div className="text-sm font-medium">In-App Terminal</div>
+                  <div className="text-[10px] text-zinc-500">Opens in terminal manager</div>
+                </div>
+              </DropdownMenuItem>
+              <DropdownMenuSeparator className="bg-zinc-800" />
+              <DropdownMenuItem
+                className="gap-2 cursor-pointer focus:bg-zinc-800"
+                onClick={handleOpenExternalTerminal}
+              >
+                <ExternalLink className="w-4 h-4 text-zinc-400" />
+                <div>
+                  <div className="text-sm font-medium">External Terminal</div>
+                  <div className="text-[10px] text-zinc-500">Opens PowerShell window</div>
+                </div>
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
           <Button variant="ghost" size="icon" className="h-8 w-8 hover:bg-zinc-800" title="Git Status" onClick={handleGitStatus}>
             <GitBranch className="w-4 h-4" />
           </Button>
