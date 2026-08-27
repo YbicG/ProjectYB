@@ -1,6 +1,9 @@
 import type { ProjectInfo } from '../renderer/src/types/project'
 import type { GitStatus, GitLogEntry, GitStashEntry, GitBranch } from '../renderer/src/types/git'
 import type { SystemMetrics, ProcessStats } from '../renderer/src/types/system'
+import type { EnvEntry, EnvFileInfo, EnvComparisonResult } from '../renderer/src/types/env'
+import type { PortInfo, PortKillResult } from '../renderer/src/types/port'
+import type { ProjectTemplate, ScaffoldOptions, ScaffoldResult } from '../renderer/src/types/template'
 
 export interface TerminalInfo {
   id: string
@@ -87,6 +90,26 @@ export interface IElectronAPI {
     close(): void
     isMaximized(): Promise<boolean>
     onMaximizedChange(callback: (maximized: boolean) => void): () => void
+  }
+  env: {
+    listFiles(projectPath: string): Promise<EnvFileInfo[]>
+    read(filePath: string): Promise<{ raw: string; entries: EnvEntry[] }>
+    write(filePath: string, entries: EnvEntry[], rawContent?: string): Promise<{ success: boolean }>
+    generateExample(sourceFilePath: string, targetFilePath?: string): Promise<{ targetPath: string; content: string }>
+    compare(fileAPath: string, fileBPath: string): Promise<EnvComparisonResult>
+    syncKeys(sourceFilePath: string, targetFilePath: string, keys: string[]): Promise<{ success: boolean; addedCount: number }>
+  }
+  ports: {
+    list(): Promise<PortInfo[]>
+    check(port: number): Promise<{ isFree: boolean; port: number }>
+    suggest(startPort?: number): Promise<number>
+    kill(pid: number): Promise<PortKillResult>
+  }
+  templates: {
+    list(): Promise<ProjectTemplate[]>
+    scaffold(options: ScaffoldOptions): Promise<ScaffoldResult>
+    saveCustom(template: ProjectTemplate): Promise<void>
+    onLog(callback: (line: string) => void): () => void
   }
 }
 

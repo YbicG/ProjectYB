@@ -1,10 +1,10 @@
-import React, { useEffect, useState } from 'react';
-import { TerminalSquare, Server, GitBranch, Settings, LayoutDashboard, Search, Play, FolderOpen, Code } from 'lucide-react';
+import { TerminalSquare, Server, GitBranch, Settings, LayoutDashboard, Search, Play, FolderOpen, Code, Sparkles, Radio } from 'lucide-react';
 import { CommandDialog, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '../ui/command';
 import { useAppStore } from '@renderer/stores/useAppStore';
 import { useProjectStore } from '@renderer/stores/useProjectStore';
 import { useTerminalStore } from '@renderer/stores/useTerminalStore';
 import { useServiceStore } from '@renderer/stores/useServiceStore';
+import { useTemplateStore } from '@renderer/stores/useTemplateStore';
 import { toast } from 'sonner';
 
 export const CommandPalette: React.FC = () => {
@@ -13,6 +13,7 @@ export const CommandPalette: React.FC = () => {
   const { projects, selectProject } = useProjectStore();
   const { createTerminal } = useTerminalStore();
   const { profiles, startProfile } = useServiceStore();
+  const { setDialogOpen: setTemplateDialogOpen } = useTemplateStore();
 
   useEffect(() => {
     const down = (e: KeyboardEvent) => {
@@ -55,6 +56,18 @@ export const CommandPalette: React.FC = () => {
     });
   };
 
+  const handleCreateFromTemplate = () => {
+    runCommand(() => {
+      setTemplateDialogOpen(true);
+    });
+  };
+
+  const handleManagePorts = () => {
+    runCommand(() => {
+      setActiveTab('services');
+    });
+  };
+
   return (
     <CommandDialog open={open} onOpenChange={setOpen}>
       <CommandInput placeholder="Type a command or search projects..." />
@@ -72,7 +85,7 @@ export const CommandPalette: React.FC = () => {
           </CommandItem>
           <CommandItem onSelect={() => runCommand(() => setActiveTab('services'))}>
             <Server className="mr-2 h-4 w-4" />
-            Services
+            Services & Ports
           </CommandItem>
           <CommandItem onSelect={() => runCommand(() => setActiveTab('git'))}>
             <GitBranch className="mr-2 h-4 w-4" />
@@ -94,6 +107,14 @@ export const CommandPalette: React.FC = () => {
         </CommandGroup>
 
         <CommandGroup heading="Actions">
+          <CommandItem onSelect={handleCreateFromTemplate}>
+            <Sparkles className="mr-2 h-4 w-4 text-violet-400" />
+            Create Project from Template...
+          </CommandItem>
+          <CommandItem onSelect={handleManagePorts}>
+            <Radio className="mr-2 h-4 w-4 text-cyan-400" />
+            Manage Active Network Ports
+          </CommandItem>
           <CommandItem onSelect={handleOpenNewTerminal}>
             <TerminalSquare className="mr-2 h-4 w-4" />
             Open New Terminal

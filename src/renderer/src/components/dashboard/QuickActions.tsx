@@ -1,15 +1,16 @@
-import React, { useState, useRef } from 'react';
-import { TerminalSquare, RefreshCw, Code, FolderPlus, X, Check, Loader2 } from 'lucide-react';
+import { TerminalSquare, RefreshCw, Code, FolderPlus, X, Check, Loader2, Sparkles } from 'lucide-react';
 import { Button } from '../ui/button';
 import { Input } from '../ui/input';
 import { useProjectStore } from '@renderer/stores/useProjectStore';
 import { useTerminalStore } from '@renderer/stores/useTerminalStore';
+import { useTemplateStore } from '@renderer/stores/useTemplateStore';
 import { useAppStore } from '@renderer/stores/useAppStore';
 import { toast } from 'sonner';
 
 export const QuickActions: React.FC = () => {
   const { scanProjects, isScanning, selectedProjectId, projects, addManualProject } = useProjectStore();
   const { createTerminal } = useTerminalStore();
+  const { setDialogOpen: setTemplateDialogOpen } = useTemplateStore();
   const { setActiveTab } = useAppStore();
 
   const [addingProject, setAddingProject] = useState(false);
@@ -73,6 +74,15 @@ export const QuickActions: React.FC = () => {
   return (
     <div className="flex flex-col gap-2 w-64 p-4 border-r border-zinc-800 bg-zinc-950/50">
       <h3 className="text-xs font-semibold text-zinc-500 mb-2 uppercase tracking-wider">Quick Actions</h3>
+
+      <Button
+        variant="outline"
+        className="justify-start h-10 w-full bg-violet-950/20 border-violet-500/30 text-violet-300 hover:bg-violet-900/30 hover:text-white"
+        onClick={() => setTemplateDialogOpen(true)}
+      >
+        <Sparkles className="w-4 h-4 mr-2 text-violet-400" />
+        New from Template
+      </Button>
 
       <Button variant="outline" className="justify-start h-10 w-full" onClick={() => scanProjects()}>
         <RefreshCw className={`w-4 h-4 mr-2 ${isScanning ? 'animate-spin' : ''}`} />

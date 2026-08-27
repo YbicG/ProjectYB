@@ -17,13 +17,15 @@ import {
   Folder,
   Pencil,
   BookOpen,
-  Layers
+  Layers,
+  Lock
 } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card'
 import { Badge } from '../components/ui/badge'
 import { Button } from '../components/ui/button'
 import { ScrollArea } from '../components/ui/scroll-area'
 import { ProjectConfigDialog } from '../components/dashboard/ProjectConfigDialog'
+import { EnvManagerDialog } from '../components/env/EnvManagerDialog'
 import { useProjectStore } from '@renderer/stores/useProjectStore'
 import { useAppStore } from '@renderer/stores/useAppStore'
 import { useGitStore } from '@renderer/stores/useGitStore'
@@ -131,6 +133,7 @@ export const ProjectDetailPage: React.FC<ProjectDetailPageProps> = ({ projectId:
   const [commits, setCommits] = useState<GitLogEntry[]>([])
   const [commitsLoading, setCommitsLoading] = useState(false)
   const [configDialogOpen, setConfigDialogOpen] = useState(false)
+  const [envDialogOpen, setEnvDialogOpen] = useState(false)
 
   // Fetch git status + recent commits whenever the selected project changes
   useEffect(() => {
@@ -258,6 +261,15 @@ export const ProjectDetailPage: React.FC<ProjectDetailPageProps> = ({ projectId:
 
           {/* Quick actions */}
           <div className="flex shrink-0 items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setEnvDialogOpen(true)}
+              className="gap-1.5 border-amber-500/40 text-amber-300 hover:bg-amber-950/30"
+            >
+              <Lock className="h-4 w-4" />
+              Environment
+            </Button>
             <Button
               variant="outline"
               size="sm"
@@ -474,6 +486,14 @@ export const ProjectDetailPage: React.FC<ProjectDetailPageProps> = ({ projectId:
         open={configDialogOpen}
         onOpenChange={setConfigDialogOpen}
         project={project}
+      />
+
+      {/* ── Environment Manager Dialog ── */}
+      <EnvManagerDialog
+        open={envDialogOpen}
+        onOpenChange={setEnvDialogOpen}
+        projectPath={project.path}
+        projectName={project.name}
       />
     </ScrollArea>
   )

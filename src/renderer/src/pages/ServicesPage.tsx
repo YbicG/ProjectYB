@@ -1,17 +1,21 @@
-import React, { useState } from 'react'
-import { Square, Plus } from 'lucide-react'
+import { Square, Plus, Server, Radio } from 'lucide-react'
 import { Button } from '../components/ui/button'
 import { ServiceCard } from '../components/services/ServiceCard'
 import { SavedConfigs } from '../components/services/SavedConfigs'
 import { RunConfigDialog } from '../components/services/RunConfigDialog'
+import { PortManager } from '../components/ports/PortManager'
 import { useServiceStore } from '@renderer/stores/useServiceStore'
 import { useRunConfigStore, type RunConfig } from '@renderer/stores/useRunConfigStore'
 import { useProjectStore } from '@renderer/stores/useProjectStore'
+import { usePortStore } from '@renderer/stores/usePortStore'
+import { cn } from '@renderer/lib/utils'
 
 export const ServicesPage: React.FC = () => {
+  const [subTab, setSubTab] = useState<'services' | 'ports'>('services')
   const { runningServices, stopService } = useServiceStore()
   const { addConfig } = useRunConfigStore()
   const { projects } = useProjectStore()
+  const { ports } = usePortStore()
 
   const [dialogOpen, setDialogOpen] = useState(false)
   const [selectedProjectId, setSelectedProjectId] = useState<string>('')
@@ -26,8 +30,53 @@ export const ServicesPage: React.FC = () => {
 
   const dialogProject = projects.find(p => p.id === selectedProjectId) ?? projects[0]
 
+  if (subTab === 'ports') {
+    return (
+      <div className="flex flex-col h-full w-full bg-zinc-950 text-zinc-50 overflow-hidden">
+        {/* Sub-nav header switch */}
+        <div className="flex items-center gap-1 px-6 pt-3 pb-0 bg-zinc-950 border-b border-zinc-800">
+          <button
+            onClick={() => setSubTab('services')}
+            className="flex items-center gap-2 px-3 py-2 text-sm font-medium border-b-2 border-transparent text-zinc-400 hover:text-zinc-200 transition-colors"
+          >
+            <Server className="w-4 h-4" />
+            Running Services ({runningServices.length})
+          </button>
+          <button
+            onClick={() => setSubTab('ports')}
+            className="flex items-center gap-2 px-3 py-2 text-sm font-medium border-b-2 border-violet-500 text-violet-300 transition-colors font-semibold"
+          >
+            <Radio className="w-4 h-4" />
+            Active Ports ({ports.length})
+          </button>
+        </div>
+
+        <PortManager />
+      </div>
+    )
+  }
+
   return (
-    <div className="flex h-full w-full bg-zinc-950 text-zinc-50 overflow-hidden">
+    <div className="flex flex-col h-full w-full bg-zinc-950 text-zinc-50 overflow-hidden">
+      {/* Sub-nav header switch */}
+      <div className="flex items-center gap-1 px-6 pt-3 pb-0 bg-zinc-950 border-b border-zinc-800">
+        <button
+          onClick={() => setSubTab('services')}
+          className="flex items-center gap-2 px-3 py-2 text-sm font-medium border-b-2 border-violet-500 text-violet-300 transition-colors font-semibold"
+        >
+          <Server className="w-4 h-4" />
+          Running Services ({runningServices.length})
+        </button>
+        <button
+          onClick={() => setSubTab('ports')}
+          className="flex items-center gap-2 px-3 py-2 text-sm font-medium border-b-2 border-transparent text-zinc-400 hover:text-zinc-200 transition-colors"
+        >
+          <Radio className="w-4 h-4" />
+          Active Ports ({ports.length})
+        </button>
+      </div>
+
+      <div className="flex-1 flex overflow-hidden">
       {/* Main area — running services */}
       <div className="flex-1 flex flex-col overflow-hidden">
         <div className="px-6 py-4 border-b border-zinc-800 bg-zinc-950 flex items-center justify-between">
@@ -108,6 +157,7 @@ export const ServicesPage: React.FC = () => {
           onSave={handleSaveConfig}
         />
       )}
+      </div>
     </div>
   )
 }

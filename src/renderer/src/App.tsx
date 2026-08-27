@@ -7,9 +7,11 @@ import { ServicesPage } from './pages/ServicesPage';
 import { SettingsPage } from './pages/SettingsPage';
 import { ProjectDetailPage } from './pages/ProjectDetailPage';
 import { CommandPalette } from './components/shared/CommandPalette';
+import { CreateProjectDialog } from './components/templates/CreateProjectDialog';
 import { useAppStore } from '@renderer/stores/useAppStore';
 import { useProjectStore } from '@renderer/stores/useProjectStore';
 import { useSystemStore } from '@renderer/stores/useSystemStore';
+import { useTemplateStore } from '@renderer/stores/useTemplateStore';
 import { useKeyboard } from './hooks/useKeyboard';
 
 export const App: React.FC = () => {
@@ -17,6 +19,7 @@ export const App: React.FC = () => {
   const { activeTab } = useAppStore();
   const { scanProjects } = useProjectStore();
   const { startMonitoring, stopMonitoring } = useSystemStore();
+  const { dialogOpen: templateDialogOpen, setDialogOpen: setTemplateDialogOpen } = useTemplateStore();
 
   useEffect(() => {
     // Initial load
@@ -51,6 +54,10 @@ export const App: React.FC = () => {
         {renderPage()}
       </AppLayout>
       <CommandPalette />
+      <CreateProjectDialog
+        open={templateDialogOpen}
+        onOpenChange={setTemplateDialogOpen}
+      />
     </>
   );
 };

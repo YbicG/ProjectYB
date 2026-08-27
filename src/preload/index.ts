@@ -120,6 +120,36 @@ const api = {
         ipcRenderer.removeListener('window:maximizedChange', handler)
       }
     }
+  },
+  env: {
+    listFiles: (projectPath: string) => ipcRenderer.invoke('env:listFiles', projectPath),
+    read: (filePath: string) => ipcRenderer.invoke('env:read', filePath),
+    write: (filePath: string, entries: any[], rawContent?: string) =>
+      ipcRenderer.invoke('env:write', filePath, entries, rawContent),
+    generateExample: (sourceFilePath: string, targetFilePath?: string) =>
+      ipcRenderer.invoke('env:generateExample', sourceFilePath, targetFilePath),
+    compare: (fileAPath: string, fileBPath: string) =>
+      ipcRenderer.invoke('env:compare', fileAPath, fileBPath),
+    syncKeys: (sourceFilePath: string, targetFilePath: string, keys: string[]) =>
+      ipcRenderer.invoke('env:syncKeys', sourceFilePath, targetFilePath, keys)
+  },
+  ports: {
+    list: () => ipcRenderer.invoke('ports:list'),
+    check: (port: number) => ipcRenderer.invoke('ports:check', port),
+    suggest: (startPort?: number) => ipcRenderer.invoke('ports:suggest', startPort),
+    kill: (pid: number) => ipcRenderer.invoke('ports:kill', pid)
+  },
+  templates: {
+    list: () => ipcRenderer.invoke('templates:list'),
+    scaffold: (options: any) => ipcRenderer.invoke('templates:scaffold', options),
+    saveCustom: (template: any) => ipcRenderer.invoke('templates:saveCustom', template),
+    onLog: (callback: (line: string) => void) => {
+      const handler = (_event: any, line: string) => callback(line)
+      ipcRenderer.on('templates:log', handler)
+      return () => {
+        ipcRenderer.removeListener('templates:log', handler)
+      }
+    }
   }
 }
 

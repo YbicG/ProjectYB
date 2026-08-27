@@ -14,7 +14,8 @@ import {
   FileCode,
   Pencil,
   BookOpen,
-  Layers
+  Layers,
+  Lock
 } from 'lucide-react'
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '../ui/card'
 import { Badge } from '../ui/badge'
@@ -29,6 +30,7 @@ import {
 } from '../ui/dropdown-menu'
 import { RunConfigDialog } from '../services/RunConfigDialog'
 import { ProjectConfigDialog } from './ProjectConfigDialog'
+import { EnvManagerDialog } from '../env/EnvManagerDialog'
 import { useRunConfigStore } from '@renderer/stores/useRunConfigStore'
 import { useProjectStore } from '@renderer/stores/useProjectStore'
 import { useAppStore } from '@renderer/stores/useAppStore'
@@ -52,6 +54,7 @@ export const ProjectCard: React.FC<ProjectCardProps> = ({ project }) => {
 
   const [runConfigDialogOpen, setRunConfigDialogOpen] = useState(false)
   const [projectConfigDialogOpen, setProjectConfigDialogOpen] = useState(false)
+  const [envDialogOpen, setEnvDialogOpen] = useState(false)
 
   const handleOpenTerminal = async (sub?: SubProject) => {
     const termName = sub ? `${project.name} (${sub.name})` : project.name
@@ -305,6 +308,17 @@ export const ProjectCard: React.FC<ProjectCardProps> = ({ project }) => {
               </DropdownMenuItem>
 
               <DropdownMenuItem
+                className="gap-2 cursor-pointer focus:bg-zinc-800 text-xs text-amber-300"
+                onClick={() => setEnvDialogOpen(true)}
+              >
+                <Lock className="w-3.5 h-3.5 text-amber-400" />
+                <div>
+                  <div className="font-medium">Environment (.env)</div>
+                  <div className="text-[10px] text-zinc-500">Vault & secret manager</div>
+                </div>
+              </DropdownMenuItem>
+
+              <DropdownMenuItem
                 className="gap-2 cursor-pointer focus:bg-zinc-800 text-xs"
                 onClick={() => setRunConfigDialogOpen(true)}
               >
@@ -456,6 +470,13 @@ export const ProjectCard: React.FC<ProjectCardProps> = ({ project }) => {
         open={projectConfigDialogOpen}
         onOpenChange={setProjectConfigDialogOpen}
         project={project}
+      />
+
+      <EnvManagerDialog
+        open={envDialogOpen}
+        onOpenChange={setEnvDialogOpen}
+        projectPath={project.path}
+        projectName={project.name}
       />
     </Card>
   )
