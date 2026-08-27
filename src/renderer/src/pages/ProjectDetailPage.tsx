@@ -10,18 +10,23 @@ import {
   Play,
   RefreshCw,
   Clock,
-  Hash
+  Hash,
+  ArrowLeft,
+  EyeOff
 } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card'
 import { Badge } from '../components/ui/badge'
 import { Button } from '../components/ui/button'
 import { ScrollArea } from '../components/ui/scroll-area'
 import { useProjectStore } from '@renderer/stores/useProjectStore'
+import { useAppStore } from '@renderer/stores/useAppStore'
+import { useTerminalStore } from '@renderer/stores/useTerminalStore'
 import { useGit } from '../hooks/useGit'
 import { useTerminal } from '../hooks/useTerminal'
 import type { ProjectInfo } from '../types/project'
 import type { GitLogEntry } from '../types/git'
 import { cn } from '@renderer/lib/utils'
+import { toast } from 'sonner'
 
 // ─── Type badge colour map ─────────────────────────────────────────────────
 
@@ -36,15 +41,21 @@ const TYPE_COLOURS: Record<string, string> = {
 
 // ─── Sub-components ────────────────────────────────────────────────────────
 
-const EmptyState: React.FC = () => (
-  <div className="flex h-full items-center justify-center text-zinc-500">
-    <div className="text-center space-y-3">
-      <FolderOpen className="mx-auto h-12 w-12 text-zinc-700" />
-      <p className="text-sm font-medium">No project selected</p>
-      <p className="text-xs text-zinc-600">Pick a project from the dashboard to see its details.</p>
+const EmptyState: React.FC = () => {
+  const { setActiveTab } = useAppStore()
+  return (
+    <div className="flex h-full items-center justify-center text-zinc-500">
+      <div className="text-center space-y-3">
+        <FolderOpen className="mx-auto h-12 w-12 text-zinc-700" />
+        <p className="text-sm font-medium">No project selected</p>
+        <p className="text-xs text-zinc-600">Pick a project from the dashboard to see its details.</p>
+        <Button variant="outline" size="sm" onClick={() => setActiveTab('dashboard')}>
+          <ArrowLeft className="w-4 h-4 mr-2" /> Back to Dashboard
+        </Button>
+      </div>
     </div>
-  </div>
-)
+  )
+}
 
 interface CommitRowProps {
   entry: GitLogEntry
@@ -72,13 +83,15 @@ const CommitRow: React.FC<CommitRowProps> = ({ entry }) => (
 // ─── Main page ─────────────────────────────────────────────────────────────
 
 interface ProjectDetailPageProps {
-  /** Optional override — if omitted the store's selectedProjectId is used */
   projectId?: string
 }
 
 export const ProjectDetailPage: React.FC<ProjectDetailPageProps> = ({ projectId: propId }) => {
   const projects = useProjectStore((s) => s.projects)
   const selectedProjectId = useProjectStore((s) => s.selectedProjectId)
+  const ignoreProject = useProjectStore((s) => s.ignoreProject)
+  const { setActiveTab } = useAppStore()
+  const { createTerminal } = useTerminalStore()
 
   const effectiveId = propId ?? selectedProjectId
   const project: ProjectInfo | undefined = projects.find((p) => p.id === effectiveId)
@@ -101,7 +114,7 @@ export const ProjectDetailPage: React.FC<ProjectDetailPageProps> = ({ projectId:
       .then((entries: GitLogEntry[]) => setCommits(entries ?? []))
       .catch((err: unknown) => console.error('[ProjectDetailPage] log error', err))
       .finally(() => setCommitsLoading(false))
-  }, [project?.id]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [project?.id])
 
   // ── Quick actions ──────────────────────────────────────────────────────
 
@@ -117,10 +130,24 @@ export const ProjectDetailPage: React.FC<ProjectDetailPageProps> = ({ projectId:
     if (project) window.api?.projects?.openInExplorer(project.path)
   }
 
-  const handleRunScript = (command: string) => {
+  const handleRunScript = async (scriptName: string, command: string) => {
     if (!project) return
-    // Spawn a terminal in the project directory pre-seeded with the script command
-    window.api?.terminal?.spawn({ id: `run-${Date.now()}`, cwd: project.path, cols: 120, rows: 30 })
+    await createTerminal({
+      name: `${project.name} (${scriptName})`,
+      cwd: project.path,
+      projectId: project.id,
+      command
+    })
+    setActiveTab('terminals')
+  }
+
+  const handleIgnore = async () => {
+    if (!project) return
+    if (window.confirm(`Ignore "${project.name}"?\nThis will write "ignore": true in .projectyb.json and return to dashboard.`)) {
+      await ignoreProject(project.path)
+      toast.info(`Ignored ${project.name}`)
+      setActiveTab('dashboard')
+    }
   }
 
   // ── Render ─────────────────────────────────────────────────────────────
@@ -135,6 +162,27 @@ export const ProjectDetailPage: React.FC<ProjectDetailPageProps> = ({ projectId:
   return (
     <ScrollArea className="h-full w-full bg-zinc-950 text-zinc-50">
       <div className="mx-auto max-w-4xl space-y-6 p-6">
+
+        {/* ── Navigation back ── */}
+        <div className="flex items-center justify-between">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => setActiveTab('dashboard')}
+            className="text-zinc-400 hover:text-white"
+          >
+            <ArrowLeft className="h-4 w-4 mr-2" /> Back to Dashboard
+          </Button>
+
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={handleIgnore}
+            className="text-red-400 hover:text-red-300 hover:bg-red-500/10 text-xs"
+          >
+            <EyeOff className="h-3.5 w-3.5 mr-1.5" /> Ignore Project
+          </Button>
+        </div>
 
         {/* ── Header ── */}
         <div className="flex items-start justify-between gap-4">
@@ -248,8 +296,8 @@ export const ProjectDetailPage: React.FC<ProjectDetailPageProps> = ({ projectId:
                 {Object.entries(project.scripts).map(([name, cmd]) => (
                   <button
                     key={name}
-                    onClick={() => handleRunScript(cmd)}
-                    title={cmd}
+                    onClick={() => handleRunScript(name, String(cmd))}
+                    title={String(cmd)}
                     className={cn(
                       'flex items-center gap-1.5 rounded-md border border-zinc-800 bg-zinc-900',
                       'px-3 py-1.5 text-xs font-medium text-zinc-300',

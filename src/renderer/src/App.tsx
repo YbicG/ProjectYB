@@ -5,6 +5,7 @@ import { TerminalsPage } from './pages/TerminalsPage';
 import { GitPage } from './pages/GitPage';
 import { ServicesPage } from './pages/ServicesPage';
 import { SettingsPage } from './pages/SettingsPage';
+import { ProjectDetailPage } from './pages/ProjectDetailPage';
 import { CommandPalette } from './components/shared/CommandPalette';
 import { useAppStore } from '@renderer/stores/useAppStore';
 import { useProjectStore } from '@renderer/stores/useProjectStore';
@@ -37,6 +38,8 @@ export const App: React.FC = () => {
         return <ServicesPage />;
       case 'settings':
         return <SettingsPage />;
+      case 'project-detail':
+        return <ProjectDetailPage />;
       default:
         return <DashboardPage />;
     }

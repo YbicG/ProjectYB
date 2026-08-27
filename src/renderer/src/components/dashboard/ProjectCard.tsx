@@ -67,6 +67,11 @@ export const ProjectCard: React.FC<ProjectCardProps> = ({ project }) => {
     setActiveTab('git');
   };
 
+  const handleOpenDetail = () => {
+    selectProject(project.id);
+    setActiveTab('project-detail');
+  };
+
   const handleIgnoreProject = async () => {
     if (window.confirm(`Ignore project "${project.name}"?\n\nThis will add "ignore": true to its .projectyb.json file and hide it from your dashboard.`)) {
       try {
@@ -85,9 +90,9 @@ export const ProjectCard: React.FC<ProjectCardProps> = ({ project }) => {
 
   return (
     <Card className="flex flex-col h-full hover:border-zinc-700 transition-colors group">
-      <CardHeader className="pb-3">
+      <CardHeader className="pb-3 cursor-pointer" onClick={handleOpenDetail}>
         <div className="flex items-center justify-between">
-          <CardTitle className="text-base truncate mr-2" title={project.name}>
+          <CardTitle className="text-base truncate mr-2 hover:text-violet-400 transition-colors" title={project.name}>
             {project.name}
           </CardTitle>
           <div className="flex items-center gap-2">
