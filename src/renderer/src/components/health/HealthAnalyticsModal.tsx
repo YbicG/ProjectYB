@@ -53,7 +53,7 @@ export const HealthAnalyticsModal: React.FC = () => {
 
   return (
     <Dialog open={modalOpen} onOpenChange={setModalOpen}>
-      <DialogContent className="bg-zinc-950 border-zinc-800 text-zinc-100 max-w-3xl flex flex-col h-[680px]">
+      <DialogContent className="bg-zinc-950 border-zinc-800 text-zinc-100 max-w-3xl flex flex-col h-[680px] max-h-[92vh]">
         <DialogHeader className="flex flex-row items-center justify-between pb-3 border-b border-zinc-800 space-y-0">
           <div className="flex items-center gap-2.5">
             <div className="p-2 rounded-lg bg-violet-600/10 border border-violet-500/20 text-violet-400">
@@ -90,7 +90,7 @@ export const HealthAnalyticsModal: React.FC = () => {
           ) : overview ? (
             <div className="space-y-4 pt-1">
               {/* ── Key Metrics Cards ── */}
-              <div className="grid grid-cols-4 gap-3">
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 sm:gap-3">
                 {/* Health Score */}
                 <div className={cn('p-3.5 rounded-lg border flex flex-col justify-between', getScoreColor(overview.healthScore))}>
                   <span className="text-[11px] font-semibold uppercase tracking-wider opacity-80">Health Score</span>

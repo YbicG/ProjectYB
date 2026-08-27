@@ -59,7 +59,7 @@ export const HealthOverview: React.FC = () => {
   }, [isScanning, projects.length])
 
   return (
-    <div className="flex gap-3 flex-wrap">
+    <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-3">
       <StatCard
         icon={<FolderGit2 className="h-4 w-4 text-violet-400" />}
         label="Total Projects"

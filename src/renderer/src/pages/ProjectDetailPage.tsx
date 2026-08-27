@@ -210,7 +210,7 @@ export const ProjectDetailPage: React.FC<ProjectDetailPageProps> = ({ projectId:
 
   return (
     <ScrollArea className="h-full w-full bg-zinc-950 text-zinc-50">
-      <div className="mx-auto max-w-4xl space-y-6 p-6">
+      <div className="mx-auto max-w-5xl space-y-4 sm:space-y-6 p-3 sm:p-6">
         {/* ── Navigation back ── */}
         <div className="flex items-center justify-between">
           <Button
@@ -236,7 +236,7 @@ export const ProjectDetailPage: React.FC<ProjectDetailPageProps> = ({ projectId:
         <div className="flex items-start justify-between gap-4 flex-wrap">
           <div className="min-w-0">
             <div className="flex items-center gap-3 flex-wrap">
-              <h1 className="text-2xl font-bold tracking-tight truncate">{project.name}</h1>
+              <h1 className="text-xl sm:text-2xl font-bold tracking-tight truncate">{project.name}</h1>
               <Button
                 variant="ghost"
                 size="icon"
@@ -260,13 +260,13 @@ export const ProjectDetailPage: React.FC<ProjectDetailPageProps> = ({ projectId:
                 </Badge>
               ))}
             </div>
-            <p className="mt-1 text-sm text-zinc-500 truncate" title={project.path}>
+            <p className="mt-1 text-xs sm:text-sm text-zinc-500 truncate" title={project.path}>
               {project.path}
             </p>
           </div>
 
           {/* Quick actions */}
-          <div className="flex shrink-0 items-center gap-2">
+          <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
             <Button
               variant="outline"
               size="sm"

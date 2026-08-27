@@ -99,7 +99,7 @@ export const GitStatus: React.FC = () => {
   const totalChanges = status.staged.length + status.unstaged.length + status.untracked.length
 
   return (
-    <div className="flex flex-col h-full bg-zinc-950 border-r border-zinc-800 w-80 shrink-0">
+    <div className="flex flex-col h-auto max-h-56 lg:max-h-none lg:h-full bg-zinc-950 border-b lg:border-b-0 lg:border-r border-zinc-800 w-full lg:w-80 shrink-0">
       {/* ── Header ── */}
       <div className="p-3 border-b border-zinc-800 flex items-center justify-between">
         <div className="flex items-center gap-2">

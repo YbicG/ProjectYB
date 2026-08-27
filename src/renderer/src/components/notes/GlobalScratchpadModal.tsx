@@ -24,7 +24,7 @@ export const GlobalScratchpadModal: React.FC = () => {
 
   return (
     <Dialog open={scratchpadModalOpen} onOpenChange={setScratchpadModalOpen}>
-      <DialogContent className="bg-zinc-950 border-zinc-800 text-zinc-100 max-w-2xl flex flex-col h-[520px]">
+      <DialogContent className="bg-zinc-950 border-zinc-800 text-zinc-100 max-w-2xl flex flex-col h-[520px] max-h-[90vh]">
         <DialogHeader className="flex flex-row items-center justify-between pb-2 border-b border-zinc-800 space-y-0">
           <div>
             <DialogTitle className="text-sm flex items-center gap-2">

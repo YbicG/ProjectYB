@@ -63,8 +63,9 @@ export const TopNav: React.FC = () => {
   };
 
   return (
-    <div className="h-14 flex items-center justify-between px-4 bg-zinc-950 border-b border-zinc-800">
-      <div className="flex h-full gap-2">
+    <div className="h-14 flex items-center justify-between px-3 md:px-4 bg-zinc-950 border-b border-zinc-800 gap-2">
+      {/* ── Scrollable Tab Bar ── */}
+      <div className="flex h-full gap-1 sm:gap-2 overflow-x-auto no-scrollbar flex-nowrap shrink-0 min-w-0">
         {tabs.map((tab) => {
           const Icon = tab.icon;
           const isActive = activeTab === tab.id;
@@ -75,14 +76,14 @@ export const TopNav: React.FC = () => {
               key={tab.id}
               onClick={() => setActiveTab(tab.id as any)}
               className={cn(
-                "relative flex items-center gap-2 px-3 h-full text-sm font-medium transition-colors hover:text-zinc-50",
+                "relative flex items-center gap-1.5 sm:gap-2 px-2.5 sm:px-3 h-full text-xs sm:text-sm font-medium transition-colors hover:text-zinc-50 shrink-0 whitespace-nowrap",
                 isActive ? "text-zinc-50" : "text-zinc-400"
               )}
             >
-              <Icon className="w-4 h-4" />
-              {tab.label}
+              <Icon className="w-4 h-4 shrink-0" />
+              <span className="hidden sm:inline">{tab.label}</span>
               {badgeCount > 0 && (
-                <span className="ml-1 bg-violet-500/20 text-violet-300 py-0.5 px-2 rounded-full text-[10px] font-bold">
+                <span className="ml-0.5 sm:ml-1 bg-violet-500/20 text-violet-300 py-0.2 sm:py-0.5 px-1.5 sm:px-2 rounded-full text-[9px] sm:text-[10px] font-bold">
                   {badgeCount}
                 </span>
               )}
@@ -94,48 +95,51 @@ export const TopNav: React.FC = () => {
         })}
       </div>
       
-      <div className="flex items-center gap-2">
-        <WorkspaceSelector />
+      {/* ── Right Controls ── */}
+      <div className="flex items-center gap-1 sm:gap-2 shrink-0">
+        <div className="hidden xs:block">
+          <WorkspaceSelector />
+        </div>
         <SystemMonitor />
         
         <Button
           variant="ghost"
           size="icon"
-          className="h-8 w-8 text-zinc-400 hover:text-violet-300"
+          className="h-7 w-7 sm:h-8 sm:w-8 text-zinc-400 hover:text-violet-300"
           onClick={() => setScratchpadModalOpen(true)}
           title="Global Scratchpad (Ctrl+N)"
         >
-          <FileText className="w-4 h-4" />
+          <FileText className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
         </Button>
 
         <Button
           variant="ghost"
           size="icon"
-          className="h-8 w-8 text-zinc-400 hover:text-cyan-300"
+          className="h-7 w-7 sm:h-8 sm:w-8 text-zinc-400 hover:text-cyan-300 hidden sm:inline-flex"
           onClick={() => setHealthModalOpen(true)}
           title="Health & Activity Radar"
         >
-          <Activity className="w-4 h-4" />
+          <Activity className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
         </Button>
 
         <Button
           variant="ghost"
           size="icon"
-          className="h-8 w-8 text-zinc-400 hover:text-zinc-200"
+          className="h-7 w-7 sm:h-8 sm:w-8 text-zinc-400 hover:text-zinc-200 hidden md:inline-flex"
           onClick={() => setShortcutsModalOpen(true)}
           title="Keyboard Shortcuts (Ctrl+/)"
         >
-          <Keyboard className="w-4 h-4" />
+          <Keyboard className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
         </Button>
 
         <Button
           variant="ghost"
           size="icon"
-          className="h-8 w-8 text-zinc-400 hover:text-zinc-200"
+          className="h-7 w-7 sm:h-8 sm:w-8 text-zinc-400 hover:text-zinc-200"
           onClick={() => setCommandPaletteOpen(true)}
           title="Command Palette (Ctrl+K, Ctrl+P)"
         >
-          <Search className="w-4 h-4" />
+          <Search className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
         </Button>
         <NotificationCenter />
       </div>

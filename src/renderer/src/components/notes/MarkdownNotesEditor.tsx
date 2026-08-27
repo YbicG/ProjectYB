@@ -200,10 +200,10 @@ export const MarkdownNotesEditor: React.FC<MarkdownNotesEditorProps> = ({ projec
       </div>
 
       {/* ── Editor & Preview Grid ── */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-3 min-h-[360px]">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 min-h-[360px]">
         {/* Editor Pane */}
         {(viewMode === 'split' || viewMode === 'edit') && (
-          <div className={cn('flex flex-col bg-zinc-950 border border-zinc-800 rounded-lg overflow-hidden', viewMode === 'edit' && 'md:col-span-2')}>
+          <div className={cn('flex flex-col bg-zinc-950 border border-zinc-800 rounded-lg overflow-hidden', viewMode === 'edit' && 'lg:col-span-2')}>
             <div className="px-3 py-1.5 bg-zinc-900/60 border-b border-zinc-800 text-[10px] text-zinc-500 font-mono flex items-center justify-between">
               <span>MARKDOWN SOURCE</span>
               <span>{currentNote?.content.length || 0} characters</span>
@@ -220,7 +220,7 @@ export const MarkdownNotesEditor: React.FC<MarkdownNotesEditorProps> = ({ projec
 
         {/* Live Interactive Task / Markdown Preview Pane */}
         {(viewMode === 'split' || viewMode === 'preview') && (
-          <div className={cn('flex flex-col bg-zinc-950 border border-zinc-800 rounded-lg overflow-hidden', viewMode === 'preview' && 'md:col-span-2')}>
+          <div className={cn('flex flex-col bg-zinc-950 border border-zinc-800 rounded-lg overflow-hidden', viewMode === 'preview' && 'lg:col-span-2')}>
             <div className="px-3 py-1.5 bg-zinc-900/60 border-b border-zinc-800 text-[10px] text-zinc-500 font-mono flex items-center justify-between">
               <span>INTERACTIVE PREVIEW</span>
               <span>Click tasks to toggle</span>

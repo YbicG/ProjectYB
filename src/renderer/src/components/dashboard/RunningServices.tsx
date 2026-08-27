@@ -21,7 +21,7 @@ export const RunningServices: React.FC = () => {
   };
 
   return (
-    <div className="flex flex-col h-full bg-zinc-950 border-l border-zinc-800 w-80">
+    <div className="flex flex-col h-full bg-zinc-950 border-l border-zinc-800 w-full min-w-[280px]">
       <div className="p-4 border-b border-zinc-800 flex items-center justify-between">
         <h3 className="font-semibold text-sm">Running Services</h3>
         <Badge variant="secondary">{runningServices.length}</Badge>

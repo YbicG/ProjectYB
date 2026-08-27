@@ -73,7 +73,7 @@ export const QuickActions: React.FC = () => {
   };
 
   return (
-    <div className="flex flex-col gap-2 w-64 p-4 border-r border-zinc-800 bg-zinc-950/50">
+    <div className="flex flex-col gap-2 w-full p-4 border-r border-zinc-800 bg-zinc-950/50">
       <h3 className="text-xs font-semibold text-zinc-500 mb-2 uppercase tracking-wider">Quick Actions</h3>
 
       <Button
