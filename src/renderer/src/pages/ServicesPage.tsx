@@ -72,11 +72,11 @@ export const ServicesPage: React.FC = () => {
           Running Services ({runningServices.length})
         </button>
 
-        {/* Dedicated tab on portrait/narrow screens */}
+        {/* Dedicated Saved Configs tab */}
         <button
           onClick={() => setSubTab('configs')}
           className={cn(
-            "flex items-center gap-2 px-3 py-2 text-xs sm:text-sm font-medium border-b-2 transition-colors xl:hidden whitespace-nowrap",
+            "flex items-center gap-2 px-3 py-2 text-xs sm:text-sm font-medium border-b-2 transition-colors whitespace-nowrap",
             subTab === 'configs' ? "border-violet-500 text-violet-300 font-semibold" : "border-transparent text-zinc-400 hover:text-zinc-200"
           )}
         >
@@ -235,7 +235,7 @@ export const ServicesPage: React.FC = () => {
           </div>
 
           {/* Right panel — saved configs on desktop widescreen */}
-          <div className="hidden xl:flex w-80 lg:w-96 border-l border-zinc-800 flex-col overflow-hidden bg-zinc-950/40 shrink-0">
+          <div className="hidden xl:flex w-96 2xl:w-[420px] border-l border-zinc-800 flex-col min-h-0 overflow-hidden bg-zinc-950/40 shrink-0">
             <SavedConfigs />
           </div>
         </div>

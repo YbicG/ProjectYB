@@ -27,6 +27,7 @@ import { motion } from 'framer-motion';
 import { useProjectStore } from '@renderer/stores/useProjectStore';
 import { useServiceStore } from '@renderer/stores/useServiceStore';
 import { useTerminalStore } from '@renderer/stores/useTerminalStore';
+import { useRunConfigStore } from '@renderer/stores/useRunConfigStore';
 import { useAppStore } from '@renderer/stores/useAppStore';
 import { StatusDot } from '../../shared/StatusDot';
 import { Card, CardHeader, CardTitle, CardContent } from '../../ui/card';
@@ -46,6 +47,7 @@ export const ModernProjectWorkbench: React.FC = () => {
   const { selectedProjectId, projects, selectProject } = useProjectStore();
   const { runningServices, startService, stopService } = useServiceStore();
   const { createTerminal } = useTerminalStore();
+  const { configs: allConfigs } = useRunConfigStore();
   const { setActiveTab } = useAppStore();
 
   const [commits, setCommits] = useState<GitLogEntry[]>([]);
@@ -279,6 +281,99 @@ export const ModernProjectWorkbench: React.FC = () => {
               </div>
             )}
           </div>
+
+          {/* Saved Run Configurations */}
+          {(() => {
+            const projectConfigs = allConfigs.filter((c) => c.projectId === project?.id);
+            if (projectConfigs.length === 0) return null;
+
+            return (
+              <div className="space-y-2 pt-2 border-t border-zinc-800/80">
+                <div className="flex items-center justify-between">
+                  <span className="text-[10px] uppercase font-semibold text-zinc-400 tracking-wider">
+                    Saved Configs ({projectConfigs.length})
+                  </span>
+                  <button
+                    onClick={() => setActiveTab('services')}
+                    className="text-[10px] text-violet-400 hover:text-violet-300 transition-colors"
+                  >
+                    Manage
+                  </button>
+                </div>
+
+                <div className="space-y-1.5">
+                  {projectConfigs.map((cfg) => {
+                    const isParallel = cfg.executionMode === 'parallel' && (cfg.commands?.length || 0) > 1;
+                    const cmds = cfg.commands?.length
+                      ? cfg.commands.filter((c) => c.command.trim())
+                      : cfg.command ? [{ id: '1', name: '', command: cfg.command }] : [];
+
+                    return (
+                      <div
+                        key={cfg.id}
+                        className="p-2 rounded-lg bg-zinc-900/80 border border-zinc-800 flex items-center justify-between gap-2 hover:border-zinc-700 transition-colors"
+                      >
+                        <div className="min-w-0 flex-1">
+                          <div className="flex items-center gap-1.5">
+                            <span className="font-bold font-mono text-xs text-zinc-200 truncate">{cfg.name}</span>
+                            {isParallel ? (
+                              <Badge variant="outline" className="text-[8px] bg-cyan-950/40 border-cyan-800 text-cyan-300 px-1 py-0">
+                                {cmds.length} tabs
+                              </Badge>
+                            ) : (
+                              <Badge variant="outline" className="text-[8px] bg-violet-950/40 border-violet-800 text-violet-300 px-1 py-0">
+                                1 tab
+                              </Badge>
+                            )}
+                          </div>
+                          <span className="text-[10px] text-zinc-500 font-mono truncate block mt-0.5" title={cmds.map((c) => c.command).join(' && ')}>
+                            {cmds.map((c) => c.command).join(' && ') || 'No command'}
+                          </span>
+                        </div>
+
+                        <Button
+                          size="icon"
+                          variant="ghost"
+                          className="h-6 w-6 shrink-0 text-zinc-400 hover:text-emerald-400"
+                          onClick={async () => {
+                            if (!cmds.length) return;
+                            const effectiveCwd = cfg.cwd || project.path;
+                            if (isParallel) {
+                              for (let i = 0; i < cmds.length; i++) {
+                                const cmd = cmds[i];
+                                const termName = cmd.name ? `${cfg.name} (${cmd.name})` : `${cfg.name} #${i + 1}`;
+                                await startService(project.id, project.name, {
+                                  id: `${cfg.id}-${cmd.id || i}`,
+                                  name: termName,
+                                  command: cmd.command,
+                                  cwd: effectiveCwd,
+                                  autoRestart: cfg.autoRestart
+                                });
+                              }
+                              toast.success(`Launched ${cmds.length} commands for ${cfg.name}`);
+                            } else {
+                              const combined = cmds.map((c) => c.command.trim()).filter(Boolean).join(' && ');
+                              await startService(project.id, project.name, {
+                                id: cfg.id,
+                                name: cfg.name,
+                                command: combined,
+                                cwd: effectiveCwd,
+                                autoRestart: cfg.autoRestart
+                              });
+                              toast.success(`Launched ${cfg.name}`);
+                            }
+                          }}
+                          title="Launch Configuration"
+                        >
+                          <Play className="w-3 h-3 fill-current" />
+                        </Button>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            );
+          })()}
 
           {/* Subprojects & Monorepo Packages */}
           {project.subprojects && project.subprojects.length > 0 && (
