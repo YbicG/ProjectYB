@@ -4,6 +4,8 @@ import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '../ui/card
 import { Badge } from '../ui/badge';
 import { Button } from '../ui/button';
 import { StatusDot } from '../shared/StatusDot';
+import { useAppStore } from '@renderer/stores/useAppStore';
+import { useGitStore } from '@renderer/stores/useGitStore';
 
 export interface ProjectInfo {
   id: string;
@@ -23,6 +25,33 @@ interface ProjectCardProps {
 }
 
 export const ProjectCard: React.FC<ProjectCardProps> = ({ project }) => {
+  const { setActiveTab } = useAppStore();
+  const { selectProject, fetchStatus } = useGitStore();
+
+  const handleOpenTerminal = () => {
+    if (window.api?.projects) {
+      window.api.projects.openTerminal(project.path);
+    }
+  };
+
+  const handleOpenVSCode = () => {
+    if (window.api?.projects) {
+      window.api.projects.openInVSCode(project.path);
+    }
+  };
+
+  const handleOpenFolder = () => {
+    if (window.api?.projects) {
+      window.api.projects.openInExplorer(project.path);
+    }
+  };
+
+  const handleGitStatus = () => {
+    selectProject(project.id);
+    fetchStatus(project.id, project.path);
+    setActiveTab('git');
+  };
+
   return (
     <Card className="flex flex-col h-full hover:border-zinc-700 transition-colors group">
       <CardHeader className="pb-3">
@@ -68,16 +97,16 @@ export const ProjectCard: React.FC<ProjectCardProps> = ({ project }) => {
       
       <CardFooter className="pt-0 flex items-center justify-between border-t border-zinc-800/50 mt-auto px-4 py-3 opacity-80 group-hover:opacity-100 transition-opacity">
         <div className="flex gap-1">
-          <Button variant="ghost" size="icon" className="h-8 w-8 hover:bg-zinc-800" title="Open Terminal">
+          <Button variant="ghost" size="icon" className="h-8 w-8 hover:bg-zinc-800" title="Open Terminal" onClick={handleOpenTerminal}>
             <TerminalSquare className="w-4 h-4" />
           </Button>
-          <Button variant="ghost" size="icon" className="h-8 w-8 hover:bg-zinc-800" title="Git Status">
+          <Button variant="ghost" size="icon" className="h-8 w-8 hover:bg-zinc-800" title="Git Status" onClick={handleGitStatus}>
             <GitBranch className="w-4 h-4" />
           </Button>
-          <Button variant="ghost" size="icon" className="h-8 w-8 hover:bg-zinc-800" title="Open in VS Code">
+          <Button variant="ghost" size="icon" className="h-8 w-8 hover:bg-zinc-800" title="Open in VS Code" onClick={handleOpenVSCode}>
             <Code className="w-4 h-4" />
           </Button>
-          <Button variant="ghost" size="icon" className="h-8 w-8 hover:bg-zinc-800" title="Open Folder">
+          <Button variant="ghost" size="icon" className="h-8 w-8 hover:bg-zinc-800" title="Open Folder" onClick={handleOpenFolder}>
             <FolderOpen className="w-4 h-4" />
           </Button>
         </div>
