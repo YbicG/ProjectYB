@@ -569,11 +569,29 @@ Template scaffolding system:
 
 ---
 
-Phase 4
-Module 1: Dependency & Security Health Hub — Outdated packages scanner, security vulnerability audit (CVEs & advisories), 1-click batch upgrades, and package search/installer across npm, pip, cargo, and go.
-Module 2: Docker & Container Orchestration — Auto-detect docker-compose.yml, start/stop/restart compose services, live container resource usage, streaming log viewer, and database connection probe from .env.
-Module 3: Disk Space Optimizer & Cache Cleaner — Visual breakdown of disk usage per project (code vs node_modules vs build artifacts vs caches), 1-click safe purge to reclaim gigabytes of disk space, and global package store pruning (pnpm store prune, npm cache clean, cargo clean).
-Module 4: Multi-Project Workspace Stacks — Define multi-repo stacks with 1-click coordinated boot sequences (starting Docker -> APIs -> frontends -> browser) and integrated multi-split terminal grids.
+## Phase 4 — Utilities
+
+### Module 1: Dependency & Security Health Hub
+- Outdated packages scanner
+- Security vulnerability audit (CVEs & advisories)
+- 1-click batch upgrades
+- Package search/installer across npm, pip, cargo, and go.
+
+### Module 2: Docker & Container Orchestration
+- Auto-detect docker-compose.yml
+- Start/stop/restart compose services
+- Live container resource usage
+- Streaming log viewer
+- Database connection probe from .env.
+
+### Module 3: Disk Space Optimizer & Cache Cleaner
+- Visual breakdown of disk usage per project (code vs node_modules vs build artifacts vs caches)
+- 1-click safe purge to reclaim gigabytes of disk space
+- Global package store pruning (pnpm store prune, npm cache clean, cargo clean).
+
+### Module 4: Multi-Project Workspace Stacks
+- Define multi-repo stacks with 1-click coordinated boot sequences (starting Docker -> APIs -> frontends -> browser)
+- Integrated multi-split terminal grids.
 
 ## Phase 5 — Polish & Advanced Features
 

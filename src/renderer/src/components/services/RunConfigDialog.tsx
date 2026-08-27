@@ -1,11 +1,11 @@
 import React, { useState, useEffect } from 'react'
-import { Plus, Trash2, X } from 'lucide-react'
+import { Plus, Trash2, X, Terminal, Layers } from 'lucide-react'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '../ui/dialog'
 import { Button } from '../ui/button'
 import { Input } from '../ui/input'
 import { Label } from '../ui/label'
-import type { RunConfig, CommandEntry } from '@renderer/stores/useRunConfigStore'
-import { generateId } from '@renderer/lib/utils'
+import type { RunConfig, CommandEntry, ExecutionMode } from '@renderer/stores/useRunConfigStore'
+import { generateId, cn } from '@renderer/lib/utils'
 
 interface EnvVar { key: string; value: string }
 
@@ -24,6 +24,7 @@ export const RunConfigDialog: React.FC<RunConfigDialogProps> = ({
 }) => {
   const [name, setName] = useState('')
   const [commands, setCommands] = useState<CommandEntry[]>([{ id: generateId(), name: '', command: '' }])
+  const [executionMode, setExecutionMode] = useState<ExecutionMode>('sequential')
   const [cwd, setCwd] = useState('')
   const [autoRestart, setAutoRestart] = useState(false)
   const [envVars, setEnvVars] = useState<EnvVar[]>([])
@@ -38,12 +39,14 @@ export const RunConfigDialog: React.FC<RunConfigDialogProps> = ({
           ? [{ id: generateId(), name: '', command: existing.command }]
           : [{ id: generateId(), name: '', command: '' }]
       setCommands(cmds)
+      setExecutionMode(existing.executionMode ?? 'sequential')
       setCwd(existing.cwd ?? '')
       setAutoRestart(existing.autoRestart ?? false)
       setEnvVars(Object.entries(existing.env ?? {}).map(([key, value]) => ({ key, value })))
     } else {
       setName('')
       setCommands([{ id: generateId(), name: '', command: '' }])
+      setExecutionMode('sequential')
       setCwd('')
       setAutoRestart(false)
       setEnvVars([])
@@ -54,6 +57,8 @@ export const RunConfigDialog: React.FC<RunConfigDialogProps> = ({
   const removeCommand = (id: string) => setCommands(c => c.filter(e => e.id !== id))
   const updateCommand = (id: string, val: string) =>
     setCommands(c => c.map(e => e.id === id ? { ...e, command: val } : e))
+  const updateCommandName = (id: string, val: string) =>
+    setCommands(c => c.map(e => e.id === id ? { ...e, name: val } : e))
 
   const addEnvVar = () => setEnvVars(v => [...v, { key: '', value: '' }])
   const removeEnvVar = (i: number) => setEnvVars(v => v.filter((_, idx) => idx !== i))
@@ -74,6 +79,7 @@ export const RunConfigDialog: React.FC<RunConfigDialogProps> = ({
       projectPath,
       name: name.trim(),
       commands: commands.filter(c => c.command.trim()),
+      executionMode: commands.filter(c => c.command.trim()).length > 1 ? executionMode : 'sequential',
       cwd: cwd.trim() || projectPath,
       autoRestart,
       env: Object.keys(env).length > 0 ? env : undefined,
@@ -108,8 +114,8 @@ export const RunConfigDialog: React.FC<RunConfigDialogProps> = ({
             <div className="flex items-center justify-between">
               <div>
                 <Label className="text-zinc-300 text-xs font-medium">Commands</Label>
-                <p className="text-[10px] text-zinc-600 mt-0.5">
-                  Run sequentially in one terminal, top to bottom.
+                <p className="text-[10px] text-zinc-500 mt-0.5">
+                  Configure commands to execute for this configuration.
                 </p>
               </div>
               <Button
@@ -117,40 +123,90 @@ export const RunConfigDialog: React.FC<RunConfigDialogProps> = ({
                 className="h-7 px-2 text-xs text-violet-400 hover:text-violet-300 hover:bg-violet-500/10"
                 onClick={addCommand}
               >
-                <Plus className="w-3 h-3 mr-1" /> Add
+                <Plus className="w-3 h-3 mr-1" /> Add Command
               </Button>
             </div>
 
-            <div className="space-y-1.5">
+            <div className="space-y-2">
               {commands.map((entry, idx) => (
-                <div key={entry.id} className="flex items-center gap-2">
-                  <span className="text-[10px] text-zinc-600 font-mono w-4 text-right shrink-0">
-                    {idx + 1}
-                  </span>
-                  <code className="text-[10px] text-zinc-600 shrink-0">$</code>
-                  <Input
-                    placeholder={idx === 0 ? 'e.g. pnpm install' : idx === 1 ? 'e.g. pnpm dev' : 'e.g. pnpm build'}
-                    value={entry.command}
-                    onChange={e => updateCommand(entry.id, e.target.value)}
-                    className="bg-zinc-900 border-zinc-800 text-violet-300 font-mono text-sm h-9 focus-visible:ring-violet-500 flex-1"
-                  />
-                  {commands.length > 1 && (
-                    <Button
-                      variant="ghost" size="icon"
-                      className="h-9 w-9 shrink-0 text-zinc-600 hover:text-red-400"
-                      onClick={() => removeCommand(entry.id)}
-                    >
-                      <Trash2 className="w-3 h-3" />
-                    </Button>
-                  )}
+                <div key={entry.id} className="flex flex-col gap-1.5 p-2 rounded-md bg-zinc-900/70 border border-zinc-800">
+                  <div className="flex items-center gap-2">
+                    <span className="text-[10px] text-zinc-500 font-mono w-4 text-right shrink-0">
+                      #{idx + 1}
+                    </span>
+                    <Input
+                      placeholder="Optional label (e.g. Server, Client)"
+                      value={entry.name || ''}
+                      onChange={e => updateCommandName(entry.id, e.target.value)}
+                      className="bg-zinc-950 border-zinc-800 text-zinc-300 text-xs h-7 w-40 focus-visible:ring-violet-500"
+                    />
+                    <div className="flex-1 flex items-center gap-1">
+                      <code className="text-[11px] text-zinc-500 shrink-0">$</code>
+                      <Input
+                        placeholder={idx === 0 ? 'e.g. pnpm install' : idx === 1 ? 'e.g. pnpm dev' : 'e.g. pnpm build'}
+                        value={entry.command}
+                        onChange={e => updateCommand(entry.id, e.target.value)}
+                        className="bg-zinc-950 border-zinc-800 text-violet-300 font-mono text-xs h-7 focus-visible:ring-violet-500 flex-1"
+                      />
+                    </div>
+                    {commands.length > 1 && (
+                      <Button
+                        variant="ghost" size="icon"
+                        className="h-7 w-7 shrink-0 text-zinc-600 hover:text-red-400"
+                        onClick={() => removeCommand(entry.id)}
+                      >
+                        <Trash2 className="w-3 h-3" />
+                      </Button>
+                    )}
+                  </div>
                 </div>
               ))}
             </div>
 
+            {/* ── Multi-Command Execution Mode Option ── */}
             {commands.length > 1 && (
-              <p className="text-[10px] text-zinc-600 pl-6">
-                Will run as: <code className="text-zinc-500 font-mono">{commands.map(c => c.command || '…').join(' ; ')}</code>
-              </p>
+              <div className="pt-2 space-y-2">
+                <Label className="text-zinc-300 text-xs font-medium">Multiple Commands Execution Mode</Label>
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setExecutionMode('sequential')}
+                    className={cn(
+                      'flex flex-col items-start p-2.5 rounded-md border text-left transition-all',
+                      executionMode === 'sequential'
+                        ? 'bg-violet-950/40 border-violet-500 text-white shadow-sm ring-1 ring-violet-500/50'
+                        : 'bg-zinc-900 border-zinc-800 text-zinc-400 hover:border-zinc-700 hover:text-zinc-200'
+                    )}
+                  >
+                    <div className="flex items-center gap-1.5 font-medium text-xs">
+                      <Terminal className="w-3.5 h-3.5 text-violet-400" />
+                      Run sequentially in 1 terminal
+                    </div>
+                    <p className="text-[10px] text-zinc-500 mt-1 leading-relaxed">
+                      Executes top-to-bottom in a single terminal tab (<code>{commands.map(c => c.command || '…').join(' ; ')}</code>).
+                    </p>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setExecutionMode('parallel')}
+                    className={cn(
+                      'flex flex-col items-start p-2.5 rounded-md border text-left transition-all',
+                      executionMode === 'parallel'
+                        ? 'bg-cyan-950/40 border-cyan-500 text-white shadow-sm ring-1 ring-cyan-500/50'
+                        : 'bg-zinc-900 border-zinc-800 text-zinc-400 hover:border-zinc-700 hover:text-zinc-200'
+                    )}
+                  >
+                    <div className="flex items-center gap-1.5 font-medium text-xs">
+                      <Layers className="w-3.5 h-3.5 text-cyan-400" />
+                      Run each in a new terminal
+                    </div>
+                    <p className="text-[10px] text-zinc-500 mt-1 leading-relaxed">
+                      Spawns {commands.filter(c => c.command.trim()).length || 2} separate in-app terminal tabs running concurrently.
+                    </p>
+                  </button>
+                </div>
+              </div>
             )}
           </div>
 

@@ -30,6 +30,7 @@ import { useProjectStore } from '@renderer/stores/useProjectStore'
 import { useAppStore } from '@renderer/stores/useAppStore'
 import { useGitStore } from '@renderer/stores/useGitStore'
 import { useTerminalStore } from '@renderer/stores/useTerminalStore'
+import { useRunConfigStore } from '@renderer/stores/useRunConfigStore'
 import { useGit } from '../hooks/useGit'
 import { useTerminal } from '../hooks/useTerminal'
 import type { ProjectInfo, SubProject } from '../types/project'
@@ -134,6 +135,7 @@ export const ProjectDetailPage: React.FC<ProjectDetailPageProps> = ({ projectId:
   const [commitsLoading, setCommitsLoading] = useState(false)
   const [configDialogOpen, setConfigDialogOpen] = useState(false)
   const [envDialogOpen, setEnvDialogOpen] = useState(false)
+  const savedConfigs = useRunConfigStore((s) => s.configs).filter((c) => c.projectId === project?.id)
 
   // Fetch git status + recent commits whenever the selected project changes
   useEffect(() => {
@@ -423,6 +425,93 @@ export const ProjectDetailPage: React.FC<ProjectDetailPageProps> = ({ projectId:
               ) : (
                 <p className="text-sm text-zinc-500">{isLoading ? 'Loading…' : 'No git data available.'}</p>
               )}
+            </CardContent>
+          </Card>
+        )}
+
+        {/* ── Saved Run Configurations ── */}
+        {savedConfigs.length > 0 && (
+          <Card className="border-zinc-800 bg-zinc-950">
+            <CardHeader className="pb-3">
+              <div className="flex items-center justify-between">
+                <CardTitle className="text-sm flex items-center gap-2">
+                  <Play className="h-4 w-4 text-violet-400" />
+                  Run Configurations
+                  <Badge variant="outline" className="text-[10px] ml-1">
+                    {savedConfigs.length}
+                  </Badge>
+                </CardTitle>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-6 text-[11px] text-violet-400"
+                  onClick={() => setActiveTab('services')}
+                >
+                  Manage in Services
+                </Button>
+              </div>
+            </CardHeader>
+            <CardContent className="pt-0 space-y-2">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                {savedConfigs.map((cfg) => {
+                  const isParallel = cfg.executionMode === 'parallel' && (cfg.commands?.length || 0) > 1
+                  const cmds = cfg.commands?.length
+                    ? cfg.commands.filter(c => c.command.trim())
+                    : cfg.command ? [{ id: '1', command: cfg.command }] : []
+
+                  return (
+                    <div
+                      key={cfg.id}
+                      className="p-3 rounded-lg bg-zinc-900/70 border border-zinc-800 flex items-center justify-between gap-3"
+                    >
+                      <div className="min-w-0 space-y-1">
+                        <div className="flex items-center gap-2">
+                          <span className="font-semibold text-xs text-zinc-100 truncate">{cfg.name}</span>
+                          {isParallel ? (
+                            <Badge variant="outline" className="text-[9px] bg-cyan-950/40 border-cyan-800 text-cyan-300 gap-1 px-1.5 py-0">
+                              <Layers className="w-2.5 h-2.5" />
+                              {cmds.length} Tabs
+                            </Badge>
+                          ) : (
+                            <Badge variant="outline" className="text-[9px] bg-violet-950/40 border-violet-800 text-violet-300 gap-1 px-1.5 py-0">
+                              <TerminalSquare className="w-2.5 h-2.5" />
+                              Sequential
+                            </Badge>
+                          )}
+                        </div>
+                        <p className="text-[11px] font-mono text-zinc-500 truncate">
+                          {cmds.map(c => c.command).join(' ; ') || 'No command'}
+                        </p>
+                      </div>
+
+                      <Button
+                        size="sm"
+                        className="h-7 text-xs px-2.5 bg-violet-600 hover:bg-violet-700 text-white shrink-0 gap-1"
+                        onClick={async () => {
+                          if (!cmds.length) return
+                          if (isParallel) {
+                            for (let i = 0; i < cmds.length; i++) {
+                              const cmd = cmds[i]
+                              const termName = cmd.name ? `${cfg.name} (${cmd.name})` : `${cfg.name} #${i + 1}`
+                              await createTerminal({ name: termName, cwd: cfg.cwd || project.path, projectId: project.id, command: cmd.command })
+                            }
+                            setActiveTab('terminals')
+                            toast.success(`Launched ${cmds.length} terminals for ${cfg.name}`)
+                          } else {
+                            const combined = cmds.map(c => c.command).join(' ; ')
+                            await createTerminal({ name: cfg.name, cwd: cfg.cwd || project.path, projectId: project.id, command: combined })
+                            setActiveTab('terminals')
+                            toast.success(`Launched ${cfg.name}`)
+                          }
+                        }}
+                      >
+                        <Play className="w-3 h-3" />
+                        Run
+                      </Button>
+                    </div>
+                  )
+                })}
+              </div>
             </CardContent>
           </Card>
         )}

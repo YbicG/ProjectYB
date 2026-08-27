@@ -55,6 +55,7 @@ export const ProjectCard: React.FC<ProjectCardProps> = ({ project }) => {
   const [runConfigDialogOpen, setRunConfigDialogOpen] = useState(false)
   const [projectConfigDialogOpen, setProjectConfigDialogOpen] = useState(false)
   const [envDialogOpen, setEnvDialogOpen] = useState(false)
+  const savedConfigs = useRunConfigStore((s) => s.configs).filter((c) => c.projectId === project.id)
 
   const handleOpenTerminal = async (sub?: SubProject) => {
     const termName = sub ? `${project.name} (${sub.name})` : project.name
@@ -406,6 +407,54 @@ export const ProjectCard: React.FC<ProjectCardProps> = ({ project }) => {
                 </div>
               </div>
             </DropdownMenuItem>
+
+            {/* Saved Configurations for this project */}
+            {savedConfigs.length > 0 && (
+              <>
+                <DropdownMenuSeparator className="bg-zinc-800" />
+                <div className="px-2 py-1 text-[10px] font-semibold text-zinc-500 uppercase tracking-wider">
+                  Run Configs
+                </div>
+                {savedConfigs.map((cfg) => {
+                  const isParallel = cfg.executionMode === 'parallel' && (cfg.commands?.length || 0) > 1
+                  const cmds = cfg.commands?.length
+                    ? cfg.commands.filter(c => c.command.trim())
+                    : cfg.command ? [{ id: '1', command: cfg.command }] : []
+
+                  return (
+                    <DropdownMenuItem
+                      key={cfg.id}
+                      className="cursor-pointer focus:bg-zinc-800 gap-2"
+                      onClick={async () => {
+                        if (!cmds.length) return
+                        if (isParallel) {
+                          for (let i = 0; i < cmds.length; i++) {
+                            const cmd = cmds[i]
+                            const termName = cmd.name ? `${cfg.name} (${cmd.name})` : `${cfg.name} #${i + 1}`
+                            await createTerminal({ name: termName, cwd: cfg.cwd || project.path, projectId: project.id, command: cmd.command })
+                          }
+                          setActiveTab('terminals')
+                          toast.success(`Launched ${cmds.length} terminals for ${cfg.name}`)
+                        } else {
+                          const combined = cmds.map(c => c.command).join(' ; ')
+                          await createTerminal({ name: cfg.name, cwd: cfg.cwd || project.path, projectId: project.id, command: combined })
+                          setActiveTab('terminals')
+                          toast.success(`Launched ${cfg.name}`)
+                        }
+                      }}
+                    >
+                      {isParallel ? <Layers className="w-3 h-3 text-cyan-400" /> : <Play className="w-3 h-3 text-violet-400" />}
+                      <div className="min-w-0">
+                        <div className="font-medium text-xs text-zinc-200 truncate">{cfg.name}</div>
+                        <div className="text-[10px] text-zinc-500 font-mono truncate">
+                          {isParallel ? `${cmds.length} separate terminals` : cmds.map(c => c.command).join(' ; ')}
+                        </div>
+                      </div>
+                    </DropdownMenuItem>
+                  )
+                })}
+              </>
+            )}
 
             {hasSubprojects && (
               <>

@@ -1,9 +1,11 @@
 import { create } from 'zustand'
 import { generateId } from '../lib/utils'
 
+export type ExecutionMode = 'sequential' | 'parallel'
+
 export interface CommandEntry {
   id: string
-  name: string
+  name?: string
   command: string
 }
 
@@ -15,8 +17,10 @@ export interface RunConfig {
   name: string
   /** Legacy single-command field (kept for backwards compat) */
   command?: string
-  /** Multi-command list — each entry spawns its own terminal tab */
+  /** Multi-command list */
   commands: CommandEntry[]
+  /** Execution mode for multi-command configurations */
+  executionMode?: ExecutionMode
   cwd?: string
   env?: Record<string, string>
   autoRestart?: boolean
