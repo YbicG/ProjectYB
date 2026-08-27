@@ -1,90 +1,111 @@
-import React, { useState } from 'react';
-import { Send, CheckCircle2 } from 'lucide-react';
-import { Button } from '../ui/button';
-import { useGitStore } from '@renderer/stores/useGitStore';
-import { useProjectStore } from '@renderer/stores/useProjectStore';
+import React, { useState, useEffect } from 'react'
+import { Send, CheckCircle2, Loader2 } from 'lucide-react'
+import { Button } from '../ui/button'
+import { useGitStore } from '@renderer/stores/useGitStore'
+import { useProjectStore } from '@renderer/stores/useProjectStore'
 
 export const GitCommit: React.FC = () => {
-  const [message, setMessage] = useState('');
-  const [stageAll, setStageAll] = useState(true);
-  const { commit, push, selectedProjectId, isLoading } = useGitStore();
-  const { projects } = useProjectStore();
+  const [message, setMessage] = useState('')
+  const [stageAll, setStageAll] = useState(false)
+  const { commit, push, selectedProjectId, statuses, isLoading } = useGitStore()
+  const { projects } = useProjectStore()
+
+  const project = projects.find((p) => p.id === selectedProjectId)
+  const status = selectedProjectId ? statuses.get(selectedProjectId) : undefined
+
+  // If no staged changes exist, default stageAll to true; otherwise false
+  useEffect(() => {
+    if (status && status.staged.length === 0 && (status.unstaged.length > 0 || status.untracked.length > 0)) {
+      setStageAll(true)
+    } else if (status && status.staged.length > 0) {
+      setStageAll(false)
+    }
+  }, [status?.staged.length, status?.unstaged.length, status?.untracked.length])
 
   const handleCommit = async () => {
-    if (message.trim() && selectedProjectId) {
-      const project = projects.find(p => p.id === selectedProjectId);
-      if (project) {
-        try {
-          await commit(selectedProjectId, project.path, message, stageAll);
-          setMessage('');
-        } catch (error) {
-          console.error(error);
-        }
-      }
+    if (!message.trim() || !project) return
+    try {
+      await commit(project.id, project.path, message.trim(), stageAll)
+      setMessage('')
+    } catch (error) {
+      console.error(error)
     }
-  };
+  }
 
   const handleCommitAndPush = async () => {
-    if (message.trim() && selectedProjectId) {
-      const project = projects.find(p => p.id === selectedProjectId);
-      if (project) {
-        try {
-          await commit(selectedProjectId, project.path, message, stageAll);
-          setMessage('');
-          await push(selectedProjectId, project.path);
-        } catch (error) {
-          console.error(error);
-        }
-      }
+    if (!message.trim() || !project) return
+    try {
+      await commit(project.id, project.path, message.trim(), stageAll)
+      setMessage('')
+      await push(project.id, project.path)
+    } catch (error) {
+      console.error(error)
     }
-  };
+  }
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (e.ctrlKey && e.key === 'Enter') {
+      e.preventDefault()
+      handleCommit()
+    }
+  }
 
   return (
-    <div className="p-4 bg-zinc-950 border border-zinc-800 rounded-lg shadow-sm">
-      <h3 className="text-sm font-semibold mb-3 text-zinc-200">Commit Changes</h3>
-      
+    <div className="p-3 bg-zinc-950 border border-zinc-800 rounded-lg shadow-sm space-y-2.5">
+      <div className="flex items-center justify-between">
+        <h3 className="text-xs font-semibold text-zinc-300">Commit Message</h3>
+        <span className="text-[10px] text-zinc-500">Ctrl + Enter to commit</span>
+      </div>
+
       <textarea
         value={message}
         onChange={(e) => setMessage(e.target.value)}
-        placeholder="Commit message (e.g., feat: add new component)"
-        className="w-full h-24 bg-zinc-900 border border-zinc-800 rounded-md p-3 text-sm text-zinc-100 placeholder:text-zinc-500 focus:outline-none focus:ring-2 focus:ring-violet-500 resize-none mb-3 disabled:opacity-50"
+        onKeyDown={handleKeyDown}
+        placeholder="Brief summary of changes (e.g., feat: add responsive navigation)…"
+        className="w-full h-20 bg-zinc-900 border border-zinc-800 rounded-md p-2.5 text-xs text-zinc-100 placeholder:text-zinc-500 focus:outline-none focus:ring-1 focus:ring-violet-500 resize-none disabled:opacity-50 font-mono"
         disabled={isLoading}
       />
-      
-      <div className="flex items-center justify-between">
-        <label className="flex items-center gap-2 text-sm text-zinc-400 cursor-pointer">
-          <input 
-            type="checkbox" 
-            checked={stageAll} 
+
+      <div className="flex items-center justify-between gap-2 flex-wrap">
+        <label className="flex items-center gap-2 text-xs text-zinc-400 cursor-pointer select-none">
+          <input
+            type="checkbox"
+            checked={stageAll}
             onChange={(e) => setStageAll(e.target.checked)}
             className="accent-violet-500 rounded bg-zinc-900 border-zinc-800"
             disabled={isLoading}
           />
-          Stage all changes
+          <span>Stage all files on commit</span>
         </label>
-        
-        <div className="flex gap-2">
-          <Button 
-            variant="outline" 
+
+        <div className="flex items-center gap-1.5 ml-auto">
+          <Button
+            variant="outline"
             size="sm"
             disabled={!message.trim() || isLoading || !selectedProjectId}
             onClick={handleCommit}
+            className="h-7 text-xs border-zinc-700"
           >
-            <CheckCircle2 className="w-4 h-4 mr-2" />
+            {isLoading ? (
+              <Loader2 className="w-3.5 h-3.5 animate-spin mr-1.5" />
+            ) : (
+              <CheckCircle2 className="w-3.5 h-3.5 mr-1.5 text-emerald-400" />
+            )}
             Commit
           </Button>
-          <Button 
-            variant="default" 
+
+          <Button
+            variant="default"
             size="sm"
             disabled={!message.trim() || isLoading || !selectedProjectId}
             onClick={handleCommitAndPush}
-            className="bg-violet-600 hover:bg-violet-700"
+            className="h-7 text-xs bg-violet-600 hover:bg-violet-700"
           >
-            <Send className="w-4 h-4 mr-2" />
+            <Send className="w-3.5 h-3.5 mr-1.5" />
             Commit & Push
           </Button>
         </div>
       </div>
     </div>
-  );
-};
+  )
+}

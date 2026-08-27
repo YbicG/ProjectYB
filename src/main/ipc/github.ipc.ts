@@ -25,9 +25,27 @@ export function setupGithubIpc() {
   ipcMain.handle('github:getUser', handleGetUser);
   ipcMain.handle('github:get-user', handleGetUser);
 
+  // getRepo
+  const handleGetRepo = async (_: any, ...args: any[]) => {
+    let token: string;
+    let owner: string;
+    let repo: string;
+    if (args.length >= 3) {
+      token = await resolveToken(args[0]);
+      owner = args[1];
+      repo = args[2];
+    } else {
+      token = await resolveToken();
+      owner = args[0];
+      repo = args[1];
+    }
+    return githubService.getRepoDetails(token, owner, repo);
+  };
+  ipcMain.handle('github:getRepo', handleGetRepo);
+  ipcMain.handle('github:get-repo', handleGetRepo);
+
   // createRepo
   const handleCreateRepo = async (_: any, ...args: any[]) => {
-    // If first arg looks like a token vs name
     let token: string;
     let name: string;
     let isPrivate: boolean;
@@ -94,37 +112,80 @@ export function setupGithubIpc() {
     let token: string;
     let owner: string;
     let repo: string;
+    let state: 'open' | 'closed' | 'all' = 'open';
 
-    if (args.length >= 3) {
+    if (args.length >= 4) {
       token = await resolveToken(args[0]);
       owner = args[1];
       repo = args[2];
+      state = args[3] || 'open';
+    } else if (args.length === 3 && typeof args[2] === 'string' && ['open', 'closed', 'all'].includes(args[2])) {
+      token = await resolveToken();
+      owner = args[0];
+      repo = args[1];
+      state = args[2] as any;
     } else {
       token = await resolveToken();
       owner = args[0];
       repo = args[1];
     }
-    return githubService.listPullRequests(token, owner, repo);
+    return githubService.listPullRequests(token, owner, repo, state);
   };
   ipcMain.handle('github:listPRs', handleListPRs);
   ipcMain.handle('github:list-prs', handleListPRs);
+
+  // createIssue
+  const handleCreateIssue = async (_: any, ...args: any[]) => {
+    let token: string;
+    let owner: string;
+    let repo: string;
+    let title: string;
+    let body: string | undefined;
+    let labels: string[] | undefined;
+
+    if (args.length >= 6) {
+      token = await resolveToken(args[0]);
+      owner = args[1];
+      repo = args[2];
+      title = args[3];
+      body = args[4];
+      labels = args[5];
+    } else {
+      token = await resolveToken();
+      owner = args[0];
+      repo = args[1];
+      title = args[2];
+      body = args[3];
+      labels = args[4];
+    }
+    return githubService.createIssue(token, owner, repo, title, body, labels);
+  };
+  ipcMain.handle('github:createIssue', handleCreateIssue);
+  ipcMain.handle('github:create-issue', handleCreateIssue);
 
   // listIssues
   const handleListIssues = async (_: any, ...args: any[]) => {
     let token: string;
     let owner: string;
     let repo: string;
+    let state: 'open' | 'closed' | 'all' = 'open';
 
-    if (args.length >= 3) {
+    if (args.length >= 4) {
       token = await resolveToken(args[0]);
       owner = args[1];
       repo = args[2];
+      state = args[3] || 'open';
+    } else if (args.length === 3 && typeof args[2] === 'string' && ['open', 'closed', 'all'].includes(args[2])) {
+      token = await resolveToken();
+      owner = args[0];
+      repo = args[1];
+      state = args[2] as any;
     } else {
       token = await resolveToken();
       owner = args[0];
       repo = args[1];
     }
-    return githubService.listIssues(token, owner, repo);
+    return githubService.listIssues(token, owner, repo, state);
   };
   ipcMain.handle('github:listIssues', handleListIssues);
   ipcMain.handle('github:list-issues', handleListIssues);
@@ -135,19 +196,22 @@ export function setupGithubIpc() {
     let localPath: string;
     let repoName: string;
     let isPrivate: boolean;
+    let description: string | undefined;
 
-    if (args.length >= 4) {
+    if (args.length >= 5) {
       token = await resolveToken(args[0]);
       localPath = args[1];
       repoName = args[2];
       isPrivate = Boolean(args[3]);
+      description = args[4];
     } else {
       token = await resolveToken();
       localPath = args[0];
       repoName = args[1];
       isPrivate = Boolean(args[2]);
+      description = args[3];
     }
-    return githubService.initAndPushToGitHub(token, localPath, repoName, isPrivate);
+    return githubService.initAndPushToGitHub(token, localPath, repoName, isPrivate, description);
   };
   ipcMain.handle('github:initAndPush', handleInitAndPush);
   ipcMain.handle('github:init-and-push', handleInitAndPush);

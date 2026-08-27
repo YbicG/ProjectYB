@@ -28,6 +28,25 @@ class GitService {
     return await this.git(path).add('.');
   }
 
+  async stageFile(path: string, filePath: string) {
+    return await this.git(path).add(filePath);
+  }
+
+  async unstageFile(path: string, filePath: string) {
+    return await this.git(path).reset(['HEAD', filePath]);
+  }
+
+  async discardChanges(path: string, filePath: string) {
+    const git = this.git(path);
+    try {
+      // Try checkout first (for tracked files)
+      return await git.checkout(['--', filePath]);
+    } catch {
+      // If untracked, clean
+      return await git.clean('f', ['-d', filePath]);
+    }
+  }
+
   async commit(path: string, message: string, stageAll: boolean = true) {
     const git = this.git(path);
     if (stageAll) await git.add('.');
@@ -67,20 +86,78 @@ class GitService {
     return await this.git(path).deleteLocalBranch(name);
   }
 
+  async mergeBranch(path: string, branchName: string) {
+    const git = this.git(path);
+    try {
+      const result = await git.merge([branchName]);
+      return { success: true, result, conflicts: [] };
+    } catch (error: any) {
+      // Check if conflicts exist
+      const status = await git.status();
+      return {
+        success: false,
+        error: error.message || 'Merge conflict',
+        conflicts: status.conflicted || []
+      };
+    }
+  }
+
   async getDiff(path: string, staged: boolean = false) {
     if (staged) return await this.git(path).diff(['--cached']);
     return await this.git(path).diff();
   }
 
-  async stash(path: string, action: 'push' | 'pop' | 'list', message?: string) {
+  async getFileDiff(path: string, filePath: string, staged: boolean = false) {
     const git = this.git(path);
-    if (action === 'push') return await git.stash(['push', ...(message ? ['-m', message] : [])]);
-    if (action === 'pop') return await git.stash(['pop']);
-    if (action === 'list') return await git.stashList();
+    if (staged) {
+      return await git.diff(['--cached', '--', filePath]);
+    }
+    return await git.diff(['--', filePath]);
+  }
+
+  async getCommitDiff(path: string, commitHash: string) {
+    const git = this.git(path);
+    // Show diff for specific commit
+    return await git.show([commitHash]);
+  }
+
+  async stash(path: string, action: 'push' | 'pop' | 'list' | 'apply' | 'drop', message?: string, index: number = 0) {
+    const git = this.git(path);
+    if (action === 'push') {
+      const args = ['push'];
+      if (message) args.push('-m', message);
+      return await git.stash(args);
+    }
+    if (action === 'pop') {
+      return await git.stash(['pop', `stash@{${index}}`]);
+    }
+    if (action === 'apply') {
+      return await git.stash(['apply', `stash@{${index}}`]);
+    }
+    if (action === 'drop') {
+      return await git.stash(['drop', `stash@{${index}}`]);
+    }
+    if (action === 'list') {
+      const raw = await git.stashList();
+      return (raw.all || []).map((s, idx) => ({
+        index: idx,
+        message: s.message || `Stash #${idx}`,
+        date: s.date || '',
+        hash: s.hash || ''
+      }));
+    }
   }
 
   async log(path: string, limit: number = 50) {
-    return await this.git(path).log({ maxCount: limit });
+    const raw = await this.git(path).log({ maxCount: limit });
+    return (raw.all || []).map(entry => ({
+      hash: entry.hash,
+      hashShort: entry.hash.substring(0, 7),
+      message: entry.message,
+      author: entry.author_name,
+      date: entry.date,
+      refs: entry.refs
+    }));
   }
 
   async isGitRepo(path: string) {

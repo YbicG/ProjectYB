@@ -16,6 +16,15 @@ class GitHubService {
     return response.data;
   }
 
+  async getRepoDetails(token: string, owner: string, repo: string) {
+    const octokit = this.getClient(token);
+    const response = await octokit.rest.repos.get({
+      owner,
+      repo
+    });
+    return response.data;
+  }
+
   async listRepositories(token: string) {
     const octokit = this.getClient(token);
     const response = await octokit.rest.repos.listForAuthenticatedUser({
@@ -38,22 +47,34 @@ class GitHubService {
     return response.data;
   }
 
-  async listPullRequests(token: string, owner: string, repo: string) {
+  async listPullRequests(token: string, owner: string, repo: string, state: 'open' | 'closed' | 'all' = 'open') {
     const octokit = this.getClient(token);
     const response = await octokit.rest.pulls.list({
       owner,
       repo,
-      state: 'open'
+      state
     });
     return response.data;
   }
 
-  async listIssues(token: string, owner: string, repo: string) {
+  async createIssue(token: string, owner: string, repo: string, title: string, body?: string, labels?: string[]) {
+    const octokit = this.getClient(token);
+    const response = await octokit.rest.issues.create({
+      owner,
+      repo,
+      title,
+      body,
+      labels
+    });
+    return response.data;
+  }
+
+  async listIssues(token: string, owner: string, repo: string, state: 'open' | 'closed' | 'all' = 'open') {
     const octokit = this.getClient(token);
     const response = await octokit.rest.issues.listForRepo({
       owner,
       repo,
-      state: 'open'
+      state
     });
     return response.data;
   }
@@ -64,8 +85,8 @@ class GitHubService {
     return response.data;
   }
 
-  async initAndPushToGitHub(token: string, localPath: string, repoName: string, isPrivate: boolean) {
-    const repo = await this.createRepository(token, repoName, isPrivate);
+  async initAndPushToGitHub(token: string, localPath: string, repoName: string, isPrivate: boolean, description?: string) {
+    const repo = await this.createRepository(token, repoName, isPrivate, description);
     
     const isRepo = await gitService.isGitRepo(localPath);
     if (!isRepo) {
@@ -78,8 +99,22 @@ class GitHubService {
       // Remote might exist
     }
 
-    await gitService.commit(localPath, 'Initial commit', true);
-    await gitService.push(localPath, 'origin', 'main');
+    try {
+      await gitService.commit(localPath, 'Initial commit from ProjectYB', true);
+    } catch (e) {
+      // Maybe already committed
+    }
+
+    try {
+      await gitService.push(localPath, 'origin', 'main');
+    } catch (e) {
+      // Branch might be master
+      try {
+        await gitService.push(localPath, 'origin', 'master');
+      } catch (err) {
+        console.error('Failed to push to origin', err);
+      }
+    }
 
     return repo;
   }

@@ -33,22 +33,30 @@ export interface IElectronAPI {
     branches(repoPath: string): Promise<BranchSummary>
     checkout(repoPath: string, branch: string, createNew?: boolean): Promise<any>
     deleteBranch(repoPath: string, branch: string): Promise<any>
+    mergeBranch(repoPath: string, branch: string): Promise<{ success: boolean; result?: any; conflicts: string[]; error?: string }>
     diff(repoPath: string, staged?: boolean): Promise<string>
-    stash(repoPath: string, action: string, message?: string): Promise<any>
+    fileDiff(repoPath: string, filePath: string, staged?: boolean): Promise<string>
+    commitDiff(repoPath: string, commitHash: string): Promise<string>
+    stageAll(path: string): Promise<any>
+    stageFile(path: string, filePath: string): Promise<any>
+    unstageFile(path: string, filePath: string): Promise<any>
+    discardChanges(path: string, filePath: string): Promise<any>
+    stash(repoPath: string, action: 'push' | 'pop' | 'list' | 'apply' | 'drop', message?: string, index?: number): Promise<any>
     log(repoPath: string, limit?: number): Promise<GitLogEntry[]>
     isRepo(path: string): Promise<boolean>
-    stageAll(path: string): Promise<any>
     init(path: string): Promise<any>
     addRemote(path: string, name: string, url: string): Promise<any>
   }
   github: {
     createRepo(name: string, isPrivate: boolean, description?: string): Promise<any>
+    getRepo(owner: string, repo: string): Promise<any>
     listRepos(): Promise<any>
     createPR(owner: string, repo: string, title: string, head: string, base: string, body?: string): Promise<any>
-    listPRs(owner: string, repo: string): Promise<any>
-    listIssues(owner: string, repo: string): Promise<any>
+    listPRs(owner: string, repo: string, state?: 'open' | 'closed' | 'all'): Promise<any[]>
+    createIssue(owner: string, repo: string, title: string, body?: string, labels?: string[]): Promise<any>
+    listIssues(owner: string, repo: string, state?: 'open' | 'closed' | 'all'): Promise<any[]>
     getUser(): Promise<any>
-    initAndPush(localPath: string, repoName: string, isPrivate: boolean): Promise<any>
+    initAndPush(localPath: string, repoName: string, isPrivate: boolean, description?: string): Promise<any>
   }
   projects: {
     scan(options?: { rootPaths?: string[]; mode?: 'git' | 'all' }): Promise<ProjectInfo[]>
