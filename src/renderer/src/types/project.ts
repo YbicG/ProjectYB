@@ -1,4 +1,4 @@
-export type ProjectType = 'node' | 'python' | 'rust' | 'go' | 'dotnet' | 'unknown'
+export type ProjectType = 'node' | 'python' | 'rust' | 'go' | 'dotnet' | 'godot' | 'git' | 'unknown'
 export type ProjectStatus = 'running' | 'stopped' | 'error' | 'idle'
 
 export interface ProjectInfo {

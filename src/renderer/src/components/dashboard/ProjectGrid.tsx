@@ -5,7 +5,7 @@ import { ProjectCard } from './ProjectCard';
 import { useProjectStore } from '@renderer/stores/useProjectStore';
 import { cn } from '@renderer/lib/utils';
 
-const TYPE_FILTERS = ['All', 'Node', 'Python', 'Rust', 'Go'] as const;
+const TYPE_FILTERS = ['All', 'Node', 'Python', 'Godot', 'Git', 'Rust', 'Go', '.NET'] as const;
 type TypeFilter = typeof TYPE_FILTERS[number];
 
 export const ProjectGrid: React.FC = () => {

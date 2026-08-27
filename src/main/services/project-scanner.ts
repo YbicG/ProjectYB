@@ -5,7 +5,7 @@ import { logger } from '../utils/logger';
 
 export interface ProjectYBConfig {
   name?: string;
-  type?: 'node' | 'python' | 'rust' | 'go' | 'dotnet' | 'unknown';
+  type?: 'node' | 'python' | 'rust' | 'go' | 'dotnet' | 'godot' | 'git' | 'unknown';
   ignore?: boolean;
   ignored?: boolean;
   tags?: string[];
@@ -19,7 +19,7 @@ export interface ProjectInfo {
   id: string;
   name: string;
   path: string;
-  type: 'node' | 'python' | 'rust' | 'go' | 'dotnet' | 'unknown';
+  type: 'node' | 'python' | 'rust' | 'go' | 'dotnet' | 'godot' | 'git' | 'unknown';
   category: string;
   status: 'running' | 'stopped' | 'error';
   tags: string[];
@@ -34,7 +34,9 @@ export interface ProjectInfo {
 
 class ProjectScanner {
   private watcher: chokidar.FSWatcher | null = null;
-  private skipDirs = new Set(['node_modules', '.git', 'dist', 'build', '__pycache__', '.next', '.venv']);
+  private skipDirs = new Set([
+    'node_modules', '.git', 'dist', 'build', '__pycache__', '.next', '.venv', '.turbo', 'vendor', '.gradle', 'bin', 'obj'
+  ]);
 
   async getConfigFilePath(folderPath: string): Promise<string | null> {
     try {
@@ -83,88 +85,110 @@ class ProjectScanner {
 
   async scanDirectory(rootPaths: string[], maxDepth: number = 4, mode: 'git' | 'all' = 'git'): Promise<ProjectInfo[]> {
     const projects: ProjectInfo[] = [];
-
-    const scan = async (currentPath: string, depth: number) => {
-      if (depth > maxDepth) return;
-
-      try {
-        const entries = await fs.promises.readdir(currentPath, { withFileTypes: true });
-        const files = entries.filter(e => e.isFile()).map(e => e.name);
-
-        // Check for .projectyb.json or .projectyb
-        const hasProjectYBConfig = files.includes('.projectyb.json') || files.includes('.projectyb');
-        const { config } = await this.readProjectConfig(currentPath);
-
-        // If explicitly ignored in config, skip this project
-        if (config && (config.ignore === true || config.ignored === true)) {
-          return;
-        }
-
-        let isProject = false;
-        let type: ProjectInfo['type'] = 'unknown';
-
-        if (files.includes('package.json')) { isProject = true; type = 'node'; }
-        else if (files.includes('requirements.txt') || files.includes('pyproject.toml')) { isProject = true; type = 'python'; }
-        else if (files.includes('Cargo.toml')) { isProject = true; type = 'rust'; }
-        else if (files.includes('go.mod')) { isProject = true; type = 'go'; }
-        else if (files.includes('.git')) { isProject = true; type = 'unknown'; }
-        else if (hasProjectYBConfig) { isProject = true; type = config?.type || 'unknown'; }
-
-        if (mode === 'all' && depth === 1) {
-          isProject = true;
-        }
-
-        if (isProject) {
-          const defaultName = path.basename(currentPath);
-          const name = config?.name || defaultName;
-          const category = path.basename(path.dirname(currentPath));
-          const tags = config?.tags || [];
-          const isGit = files.includes('.git') || fs.existsSync(path.join(currentPath, '.git'));
-          
-          let scripts = config?.scripts;
-          let dependencies;
-
-          if (type === 'node') {
-            try {
-              const pkgStr = await fs.promises.readFile(path.join(currentPath, 'package.json'), 'utf8');
-              const pkg = JSON.parse(pkgStr);
-              scripts = { ...pkg.scripts, ...scripts };
-              dependencies = { ...pkg.dependencies, ...pkg.devDependencies };
-            } catch (e) {
-              logger.error(`Error parsing package.json in ${currentPath}`, e);
-            }
-          }
-
-          projects.push({
-            name,
-            path: currentPath,
-            type: config?.type || type,
-            category,
-            scripts,
-            dependencies,
-            id: currentPath,
-            status: 'stopped' as const,
-            tags,
-            runningServices: [],
-            isGitRepo: isGit,
-            ignored: false
-          });
-        }
-
-        if (mode === 'all' && depth >= 1) return;
-
-        for (const entry of entries) {
-          if (entry.isDirectory() && !this.skipDirs.has(entry.name)) {
-            await scan(path.join(currentPath, entry.name), depth + 1);
-          }
-        }
-      } catch (error) {
-        logger.error(`Error scanning directory ${currentPath}`, error);
-      }
-    };
+    const seenPaths = new Set<string>();
 
     for (const root of rootPaths) {
-      await scan(root, 0);
+      if (!fs.existsSync(root)) continue;
+
+      const walk = async (currentPath: string, depth: number) => {
+        if (depth > maxDepth) return;
+
+        try {
+          const entries = await fs.promises.readdir(currentPath, { withFileTypes: true });
+          const fileNames = entries.filter(e => e.isFile()).map(e => e.name);
+          const dirNames = entries.filter(e => e.isDirectory()).map(e => e.name);
+
+          // Check for .projectyb.json or .projectyb
+          const hasProjectYBConfig = fileNames.includes('.projectyb.json') || fileNames.includes('.projectyb');
+          const { config } = await this.readProjectConfig(currentPath);
+
+          // If explicitly ignored in config, skip this project completely
+          if (config && (config.ignore === true || config.ignored === true)) {
+            return;
+          }
+
+          const hasGit = dirNames.includes('.git') || fs.existsSync(path.join(currentPath, '.git'));
+          const hasPkg = fileNames.includes('package.json');
+          const hasPy = fileNames.includes('requirements.txt') || fileNames.includes('pyproject.toml') || fileNames.includes('setup.py') || fileNames.some(f => f.endsWith('.py'));
+          const hasRust = fileNames.includes('Cargo.toml');
+          const hasGo = fileNames.includes('go.mod');
+          const hasGodot = fileNames.includes('project.godot') || dirNames.includes('.godot');
+          const hasDotnet = fileNames.some(f => f.endsWith('.sln') || f.endsWith('.csproj'));
+
+          let isProject = false;
+          let type: ProjectInfo['type'] = 'unknown';
+
+          if (hasPkg) { isProject = true; type = 'node'; }
+          else if (hasPy) { isProject = true; type = 'python'; }
+          else if (hasRust) { isProject = true; type = 'rust'; }
+          else if (hasGo) { isProject = true; type = 'go'; }
+          else if (hasGodot) { isProject = true; type = 'godot'; }
+          else if (hasDotnet) { isProject = true; type = 'dotnet'; }
+          else if (hasGit && depth > 0) { isProject = true; type = 'git'; }
+          else if (hasProjectYBConfig) { isProject = true; type = config?.type || 'unknown'; }
+
+          if (mode === 'all' && depth === 1) {
+            isProject = true;
+          }
+
+          // Do not treat root search directory as a project if depth is 0
+          if (depth === 0) {
+            isProject = false;
+          }
+
+          if (isProject && !seenPaths.has(currentPath)) {
+            seenPaths.add(currentPath);
+
+            const defaultName = path.basename(currentPath);
+            const name = config?.name || defaultName;
+            const category = path.basename(path.dirname(currentPath));
+            const tags = config?.tags || [];
+
+            let scripts = config?.scripts;
+            let dependencies;
+
+            if (type === 'node') {
+              try {
+                const pkgStr = await fs.promises.readFile(path.join(currentPath, 'package.json'), 'utf8');
+                const pkg = JSON.parse(pkgStr);
+                scripts = { ...pkg.scripts, ...scripts };
+                dependencies = { ...pkg.dependencies, ...pkg.devDependencies };
+              } catch (e) {
+                logger.error(`Error parsing package.json in ${currentPath}`, e);
+              }
+            }
+
+            projects.push({
+              name,
+              path: currentPath,
+              type: config?.type || type,
+              category,
+              scripts,
+              dependencies,
+              id: currentPath,
+              status: 'stopped' as const,
+              tags,
+              runningServices: [],
+              isGitRepo: hasGit,
+              ignored: false
+            });
+          }
+
+          // Recurse into child directories if this is a container directory or depth is low
+          const isCategoryFolder = depth <= 1 && !hasGit && !hasPkg && !hasRust && !hasGo && !hasGodot;
+          if (depth < 2 || isCategoryFolder) {
+            for (const entry of entries) {
+              if (entry.isDirectory() && !this.skipDirs.has(entry.name)) {
+                await walk(path.join(currentPath, entry.name), depth + 1);
+              }
+            }
+          }
+        } catch (error) {
+          logger.error(`Error scanning directory ${currentPath}`, error);
+        }
+      };
+
+      await walk(root, 0);
     }
 
     return projects;
@@ -181,19 +205,30 @@ class ProjectScanner {
       }
 
       const entries = await fs.promises.readdir(folderPath, { withFileTypes: true });
-      let type: ProjectInfo['type'] = 'unknown';
-      const files = entries.filter(e => e.isFile()).map(e => e.name);
+      const fileNames = entries.filter(e => e.isFile()).map(e => e.name);
+      const dirNames = entries.filter(e => e.isDirectory()).map(e => e.name);
 
-      if (files.includes('package.json')) { type = 'node'; }
-      else if (files.includes('requirements.txt') || files.includes('pyproject.toml')) { type = 'python'; }
-      else if (files.includes('Cargo.toml')) { type = 'rust'; }
-      else if (files.includes('go.mod')) { type = 'go'; }
+      const hasGit = dirNames.includes('.git') || fs.existsSync(path.join(folderPath, '.git'));
+      const hasPkg = fileNames.includes('package.json');
+      const hasPy = fileNames.includes('requirements.txt') || fileNames.includes('pyproject.toml') || fileNames.includes('setup.py') || fileNames.some(f => f.endsWith('.py'));
+      const hasRust = fileNames.includes('Cargo.toml');
+      const hasGo = fileNames.includes('go.mod');
+      const hasGodot = fileNames.includes('project.godot') || dirNames.includes('.godot');
+      const hasDotnet = fileNames.some(f => f.endsWith('.sln') || f.endsWith('.csproj'));
+
+      let type: ProjectInfo['type'] = 'unknown';
+      if (hasPkg) { type = 'node'; }
+      else if (hasPy) { type = 'python'; }
+      else if (hasRust) { type = 'rust'; }
+      else if (hasGo) { type = 'go'; }
+      else if (hasGodot) { type = 'godot'; }
+      else if (hasDotnet) { type = 'dotnet'; }
+      else if (hasGit) { type = 'git'; }
 
       const defaultName = path.basename(folderPath);
       const name = config?.name || defaultName;
       const category = path.basename(path.dirname(folderPath));
       const tags = config?.tags || [];
-      const isGit = files.includes('.git') || fs.existsSync(path.join(folderPath, '.git'));
 
       let scripts = config?.scripts;
       let dependencies;
@@ -217,7 +252,7 @@ class ProjectScanner {
         status: 'stopped' as const,
         tags,
         runningServices: [],
-        isGitRepo: isGit,
+        isGitRepo: hasGit,
         ignored: false
       };
     } catch (error) {
