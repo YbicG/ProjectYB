@@ -7,14 +7,14 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '../ui/
 import { cn } from '@renderer/lib/utils';
 
 export const TerminalToolbar: React.FC = () => {
-  const { layout, setLayout, addTerminal, removeTerminal, activeTerminalId } = useTerminalStore();
+  const { layout, setLayout, createTerminal, removeTerminal, activeTerminalId } = useTerminalStore();
 
   return (
     <div className="h-10 flex items-center px-2 bg-zinc-950 border-b border-zinc-800 gap-1">
       <TooltipProvider>
         <Tooltip>
           <TooltipTrigger asChild>
-            <Button variant="ghost" size="icon" className="h-8 w-8 text-zinc-400 hover:text-zinc-50" onClick={() => addTerminal({ name: 'Local', cwd: '.' })}>
+            <Button variant="ghost" size="icon" className="h-8 w-8 text-zinc-400 hover:text-zinc-50" onClick={() => createTerminal({ name: 'Local', cwd: '.' })}>
               <Plus className="w-4 h-4" />
             </Button>
           </TooltipTrigger>

@@ -8,7 +8,7 @@ import { cn } from '@renderer/lib/utils';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '../ui/dropdown-menu';
 
 export const TerminalSidebar: React.FC = () => {
-  const { terminals, activeTerminalId, setActiveTerminal, addTerminal, removeTerminal } = useTerminalStore();
+  const { terminals, activeTerminalId, setActiveTerminal, createTerminal, removeTerminal } = useTerminalStore();
 
   return (
     <div className="flex flex-col h-full w-64 bg-zinc-950 border-r border-zinc-800">
@@ -58,7 +58,7 @@ export const TerminalSidebar: React.FC = () => {
         <Button 
           variant="outline" 
           className="w-full justify-start text-zinc-300"
-          onClick={() => addTerminal({ name: 'New Terminal', cwd: '.' })}
+          onClick={() => createTerminal({ name: 'New Terminal', cwd: '.' })}
         >
           <Plus className="w-4 h-4 mr-2" />
           New Terminal

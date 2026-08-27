@@ -6,7 +6,7 @@ import { cn } from '@renderer/lib/utils';
 import { ScrollArea, ScrollBar } from '../ui/scroll-area';
 
 export const TerminalTabs: React.FC = () => {
-  const { terminals, activeTerminalId, setActiveTerminal, removeTerminal, addTerminal, updateTerminal } = useTerminalStore();
+  const { terminals, activeTerminalId, setActiveTerminal, removeTerminal, createTerminal } = useTerminalStore();
 
   const handleDoubleClick = (id: string, currentName: string) => {
     const newName = prompt('Rename terminal:', currentName);
@@ -51,7 +51,7 @@ export const TerminalTabs: React.FC = () => {
         <ScrollBar orientation="horizontal" className="hidden" />
       </ScrollArea>
       <button
-        onClick={() => addTerminal({ name: 'Local', cwd: '.' })}
+        onClick={() => createTerminal({ name: 'Local', cwd: '.' })}
         className="h-full px-4 border-l border-zinc-800 flex items-center justify-center text-zinc-400 hover:text-zinc-50 hover:bg-zinc-900 transition-colors"
       >
         <Plus className="w-4 h-4" />
