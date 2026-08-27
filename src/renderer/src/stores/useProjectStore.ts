@@ -19,7 +19,9 @@ interface ProjectState {
   setFilter: (key: keyof ProjectFilters, values: any[]) => void
   getFilteredProjects: () => ProjectInfo[]
   selectProject: (id: string | null) => void
-  updateProjectConfig: (id: string, config: Partial<ProjectConfig>) => void
+  renameProject: (folderPath: string, newName: string) => Promise<void>
+  saveProjectConfig: (folderPath: string, config: Partial<ProjectConfig>, overwrite?: boolean) => Promise<void>
+  loadProjectConfig: (folderPath: string) => Promise<{ config: ProjectConfig | null; filePath: string | null }>
   addManualProject: (folderPath: string) => Promise<void>
   ignoreProject: (folderPath: string) => Promise<void>
   unignoreProject: (folderPath: string) => Promise<void>
@@ -31,6 +33,7 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
   searchQuery: '',
   activeFilters: {},
   isScanning: false,
+
   scanProjects: async () => {
     set({ isScanning: true })
     try {
@@ -39,40 +42,77 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
         set({ projects: [], isScanning: false })
         return
       }
-      
-      const rootPaths = await window.api.store.get('scanPaths') as string[] | undefined
-      const mode = await window.api.store.get('scanMode') as 'git' | 'all' | undefined
-      
+
+      const rootPaths = (await window.api.store.get('scanPaths')) as string[] | undefined
+      const mode = (await window.api.store.get('scanMode')) as 'git' | 'all' | undefined
+
       const scannedProjects = await window.api.projects.scan({ rootPaths, mode })
-      
+
       // Also get manual projects to append them
-      const manualPaths = await window.api.store.get('manualProjects') as string[] | undefined
+      const manualPaths = (await window.api.store.get('manualProjects')) as string[] | undefined
       const allProjects = [...(scannedProjects || [])]
-      
+
       if (manualPaths && manualPaths.length > 0) {
         for (const mPath of manualPaths) {
           const mProj = await window.api.projects.addManual(mPath)
-          if (mProj && !allProjects.some(p => p.id === mProj.id)) {
+          if (mProj && !allProjects.some((p) => p.id === mProj.id)) {
             allProjects.push(mProj)
           }
         }
       }
-      
+
       set({ projects: allProjects, isScanning: false })
     } catch (error) {
       console.error('Failed to scan projects', error)
       set({ isScanning: false })
     }
   },
+
+  renameProject: async (folderPath: string, newName: string) => {
+    try {
+      if (!window.api?.projects) return
+      await window.api.projects.saveConfig(folderPath, { name: newName.trim() })
+      set((state) => ({
+        projects: state.projects.map((p) =>
+          p.path === folderPath || p.id === folderPath ? { ...p, name: newName.trim() } : p
+        )
+      }))
+    } catch (error) {
+      console.error('Failed to rename project:', error)
+      throw error
+    }
+  },
+
+  saveProjectConfig: async (folderPath: string, config: Partial<ProjectConfig>, overwrite = false) => {
+    try {
+      if (!window.api?.projects) return
+      await window.api.projects.saveConfig(folderPath, config, overwrite)
+      await get().scanProjects()
+    } catch (error) {
+      console.error('Failed to save project config:', error)
+      throw error
+    }
+  },
+
+  loadProjectConfig: async (folderPath: string) => {
+    try {
+      if (!window.api?.projects) return { config: null, filePath: null }
+      return await window.api.projects.getConfig(folderPath)
+    } catch (error) {
+      console.error('Failed to load project config:', error)
+      return { config: null, filePath: null }
+    }
+  },
+
   addManualProject: async (folderPath: string) => {
     try {
       if (!window.api?.projects) return
       const project = await window.api.projects.addManual(folderPath)
       if (project) {
         set((state) => {
-          const exists = state.projects.some(p => p.id === project.id)
+          const exists = state.projects.some((p) => p.id === project.id)
           if (exists) {
-            return { projects: state.projects.map(p => p.id === project.id ? project : p) }
+            return { projects: state.projects.map((p) => (p.id === project.id ? project : p)) }
           }
           return { projects: [...state.projects, project] }
         })
@@ -81,18 +121,20 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
       console.error('Failed to add manual project', error)
     }
   },
+
   ignoreProject: async (folderPath: string) => {
     try {
       if (window.api?.projects) {
         await window.api.projects.ignore(folderPath)
         set((state) => ({
-          projects: state.projects.filter(p => p.path !== folderPath && p.id !== folderPath)
+          projects: state.projects.filter((p) => p.path !== folderPath && p.id !== folderPath)
         }))
       }
     } catch (error) {
       console.error('Failed to ignore project', error)
     }
   },
+
   unignoreProject: async (folderPath: string) => {
     try {
       if (window.api?.projects) {
@@ -103,39 +145,41 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
       console.error('Failed to unignore project', error)
     }
   },
+
   setSearchQuery: (searchQuery) => set({ searchQuery }),
-  setFilter: (key, values) => set((state) => ({
-    activeFilters: { ...state.activeFilters, [key]: values }
-  })),
+
+  setFilter: (key, values) =>
+    set((state) => ({
+      activeFilters: { ...state.activeFilters, [key]: values }
+    })),
+
   getFilteredProjects: () => {
     const { projects, searchQuery, activeFilters } = get()
     let filtered = projects
 
     if (searchQuery) {
       const query = searchQuery.toLowerCase()
-      filtered = filtered.filter(p => p.name.toLowerCase().includes(query))
+      filtered = filtered.filter((p) => p.name.toLowerCase().includes(query))
     }
 
     if (activeFilters.type && activeFilters.type.length > 0) {
-      filtered = filtered.filter(p => activeFilters.type!.includes(p.type))
+      filtered = filtered.filter((p) => activeFilters.type!.includes(p.type))
     }
-    
+
     if (activeFilters.category && activeFilters.category.length > 0) {
-      filtered = filtered.filter(p => activeFilters.category!.includes(p.category))
+      filtered = filtered.filter((p) => activeFilters.category!.includes(p.category))
     }
 
     if (activeFilters.tags && activeFilters.tags.length > 0) {
-      filtered = filtered.filter(p => p.tags.some(t => activeFilters.tags!.includes(t)))
+      filtered = filtered.filter((p) => p.tags.some((t) => activeFilters.tags!.includes(t)))
     }
-    
+
     if (activeFilters.status && activeFilters.status.length > 0) {
-      filtered = filtered.filter(p => activeFilters.status!.includes(p.status))
+      filtered = filtered.filter((p) => activeFilters.status!.includes(p.status))
     }
 
     return filtered
   },
-  selectProject: (id) => set({ selectedProjectId: id }),
-  updateProjectConfig: (id, config) => {
-    console.log(`Updated config for project ${id}:`, config)
-  }
+
+  selectProject: (id) => set({ selectedProjectId: id })
 }))

@@ -29,8 +29,8 @@ export function setupProjectsIpc() {
     return projectScanner.readProjectConfig(folderPath);
   });
 
-  ipcMain.handle('projects:saveConfig', async (_, folderPath: string, config: any) => {
-    return projectScanner.writeProjectConfig(folderPath, config);
+  ipcMain.handle('projects:saveConfig', async (_, folderPath: string, config: any, overwrite?: boolean) => {
+    return projectScanner.writeProjectConfig(folderPath, config, overwrite);
   });
 
   ipcMain.handle('projects:openInExplorer', (_, path: string) => shell.openPath(path));

@@ -14,7 +14,12 @@ export const ProjectGrid: React.FC = () => {
   const [activeType, setActiveType] = useState<TypeFilter>('All');
 
   const filteredProjects = projects.filter(p => {
-    const matchesSearch = p.name.toLowerCase().includes(search.toLowerCase());
+    const q = search.toLowerCase();
+    const matchesSearch = !q ||
+      p.name.toLowerCase().includes(q) ||
+      p.category?.toLowerCase().includes(q) ||
+      (p.tags && p.tags.some(t => t.toLowerCase().includes(q))) ||
+      (p.subprojects && p.subprojects.some(s => s.name.toLowerCase().includes(q)));
     const matchesType = activeType === 'All' || p.type?.toLowerCase() === activeType.toLowerCase();
     return matchesSearch && matchesType;
   });

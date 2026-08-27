@@ -64,7 +64,7 @@ export interface IElectronAPI {
     ignore(folderPath: string): Promise<string>
     unignore(folderPath: string): Promise<string>
     getConfig(folderPath: string): Promise<{ config: any; filePath: string | null }>
-    saveConfig(folderPath: string, config: any): Promise<string>
+    saveConfig(folderPath: string, config: any, overwrite?: boolean): Promise<string>
     getAll(): Promise<ProjectInfo[]>
     openInExplorer(path: string): Promise<void>
     openInVSCode(path: string): Promise<void>

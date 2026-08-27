@@ -12,18 +12,22 @@ import {
   Clock,
   Hash,
   ArrowLeft,
-  EyeOff
+  EyeOff,
+  FileCode,
+  Folder,
+  Pencil
 } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card'
 import { Badge } from '../components/ui/badge'
 import { Button } from '../components/ui/button'
 import { ScrollArea } from '../components/ui/scroll-area'
+import { ProjectConfigDialog } from '../components/dashboard/ProjectConfigDialog'
 import { useProjectStore } from '@renderer/stores/useProjectStore'
 import { useAppStore } from '@renderer/stores/useAppStore'
 import { useTerminalStore } from '@renderer/stores/useTerminalStore'
 import { useGit } from '../hooks/useGit'
 import { useTerminal } from '../hooks/useTerminal'
-import type { ProjectInfo } from '../types/project'
+import type { ProjectInfo, SubProject } from '../types/project'
 import type { GitLogEntry } from '../types/git'
 import { cn } from '@renderer/lib/utils'
 import { toast } from 'sonner'
@@ -101,6 +105,7 @@ export const ProjectDetailPage: React.FC<ProjectDetailPageProps> = ({ projectId:
 
   const [commits, setCommits] = useState<GitLogEntry[]>([])
   const [commitsLoading, setCommitsLoading] = useState(false)
+  const [configDialogOpen, setConfigDialogOpen] = useState(false)
 
   // Fetch git status + recent commits whenever the selected project changes
   useEffect(() => {
@@ -118,23 +123,27 @@ export const ProjectDetailPage: React.FC<ProjectDetailPageProps> = ({ projectId:
 
   // ── Quick actions ──────────────────────────────────────────────────────
 
-  const handleOpenTerminal = async () => {
-    if (project) await createProjectTerminal(project)
+  const handleOpenTerminal = async (sub?: SubProject) => {
+    if (!project) return
+    const termName = sub ? `${project.name} (${sub.name})` : project.name
+    const termCwd = sub ? sub.path : project.path
+    await createTerminal({ name: termName, cwd: termCwd, projectId: project.id })
+    setActiveTab('terminals')
   }
 
   const handleOpenVSCode = () => {
     if (project) window.api?.projects?.openInVSCode(project.path)
   }
 
-  const handleOpenFolder = () => {
-    if (project) window.api?.projects?.openInExplorer(project.path)
+  const handleOpenFolder = (targetPath?: string) => {
+    if (project) window.api?.projects?.openInExplorer(targetPath || project.path)
   }
 
-  const handleRunScript = async (scriptName: string, command: string) => {
+  const handleRunScript = async (scriptName: string, command: string, cwd?: string) => {
     if (!project) return
     await createTerminal({
       name: `${project.name} (${scriptName})`,
-      cwd: project.path,
+      cwd: cwd || project.path,
       projectId: project.id,
       command
     })
@@ -143,7 +152,11 @@ export const ProjectDetailPage: React.FC<ProjectDetailPageProps> = ({ projectId:
 
   const handleIgnore = async () => {
     if (!project) return
-    if (window.confirm(`Ignore "${project.name}"?\nThis will write "ignore": true in .projectyb.json and return to dashboard.`)) {
+    if (
+      window.confirm(
+        `Ignore "${project.name}"?\nThis will write "ignore": true in .projectyb.json and return to dashboard.`
+      )
+    ) {
       await ignoreProject(project.path)
       toast.info(`Ignored ${project.name}`)
       setActiveTab('dashboard')
@@ -159,10 +172,11 @@ export const ProjectDetailPage: React.FC<ProjectDetailPageProps> = ({ projectId:
     ? status.staged.length + status.unstaged.length + status.untracked.length
     : 0
 
+  const hasSubprojects = project.subprojects && project.subprojects.length > 0
+
   return (
     <ScrollArea className="h-full w-full bg-zinc-950 text-zinc-50">
       <div className="mx-auto max-w-4xl space-y-6 p-6">
-
         {/* ── Navigation back ── */}
         <div className="flex items-center justify-between">
           <Button
@@ -185,10 +199,19 @@ export const ProjectDetailPage: React.FC<ProjectDetailPageProps> = ({ projectId:
         </div>
 
         {/* ── Header ── */}
-        <div className="flex items-start justify-between gap-4">
+        <div className="flex items-start justify-between gap-4 flex-wrap">
           <div className="min-w-0">
             <div className="flex items-center gap-3 flex-wrap">
               <h1 className="text-2xl font-bold tracking-tight truncate">{project.name}</h1>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-7 w-7 text-zinc-400 hover:text-violet-300"
+                onClick={() => setConfigDialogOpen(true)}
+                title="Edit project name & configuration"
+              >
+                <Pencil className="w-3.5 h-3.5" />
+              </Button>
               <span
                 className={cn(
                   'inline-flex items-center rounded-md border px-2 py-0.5 text-xs font-semibold',
@@ -210,7 +233,16 @@ export const ProjectDetailPage: React.FC<ProjectDetailPageProps> = ({ projectId:
 
           {/* Quick actions */}
           <div className="flex shrink-0 items-center gap-2">
-            <Button variant="outline" size="sm" onClick={handleOpenTerminal} className="gap-1.5">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setConfigDialogOpen(true)}
+              className="gap-1.5 border-violet-500/40 text-violet-300 hover:bg-violet-950/30"
+            >
+              <FileCode className="h-4 w-4" />
+              Edit Config
+            </Button>
+            <Button variant="outline" size="sm" onClick={() => handleOpenTerminal()} className="gap-1.5">
               <TerminalSquare className="h-4 w-4" />
               Terminal
             </Button>
@@ -218,12 +250,81 @@ export const ProjectDetailPage: React.FC<ProjectDetailPageProps> = ({ projectId:
               <Code className="h-4 w-4" />
               VSCode
             </Button>
-            <Button variant="outline" size="sm" onClick={handleOpenFolder} className="gap-1.5">
+            <Button variant="outline" size="sm" onClick={() => handleOpenFolder()} className="gap-1.5">
               <FolderOpen className="h-4 w-4" />
               Folder
             </Button>
           </div>
         </div>
+
+        {/* ── Subprojects / Subfolders Card ── */}
+        {hasSubprojects && (
+          <Card className="border-zinc-800 bg-zinc-950">
+            <CardHeader className="pb-3">
+              <div className="flex items-center justify-between">
+                <CardTitle className="text-sm flex items-center gap-2">
+                  <Folder className="h-4 w-4 text-cyan-400" />
+                  Subprojects & Subfolders
+                  <Badge variant="outline" className="text-[10px] ml-1">
+                    {project.subprojects!.length}
+                  </Badge>
+                </CardTitle>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-6 text-[11px] text-violet-400"
+                  onClick={() => setConfigDialogOpen(true)}
+                >
+                  Manage
+                </Button>
+              </div>
+            </CardHeader>
+            <CardContent className="pt-0 space-y-2">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                {project.subprojects!.map((sub) => (
+                  <div
+                    key={sub.id || sub.name}
+                    className="p-3 rounded-lg bg-zinc-900/70 border border-zinc-800/80 flex items-center justify-between gap-3"
+                  >
+                    <div className="min-w-0 space-y-1">
+                      <div className="flex items-center gap-2">
+                        <Folder className="w-4 h-4 text-cyan-400 shrink-0" />
+                        <span className="font-semibold text-xs text-zinc-100 truncate">{sub.name}</span>
+                        <Badge variant="outline" className="text-[9px] px-1 py-0 uppercase">
+                          {sub.type}
+                        </Badge>
+                      </div>
+                      <p className="font-mono text-[10px] text-zinc-500 truncate" title={sub.path}>
+                        {sub.relativePath}
+                      </p>
+                    </div>
+
+                    <div className="flex items-center gap-1 shrink-0">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="h-7 text-xs px-2 gap-1 border-zinc-700"
+                        onClick={() => handleOpenTerminal(sub)}
+                        title={`Open terminal in ${sub.relativePath}`}
+                      >
+                        <TerminalSquare className="w-3 h-3" />
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        className="h-7 text-xs px-2 text-zinc-400 hover:text-zinc-200"
+                        onClick={() => handleOpenFolder(sub.path)}
+                        title="Open folder in Explorer"
+                      >
+                        <FolderOpen className="w-3 h-3" />
+                      </Button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        )}
 
         {/* ── Git status summary ── */}
         {project.isGitRepo && (
@@ -252,9 +353,7 @@ export const ProjectDetailPage: React.FC<ProjectDetailPageProps> = ({ projectId:
                   <div className="flex items-center gap-1.5">
                     <GitBranch className="h-3.5 w-3.5 text-violet-400" />
                     <span className="font-mono text-violet-300">{status.branch}</span>
-                    {status.tracking && (
-                      <span className="text-zinc-600">→ {status.tracking}</span>
-                    )}
+                    {status.tracking && <span className="text-zinc-600">→ {status.tracking}</span>}
                   </div>
                   {status.ahead > 0 && (
                     <div className="flex items-center gap-1 text-green-400">
@@ -272,20 +371,16 @@ export const ProjectDetailPage: React.FC<ProjectDetailPageProps> = ({ projectId:
                     <FileEdit className="h-3.5 w-3.5" />
                     {totalChanges} changed {totalChanges === 1 ? 'file' : 'files'}
                   </div>
-                  {status.isClean && (
-                    <span className="text-green-500 text-xs font-medium">✓ Clean</span>
-                  )}
+                  {status.isClean && <span className="text-green-500 text-xs font-medium">✓ Clean</span>}
                 </div>
               ) : (
-                <p className="text-sm text-zinc-500">
-                  {isLoading ? 'Loading…' : 'No git data available.'}
-                </p>
+                <p className="text-sm text-zinc-500">{isLoading ? 'Loading…' : 'No git data available.'}</p>
               )}
             </CardContent>
           </Card>
         )}
 
-        {/* ── NPM scripts ── */}
+        {/* ── NPM & Custom scripts ── */}
         {project.scripts && Object.keys(project.scripts).length > 0 && (
           <Card>
             <CardHeader className="pb-3">
@@ -304,7 +399,7 @@ export const ProjectDetailPage: React.FC<ProjectDetailPageProps> = ({ projectId:
                       'hover:border-violet-500 hover:text-violet-300 transition-colors'
                     )}
                   >
-                    <Play className="h-3 w-3" />
+                    <Play className="h-3 w-3 text-emerald-400" />
                     {name}
                   </button>
                 ))}
@@ -338,6 +433,13 @@ export const ProjectDetailPage: React.FC<ProjectDetailPageProps> = ({ projectId:
           </Card>
         )}
       </div>
+
+      {/* ── Config Dialog ── */}
+      <ProjectConfigDialog
+        open={configDialogOpen}
+        onOpenChange={setConfigDialogOpen}
+        project={project}
+      />
     </ScrollArea>
   )
 }
