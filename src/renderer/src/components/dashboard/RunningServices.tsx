@@ -36,12 +36,16 @@ export const RunningServices: React.FC = () => {
           <div className="p-3 space-y-2">
             {runningServices.map(service => (
               <div key={service.id} className="group p-3 rounded-md bg-zinc-900 border border-zinc-800 hover:border-zinc-700 transition-colors relative">
-                <div className="flex items-start justify-between mb-2">
-                  <div className="flex items-center gap-2">
+                <div className="flex items-start justify-between mb-2 min-w-0 pr-16">
+                  <div className="flex items-center gap-2 min-w-0">
                     <StatusDot status="running" size="sm" />
-                    <div>
-                      <div className="text-sm font-medium leading-none">{service.name}</div>
-                      <div className="text-xs text-zinc-500 mt-1">{service.projectName}</div>
+                    <div className="min-w-0">
+                      <div className="text-sm font-medium leading-none truncate" title={service.name}>
+                        {service.name}
+                      </div>
+                      <div className="text-xs text-zinc-500 mt-1 truncate" title={service.projectName}>
+                        {service.projectName}
+                      </div>
                     </div>
                   </div>
                 </div>

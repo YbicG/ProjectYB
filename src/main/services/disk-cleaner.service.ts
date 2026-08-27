@@ -141,7 +141,13 @@ class DiskCleanerService {
    * Analyze multiple projects in batch
    */
   async analyzeProjects(projects: Array<{ id: string; name: string; path: string }>): Promise<GlobalDiskSummary> {
-    const usages = await Promise.all(projects.map(p => this.analyzeProject(p.id, p.name, p.path)));
+    const usages: ProjectDiskUsage[] = [];
+    const chunkSize = 4;
+    for (let i = 0; i < projects.length; i += chunkSize) {
+      const chunk = projects.slice(i, i + chunkSize);
+      const results = await Promise.all(chunk.map((p) => this.analyzeProject(p.id, p.name, p.path)));
+      usages.push(...results);
+    }
 
     let totalAnalyzedBytes = 0;
     let totalReclaimableBytes = 0;

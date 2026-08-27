@@ -1,5 +1,5 @@
-import React from 'react'
-import { Plus, Minus, RotateCcw, Copy, X, Check, FileCode, Loader2 } from 'lucide-react'
+import React, { useMemo, useState } from 'react'
+import { Plus, Minus, RotateCcw, Copy, X, Check, FileCode, Loader2, Columns, AlignJustify } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '../ui/card'
 import { Button } from '../ui/button'
 import { Badge } from '../ui/badge'
@@ -8,6 +8,8 @@ import { useGitStore } from '@renderer/stores/useGitStore'
 import { useProjectStore } from '@renderer/stores/useProjectStore'
 import { toast } from 'sonner'
 import { cn } from '@renderer/lib/utils'
+
+const MAX_INITIAL_LINES = 1000
 
 export const GitDiff: React.FC = () => {
   const {
@@ -23,31 +25,12 @@ export const GitDiff: React.FC = () => {
   
   const projects = useProjectStore((s) => s.projects)
   const project = projects.find((p) => p.id === selectedProjectId)
-  const [copied, setCopied] = React.useState(false)
-
-  if (!selectedFile || !activeDiff) {
-    return (
-      <Card className="h-full flex flex-col bg-zinc-950 border-zinc-800">
-        <CardHeader className="pb-3 border-b border-zinc-800">
-          <CardTitle className="text-sm font-semibold flex items-center gap-2 text-zinc-400">
-            <FileCode className="w-4 h-4" /> Diff Viewer
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="flex-1 flex items-center justify-center p-6 text-center text-zinc-500">
-          <div className="space-y-2 max-w-xs">
-            <FileCode className="w-10 h-10 mx-auto text-zinc-700" />
-            <p className="text-sm font-medium text-zinc-300">No file selected</p>
-            <p className="text-xs text-zinc-500">
-              Click on any modified, staged, or untracked file to view line-by-line syntax diffs.
-            </p>
-          </div>
-        </CardContent>
-      </Card>
-    )
-  }
+  const [copied, setCopied] = useState(false)
+  const [viewMode, setViewMode] = useState<'unified' | 'split'>('unified')
+  const [showAllLines, setShowAllLines] = useState(false)
 
   const handleCopy = () => {
-    if (activeDiff.diffText) {
+    if (activeDiff?.diffText) {
       navigator.clipboard.writeText(activeDiff.diffText)
       setCopied(true)
       toast.success('Diff copied to clipboard')
@@ -56,7 +39,7 @@ export const GitDiff: React.FC = () => {
   }
 
   const handleStageToggle = async () => {
-    if (!project || !selectedFile) return
+    if (!project || !selectedFile || !activeDiff) return
     if (activeDiff.isStaged) {
       await unstageFile(project.id, project.path, selectedFile)
       toast.info(`Unstaged ${selectedFile}`)
@@ -74,17 +57,9 @@ export const GitDiff: React.FC = () => {
     }
   }
 
-  // Parse diff into formatted lines with hunk line numbers
-  const renderDiffLines = () => {
-    if (isDiffLoading) {
-      return (
-        <div className="flex items-center justify-center h-48 text-zinc-500 gap-2">
-          <Loader2 className="w-5 h-5 animate-spin text-violet-400" />
-          <span className="text-xs">Loading diff…</span>
-        </div>
-      )
-    }
-
+  // Memoized diff line parser
+  const parsedDiff = useMemo(() => {
+    if (!activeDiff?.diffText) return []
     const lines = activeDiff.diffText.split('\n')
     let oldLine = 0
     let newLine = 0
@@ -115,35 +90,36 @@ export const GitDiff: React.FC = () => {
         newNum = String(newLine++)
       }
 
-      return (
-        <div
-          key={idx}
-          className={cn(
-            'flex font-mono text-xs leading-5 border-l-2 select-text',
-            type === 'hunk' && 'bg-violet-950/30 text-violet-300 border-violet-500 font-semibold py-1 my-1',
-            type === 'add' && 'bg-emerald-950/35 text-emerald-200 border-emerald-500',
-            type === 'del' && 'bg-rose-950/35 text-rose-300 border-rose-500',
-            type === 'header' && 'bg-zinc-900 text-zinc-400 border-transparent text-[11px]',
-            type === 'context' && 'text-zinc-300 border-transparent hover:bg-zinc-900/60'
-          )}
-        >
-          {type !== 'header' && type !== 'hunk' && (
-            <div className="flex shrink-0 select-none text-zinc-600 w-16 text-right pr-2 space-x-1 border-r border-zinc-800/60">
-              <span className="w-7">{oldNum}</span>
-              <span className="w-7 text-zinc-500">{newNum}</span>
-            </div>
-          )}
-          <div className="px-2 whitespace-pre overflow-x-auto flex-1">
-            {line}
-          </div>
-        </div>
-      )
+      return { id: idx, type, line, oldNum, newNum }
     })
+  }, [activeDiff?.diffText])
+
+  const visibleLines = showAllLines ? parsedDiff : parsedDiff.slice(0, MAX_INITIAL_LINES)
+
+  if (!selectedFile || !activeDiff) {
+    return (
+      <Card className="h-full flex flex-col bg-zinc-950 border-zinc-800">
+        <CardHeader className="pb-3 border-b border-zinc-800">
+          <CardTitle className="text-sm font-semibold flex items-center gap-2 text-zinc-400">
+            <FileCode className="w-4 h-4" /> Diff Viewer
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="flex-1 flex items-center justify-center p-6 text-center text-zinc-500">
+          <div className="space-y-2 max-w-xs">
+            <FileCode className="w-10 h-10 mx-auto text-zinc-700" />
+            <p className="text-sm font-medium text-zinc-300">No file selected</p>
+            <p className="text-xs text-zinc-500">
+              Click on any modified, staged, or untracked file to view line-by-line syntax diffs.
+            </p>
+          </div>
+        </CardContent>
+      </Card>
+    )
   }
 
   return (
     <Card className="h-full flex flex-col bg-zinc-950 border-zinc-800">
-      <CardHeader className="py-2.5 px-4 border-b border-zinc-800 flex flex-row items-center justify-between space-y-0">
+      <CardHeader className="py-2 px-4 border-b border-zinc-800 flex flex-row items-center justify-between space-y-0 gap-2 flex-wrap">
         <div className="flex items-center gap-2 min-w-0">
           <FileCode className="w-4 h-4 text-violet-400 shrink-0" />
           <span className="font-mono text-xs font-semibold text-zinc-200 truncate" title={activeDiff.file}>
@@ -161,6 +137,32 @@ export const GitDiff: React.FC = () => {
         </div>
 
         <div className="flex items-center gap-1.5 shrink-0">
+          {/* View Mode Toggle */}
+          <div className="flex items-center bg-zinc-900 border border-zinc-800 rounded p-0.5 text-[10px]">
+            <button
+              onClick={() => setViewMode('unified')}
+              className={cn(
+                'px-2 py-0.5 rounded transition-colors flex items-center gap-1',
+                viewMode === 'unified' ? 'bg-zinc-800 text-white font-medium shadow-sm' : 'text-zinc-400 hover:text-zinc-200'
+              )}
+              title="Unified vertical diff"
+            >
+              <AlignJustify className="w-3 h-3" />
+              Unified
+            </button>
+            <button
+              onClick={() => setViewMode('split')}
+              className={cn(
+                'px-2 py-0.5 rounded transition-colors flex items-center gap-1',
+                viewMode === 'split' ? 'bg-zinc-800 text-white font-medium shadow-sm' : 'text-zinc-400 hover:text-zinc-200'
+              )}
+              title="Side-by-side split diff"
+            >
+              <Columns className="w-3 h-3" />
+              Split
+            </button>
+          </div>
+
           <Button
             size="sm"
             variant="outline"
@@ -217,7 +219,78 @@ export const GitDiff: React.FC = () => {
 
       <CardContent className="flex-1 p-0 overflow-hidden">
         <ScrollArea className="h-full w-full p-2">
-          <div className="font-mono">{renderDiffLines()}</div>
+          {isDiffLoading ? (
+            <div className="flex items-center justify-center h-48 text-zinc-500 gap-2 font-mono text-xs">
+              <Loader2 className="w-5 h-5 animate-spin text-violet-400" />
+              <span>Loading syntax diff…</span>
+            </div>
+          ) : viewMode === 'unified' ? (
+            <div className="font-mono">
+              {visibleLines.map((item) => (
+                <div
+                  key={item.id}
+                  className={cn(
+                    'flex font-mono text-xs leading-5 border-l-2 select-text',
+                    item.type === 'hunk' && 'bg-violet-950/30 text-violet-300 border-violet-500 font-semibold py-1 my-1',
+                    item.type === 'add' && 'bg-emerald-950/35 text-emerald-200 border-emerald-500',
+                    item.type === 'del' && 'bg-rose-950/35 text-rose-300 border-rose-500',
+                    item.type === 'header' && 'bg-zinc-900 text-zinc-400 border-transparent text-[11px]',
+                    item.type === 'context' && 'text-zinc-300 border-transparent hover:bg-zinc-900/60'
+                  )}
+                >
+                  {item.type !== 'header' && item.type !== 'hunk' && (
+                    <div className="flex shrink-0 select-none text-zinc-600 w-16 text-right pr-2 space-x-1 border-r border-zinc-800/60">
+                      <span className="w-7">{item.oldNum}</span>
+                      <span className="w-7 text-zinc-500">{item.newNum}</span>
+                    </div>
+                  )}
+                  <div className="px-2 whitespace-pre overflow-x-auto flex-1">{item.line}</div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            /* Split Side-by-Side Mode */
+            <div className="font-mono text-xs divide-y divide-zinc-800/40">
+              {visibleLines.map((item) => (
+                <div key={item.id} className="grid grid-cols-2 divide-x divide-zinc-800">
+                  {/* Left (Old) */}
+                  <div
+                    className={cn(
+                      'flex items-start px-2 py-0.5 overflow-x-auto whitespace-pre',
+                      item.type === 'del' ? 'bg-rose-950/30 text-rose-300' : item.type === 'add' ? 'bg-zinc-950/40 opacity-30' : 'text-zinc-300'
+                    )}
+                  >
+                    <span className="w-7 text-zinc-600 select-none shrink-0 text-right pr-2">{item.oldNum}</span>
+                    <span className="flex-1">{item.type === 'del' || item.type === 'context' ? item.line : ''}</span>
+                  </div>
+
+                  {/* Right (New) */}
+                  <div
+                    className={cn(
+                      'flex items-start px-2 py-0.5 overflow-x-auto whitespace-pre',
+                      item.type === 'add' ? 'bg-emerald-950/30 text-emerald-200' : item.type === 'del' ? 'bg-zinc-950/40 opacity-30' : 'text-zinc-300'
+                    )}
+                  >
+                    <span className="w-7 text-zinc-600 select-none shrink-0 text-right pr-2">{item.newNum}</span>
+                    <span className="flex-1">{item.type === 'add' || item.type === 'context' ? item.line : ''}</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {parsedDiff.length > MAX_INITIAL_LINES && !showAllLines && (
+            <div className="p-4 text-center">
+              <Button
+                variant="outline"
+                size="sm"
+                className="text-xs border-zinc-800 bg-zinc-900"
+                onClick={() => setShowAllLines(true)}
+              >
+                Show remaining {parsedDiff.length - MAX_INITIAL_LINES} lines
+              </Button>
+            </div>
+          )}
         </ScrollArea>
       </CardContent>
     </Card>

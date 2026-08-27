@@ -24,7 +24,10 @@ export const ServicesPage: React.FC = () => {
   const [selectedProjectId, setSelectedProjectId] = useState<string>('')
 
   const handleStopAll = () => {
+    const count = runningServices.length
+    if (count === 0) return
     runningServices.forEach(service => stopService(service.id))
+    toast.info(`Stopped ${count} running service${count > 1 ? 's' : ''}`)
   }
 
   const handleSaveConfig = async (data: Omit<RunConfig, 'id' | 'createdAt'>) => {
@@ -195,6 +198,7 @@ export const ServicesPage: React.FC = () => {
                             className="h-7 text-xs text-zinc-400 hover:text-zinc-200"
                             onClick={() => {
                               group.services.forEach(s => restartService(s.id))
+                              toast.success(`Restarting ${group.services.length} services for ${group.projectName}`)
                             }}
                             title="Restart all services in this project"
                           >
@@ -207,6 +211,7 @@ export const ServicesPage: React.FC = () => {
                             className="h-7 text-xs text-red-400 hover:text-red-300 hover:bg-red-500/10"
                             onClick={() => {
                               group.services.forEach(s => stopService(s.id))
+                              toast.info(`Stopped ${group.services.length} services for ${group.projectName}`)
                             }}
                             title="Stop all services in this project"
                           >

@@ -37,7 +37,7 @@ export const TerminalsPage: React.FC = () => {
             <div className="flex-1 relative">
               {terminals.map(term => (
                 <div key={term.id} className={term.id === activeTerminalId ? 'absolute inset-0' : 'hidden'}>
-                  <TerminalView terminalId={term.id} cwd={term.cwd} />
+                  <TerminalView terminalId={term.id} cwd={term.cwd} isActive={term.id === activeTerminalId} />
                 </div>
               ))}
             </div>
@@ -54,10 +54,14 @@ export const TerminalsPage: React.FC = () => {
           <div className="flex flex-1 w-full h-full">
             <TerminalSidebar />
             <div className="flex-1 relative bg-zinc-950">
-              {activeTerminal ? (
-                <TerminalView terminalId={activeTerminal.id} cwd={activeTerminal.cwd} />
+              {terminals.length === 0 ? (
+                <div className="flex items-center justify-center h-full text-zinc-500 font-mono text-xs">No terminals open</div>
               ) : (
-                <div className="flex items-center justify-center h-full text-zinc-500">Select a terminal</div>
+                terminals.map(term => (
+                  <div key={term.id} className={term.id === activeTerminalId ? 'absolute inset-0' : 'hidden'}>
+                    <TerminalView terminalId={term.id} cwd={term.cwd} isActive={term.id === activeTerminalId} />
+                  </div>
+                ))
               )}
             </div>
           </div>

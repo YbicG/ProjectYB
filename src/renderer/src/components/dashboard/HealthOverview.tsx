@@ -27,7 +27,7 @@ const StatCard: React.FC<StatCardProps> = ({ icon, label, value, accent, onClick
       {icon}
     </div>
     <div className="min-w-0 flex-1">
-      <p className="text-lg font-bold leading-none tabular-nums text-zinc-100">{value}</p>
+      <p className="text-sm sm:text-base md:text-lg font-bold leading-none tabular-nums text-zinc-100 truncate">{value}</p>
       <p className="mt-1 truncate text-xs text-zinc-500">{label}</p>
     </div>
   </div>

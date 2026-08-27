@@ -1,9 +1,8 @@
 import React from 'react';
-import { Cpu, HardDrive, Wifi, Activity } from 'lucide-react';
-import { Card, CardHeader, CardTitle, CardContent } from '../ui/card';
+import { Cpu, HardDrive, Wifi } from 'lucide-react';
+import { Card, CardContent } from '../ui/card';
 import { useOverviewStore } from '@renderer/stores/useOverviewStore';
 import { useSystemStore } from '@renderer/stores/useSystemStore';
-import { cn } from '@renderer/lib/utils';
 
 interface SparklineProps {
   data: number[];
@@ -15,43 +14,54 @@ interface SparklineProps {
 
 const Sparkline: React.FC<SparklineProps> = ({ data, maxVal = 100, color, fillColor, height = 48 }) => {
   if (data.length < 2) {
-    return <div className="h-12 flex items-center justify-center text-[10px] text-zinc-600 font-mono">Buffering metrics...</div>;
+    return (
+      <div className="h-12 flex items-center justify-center text-[10px] text-zinc-600 font-mono">
+        Buffering telemetry...
+      </div>
+    );
   }
 
   const width = 280;
   const padding = 4;
   const effectiveHeight = height - padding * 2;
   const step = width / (data.length - 1);
+  const gradId = `grad-${color.replace(/[^a-zA-Z0-9_-]/g, '')}`;
 
   const points = data.map((val, idx) => {
     const clamped = Math.max(0, Math.min(val, maxVal));
     const x = idx * step;
     const y = height - padding - (clamped / maxVal) * effectiveHeight;
-    return `${x},${y}`;
+    return { x, y };
   });
 
-  const pathD = `M ${points.join(' L ')}`;
+  // Generate smooth cubic bezier path
+  let pathD = `M ${points[0].x},${points[0].y}`;
+  for (let i = 0; i < points.length - 1; i++) {
+    const p0 = points[i];
+    const p1 = points[i + 1];
+    const mx = (p0.x + p1.x) / 2;
+    pathD += ` C ${mx},${p0.y} ${mx},${p1.y} ${p1.x},${p1.y}`;
+  }
+
   const areaD = `${pathD} L ${width},${height} L 0,${height} Z`;
+  const lastPoint = points[points.length - 1];
 
   return (
-    <svg viewBox={`0 0 ${width} ${height}`} className="w-full h-12 overflow-visible">
+    <svg viewBox={`0 0 ${width} ${height}`} preserveAspectRatio="none" className="w-full h-12 overflow-visible">
       <defs>
-        <linearGradient id={`grad-${color}`} x1="0" y1="0" x2="0" y2="1">
+        <linearGradient id={gradId} x1="0" y1="0" x2="0" y2="1">
           <stop offset="0%" stopColor={fillColor} stopOpacity="0.35" />
           <stop offset="100%" stopColor={fillColor} stopOpacity="0.0" />
         </linearGradient>
       </defs>
-      <path d={areaD} fill={`url(#grad-${color})`} />
+      <path d={areaD} fill={`url(#${gradId})`} />
       <path d={pathD} fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-      {/* Latest point dot */}
-      {points.length > 0 && (
-        <circle
-          cx={points[points.length - 1].split(',')[0]}
-          cy={points[points.length - 1].split(',')[1]}
-          r="3"
-          fill={color}
-          className="animate-ping"
-        />
+      {/* Latest radar beacon dot with solid center */}
+      {lastPoint && (
+        <g transform={`translate(${lastPoint.x}, ${lastPoint.y})`}>
+          <circle r="6" fill={color} className="animate-ping opacity-60" />
+          <circle r="3" fill={color} />
+        </g>
       )}
     </svg>
   );

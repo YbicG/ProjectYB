@@ -141,11 +141,16 @@ export const SnippetVaultModal: React.FC = () => {
       <DialogContent className="bg-zinc-950 border-zinc-800 text-zinc-100 max-w-3xl flex flex-col h-[680px] max-h-[92vh] p-0 overflow-hidden">
         {/* ── Header ── */}
         <div className="p-4 border-b border-zinc-800 bg-zinc-950 space-y-3">
-          <div className="flex items-center justify-between">
-            <DialogTitle className="text-sm font-semibold flex items-center gap-2 text-zinc-200">
-              <Code2 className="w-4 h-4 text-violet-400" />
-              Command Snippets & Script Vault
-            </DialogTitle>
+          <div className="flex items-center justify-between pr-8">
+            <div>
+              <DialogTitle className="text-sm font-semibold flex items-center gap-2 text-zinc-200">
+                <Code2 className="w-4 h-4 text-violet-400" />
+                Command Snippets & Script Vault
+              </DialogTitle>
+              <DialogDescription className="text-xs text-zinc-500 mt-0.5">
+                Curated CLI and shell recipes with one-click terminal execution.
+              </DialogDescription>
+            </div>
 
             <Button
               size="sm"

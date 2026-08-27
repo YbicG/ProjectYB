@@ -1,18 +1,21 @@
 import React, { useEffect, useRef } from 'react';
 import { Terminal } from '@xterm/xterm';
 import { FitAddon } from '@xterm/addon-fit';
+import { WebglAddon } from '@xterm/addon-webgl';
 import '@xterm/xterm/css/xterm.css';
 import { useThemeStore } from '@renderer/stores/useThemeStore';
 
 interface TerminalViewProps {
   terminalId: string;
   cwd: string;
+  isActive?: boolean;
 }
 
-export const TerminalView: React.FC<TerminalViewProps> = ({ terminalId, cwd }) => {
+export const TerminalView: React.FC<TerminalViewProps> = ({ terminalId, cwd, isActive = true }) => {
   const terminalRef = useRef<HTMLDivElement>(null);
   const xtermRef = useRef<Terminal | null>(null);
   const fitAddonRef = useRef<FitAddon | null>(null);
+  const webglAddonRef = useRef<WebglAddon | null>(null);
   const readyRef = useRef(false);
 
   const {
@@ -24,7 +27,7 @@ export const TerminalView: React.FC<TerminalViewProps> = ({ terminalId, cwd }) =
 
   useEffect(() => {
     if (!terminalRef.current) return;
-
+    let isCancelled = false;
     const container = terminalRef.current;
 
     const term = new Terminal({
@@ -50,27 +53,39 @@ export const TerminalView: React.FC<TerminalViewProps> = ({ terminalId, cwd }) =
         brightCyan: '#22d3ee',
         brightWhite: '#ffffff',
       },
-      fontFamily: terminalFontFamily,
-      fontSize: terminalFontSize,
-      cursorStyle: terminalCursorStyle,
-      cursorBlink: terminalCursorBlink,
+      fontFamily: terminalFontFamily || 'Consolas, Courier New, monospace',
+      fontSize: terminalFontSize || 13,
+      cursorStyle: terminalCursorStyle || 'block',
+      cursorBlink: terminalCursorBlink ?? true,
       lineHeight: 1.2,
       letterSpacing: 0,
-      convertEol: true, // Fixes skewed/staircase terminal output across CLI tools
+      convertEol: true,
       scrollback: 10000,
       allowProposedApi: true,
     });
     
     const fitAddon = new FitAddon();
     term.loadAddon(fitAddon);
-    
     term.open(container);
     
+    // Load WebGL Addon with graceful fallback on context loss
+    try {
+      const webglAddon = new WebglAddon();
+      webglAddon.onContextLoss(() => {
+        webglAddon.dispose();
+      });
+      term.loadAddon(webglAddon);
+      webglAddonRef.current = webglAddon;
+    } catch {
+      // Graceful fallback to default renderer
+    }
+
     xtermRef.current = term;
     fitAddonRef.current = fitAddon;
 
+    let resizeDebounceTimer: NodeJS.Timeout | null = null;
     const safeFit = () => {
-      if (!container || container.clientWidth <= 0 || container.clientHeight <= 0) return;
+      if (isCancelled || !container || container.clientWidth <= 0 || container.clientHeight <= 0) return;
       try {
         const dims = fitAddon.proposeDimensions();
         if (dims && dims.cols > 10 && dims.rows > 3) {
@@ -82,29 +97,33 @@ export const TerminalView: React.FC<TerminalViewProps> = ({ terminalId, cwd }) =
       } catch {}
     };
 
-    // Load initial scrollback buffer from backend
+    const debouncedFit = () => {
+      if (resizeDebounceTimer) clearTimeout(resizeDebounceTimer);
+      resizeDebounceTimer = setTimeout(() => {
+        requestAnimationFrame(safeFit);
+      }, 60);
+    };
+
+    // Load initial scrollback buffer
     if (window.api?.terminal?.getBuffer) {
-      window.api.terminal.getBuffer(terminalId).then(buf => {
-        if (buf && xtermRef.current) {
+      window.api.terminal.getBuffer(terminalId).then((buf) => {
+        if (!isCancelled && buf && xtermRef.current) {
           xtermRef.current.write(buf);
         }
       }).catch(() => {});
     }
 
-    // Initial safe fit after container layout settles
     requestAnimationFrame(() => {
       safeFit();
       readyRef.current = true;
     });
 
-    // xterm → pty: send keystrokes to the backend
     term.onData((data) => {
       if (window.api?.terminal) {
         window.api.terminal.write(terminalId, data);
       }
     });
 
-    // pty → xterm: display real-time output from the backend
     let cleanupOnData: (() => void) | undefined;
     if (window.api?.terminal) {
       cleanupOnData = window.api.terminal.onData(terminalId, (data: string) => {
@@ -114,25 +133,46 @@ export const TerminalView: React.FC<TerminalViewProps> = ({ terminalId, cwd }) =
 
     const resizeObserver = new ResizeObserver(() => {
       if (!readyRef.current) return;
-      requestAnimationFrame(safeFit);
+      debouncedFit();
     });
     resizeObserver.observe(container);
 
     return () => {
+      isCancelled = true;
       readyRef.current = false;
+      if (resizeDebounceTimer) clearTimeout(resizeDebounceTimer);
       resizeObserver.disconnect();
       if (cleanupOnData) cleanupOnData();
+      try {
+        webglAddonRef.current?.dispose();
+      } catch {}
+      fitAddon.dispose();
       term.dispose();
+      xtermRef.current = null;
+      fitAddonRef.current = null;
+      webglAddonRef.current = null;
     };
   }, [terminalId, cwd]);
 
-  // Live options sync when font/cursor settings change in Appearance/Terminal settings
+  // Refit & Refresh when tab becomes active
+  useEffect(() => {
+    if (isActive && readyRef.current && fitAddonRef.current && xtermRef.current) {
+      requestAnimationFrame(() => {
+        try {
+          fitAddonRef.current?.fit();
+          xtermRef.current?.refresh(0, (xtermRef.current?.rows ?? 24) - 1);
+        } catch {}
+      });
+    }
+  }, [isActive]);
+
+  // Options Sync
   useEffect(() => {
     if (xtermRef.current) {
-      xtermRef.current.options.fontFamily = terminalFontFamily;
-      xtermRef.current.options.fontSize = terminalFontSize;
-      xtermRef.current.options.cursorStyle = terminalCursorStyle;
-      xtermRef.current.options.cursorBlink = terminalCursorBlink;
+      xtermRef.current.options.fontFamily = terminalFontFamily || 'Consolas, Courier New, monospace';
+      xtermRef.current.options.fontSize = terminalFontSize || 13;
+      xtermRef.current.options.cursorStyle = terminalCursorStyle || 'block';
+      xtermRef.current.options.cursorBlink = terminalCursorBlink ?? true;
       fitAddonRef.current?.fit();
     }
   }, [terminalFontFamily, terminalFontSize, terminalCursorStyle, terminalCursorBlink]);

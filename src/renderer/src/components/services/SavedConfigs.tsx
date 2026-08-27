@@ -62,7 +62,7 @@ export const SavedConfigs: React.FC<SavedConfigsProps> = ({ projectId }) => {
       toast.success(`Launched ${cmds.length} commands in separate terminals`)
     } else {
       // Run sequentially in one terminal
-      const combined = cmds.map(c => c.command).join(' ; ')
+      const combined = cmds.map(c => c.command.trim()).filter(Boolean).join(' && ')
       await startService(config.projectId, config.projectName, {
         id: config.id,
         name: config.name,

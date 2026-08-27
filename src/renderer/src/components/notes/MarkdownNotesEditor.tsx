@@ -235,9 +235,18 @@ export const MarkdownNotesEditor: React.FC<MarkdownNotesEditorProps> = ({ projec
                   return (
                     <div
                       key={idx}
+                      role="checkbox"
+                      tabIndex={0}
+                      aria-checked={completed}
                       onClick={() => toggleTask(idx, !completed)}
+                      onKeyDown={(e) => {
+                        if (e.key === ' ' || e.key === 'Enter') {
+                          e.preventDefault();
+                          toggleTask(idx, !completed);
+                        }
+                      }}
                       className={cn(
-                        'flex items-center gap-2 p-1.5 rounded cursor-pointer transition-colors hover:bg-zinc-900/80 group',
+                        'flex items-center gap-2 p-1.5 rounded cursor-pointer transition-colors hover:bg-zinc-900/80 group outline-none focus-visible:ring-1 focus-visible:ring-violet-500',
                         completed && 'text-zinc-500 line-through'
                       )}
                     >

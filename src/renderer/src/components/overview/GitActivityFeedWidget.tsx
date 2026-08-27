@@ -29,30 +29,34 @@ export const GitActivityFeedWidget: React.FC = () => {
     setLoading(true);
 
     const allCommits: CommitFeedEntry[] = [];
-    const gitProjects = projects.filter((p) => p.isGitRepo !== false);
+    const gitProjects = projects.filter((p) => p.isGitRepo !== false).slice(0, 20);
 
-    for (const project of gitProjects.slice(0, 15)) {
-      try {
-        const logs = await window.api.git.log(project.path, 3);
-        if (logs && Array.isArray(logs)) {
-          logs.forEach((log) => {
-            allCommits.push({
-              projectId: project.id,
-              projectName: project.name,
-              hash: log.hash ? log.hash.substring(0, 7) : '',
-              message: log.message || '',
-              author: log.author || '',
-              date: log.date || ''
-            });
-          });
-        }
-      } catch {}
+    try {
+      const results = await Promise.all(
+        gitProjects.map(async (project) => {
+          try {
+            const logs = await window.api.git.log(project.path, 3);
+            if (logs && Array.isArray(logs)) {
+              return logs.map((log) => ({
+                projectId: project.id,
+                projectName: project.name,
+                hash: log.hash ? log.hash.substring(0, 7) : '',
+                message: log.message || '',
+                author: log.author || '',
+                date: log.date || ''
+              }));
+            }
+          } catch {}
+          return [];
+        })
+      );
+
+      results.flat().forEach((entry) => allCommits.push(entry));
+      allCommits.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+      setRecentCommits(allCommits.slice(0, 25));
+    } catch {} finally {
+      setLoading(false);
     }
-
-    // Sort by most recent
-    allCommits.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-    setRecentCommits(allCommits.slice(0, 20));
-    setLoading(false);
   };
 
   useEffect(() => {

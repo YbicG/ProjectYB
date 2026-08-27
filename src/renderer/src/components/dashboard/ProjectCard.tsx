@@ -41,6 +41,7 @@ import { useTerminalStore } from '@renderer/stores/useTerminalStore'
 import type { ProjectInfo, SubProject } from '@renderer/types/project'
 import { cn } from '@renderer/lib/utils'
 import { toast } from 'sonner'
+import { useGit } from '../../hooks/useGit'
 
 interface ProjectCardProps {
   project: ProjectInfo
@@ -54,6 +55,7 @@ export const ProjectCard: React.FC<ProjectCardProps> = ({ project }) => {
   const { addConfig } = useRunConfigStore()
   const { ignoreProject, selectProject, pinnedProjectIds, togglePinProject } = useProjectStore()
   const isPinned = pinnedProjectIds.includes(project.id)
+  const isRunning = useServiceStore((s) => s.runningServices.some((srv) => srv.projectId === project.id))
 
   const [runConfigDialogOpen, setRunConfigDialogOpen] = useState(false)
   const [projectConfigDialogOpen, setProjectConfigDialogOpen] = useState(false)
@@ -152,7 +154,7 @@ export const ProjectCard: React.FC<ProjectCardProps> = ({ project }) => {
                 e.stopPropagation()
                 setProjectConfigDialogOpen(true)
               }}
-              className="opacity-0 group-hover:opacity-100 text-zinc-500 hover:text-violet-400 p-0.5 rounded transition-opacity"
+              className="opacity-0 group-hover:opacity-100 focus-visible:opacity-100 text-zinc-500 hover:text-violet-400 p-0.5 rounded transition-opacity"
               title="Edit project name & config"
             >
               <Pencil className="w-3 h-3" />
@@ -166,7 +168,7 @@ export const ProjectCard: React.FC<ProjectCardProps> = ({ project }) => {
                 "p-0.5 rounded transition-all",
                 isPinned
                   ? "text-amber-400 opacity-100"
-                  : "opacity-0 group-hover:opacity-100 text-zinc-500 hover:text-amber-400"
+                  : "opacity-0 group-hover:opacity-100 focus-visible:opacity-100 text-zinc-500 hover:text-amber-400"
               )}
               title={isPinned ? "Unpin project" : "Pin project to top"}
             >
@@ -178,14 +180,14 @@ export const ProjectCard: React.FC<ProjectCardProps> = ({ project }) => {
             <Badge variant="outline" className="text-[10px] uppercase font-mono px-1.5 py-0 border-zinc-700">
               {project.type}
             </Badge>
-            <StatusDot status={project.status} />
+            <StatusDot status={isRunning ? 'running' : project.status} />
           </div>
         </div>
 
         {/* ── Subprojects / Subfolders Pills ── */}
         {hasSubprojects && (
           <div className="flex flex-wrap gap-1 mt-2">
-            {project.subprojects!.map((sub) => {
+            {project.subprojects!.slice(0, 4).map((sub) => {
               const isDocs = sub.type === 'docs' || sub.name.toLowerCase().includes('doc')
               const isApp = sub.name.toLowerCase().startsWith('apps') || sub.name.toLowerCase().startsWith('packages')
               return (
@@ -197,7 +199,7 @@ export const ProjectCard: React.FC<ProjectCardProps> = ({ project }) => {
                     handleOpenTerminal(sub)
                   }}
                   className={cn(
-                    "text-[10px] px-1.5 py-0.5 bg-zinc-900 border border-zinc-800 gap-1 cursor-pointer transition-colors font-mono",
+                    "text-[10px] px-1.5 py-0.5 bg-zinc-900 border border-zinc-800 gap-1 cursor-pointer transition-colors font-mono max-w-[130px] truncate",
                     isDocs
                       ? "hover:bg-amber-950/40 hover:border-amber-700 text-zinc-300 hover:text-amber-300"
                       : isApp
@@ -207,39 +209,51 @@ export const ProjectCard: React.FC<ProjectCardProps> = ({ project }) => {
                   title={`Click to open terminal in ${sub.relativePath}`}
                 >
                   {isDocs ? (
-                    <BookOpen className="w-2.5 h-2.5 text-amber-400" />
+                    <BookOpen className="w-2.5 h-2.5 text-amber-400 shrink-0" />
                   ) : isApp ? (
-                    <Layers className="w-2.5 h-2.5 text-cyan-400" />
+                    <Layers className="w-2.5 h-2.5 text-cyan-400 shrink-0" />
                   ) : (
-                    <Folder className="w-2.5 h-2.5 text-violet-400" />
+                    <Folder className="w-2.5 h-2.5 text-violet-400 shrink-0" />
                   )}
-                  {sub.name}
-                  <span className="text-[8px] text-zinc-500">[{sub.type}]</span>
+                  <span className="truncate">{sub.name}</span>
                 </Badge>
               )
             })}
+            {project.subprojects!.length > 4 && (
+              <Badge variant="outline" className="text-[9px] px-1 py-0 text-zinc-500 font-mono">
+                +{project.subprojects!.length - 4}
+              </Badge>
+            )}
           </div>
         )}
 
         {/* ── Project Tags ── */}
         {project.tags && project.tags.length > 0 && (
           <div className="flex flex-wrap gap-1 mt-1.5">
-            {project.tags.map((tag) => (
-              <Badge key={tag} variant="secondary" className="text-[9px] px-1.5 py-0 bg-zinc-900/80 text-zinc-400">
+            {project.tags.slice(0, 4).map((tag) => (
+              <Badge key={tag} variant="secondary" className="text-[9px] px-1.5 py-0 bg-zinc-900/80 text-zinc-400 max-w-[100px] truncate">
                 {tag}
               </Badge>
             ))}
+            {project.tags.length > 4 && (
+              <Badge variant="outline" className="text-[8px] px-1 py-0 text-zinc-500 font-mono">
+                +{project.tags.length - 4}
+              </Badge>
+            )}
           </div>
         )}
       </CardHeader>
 
       <CardContent className="flex-1 pb-3 text-xs text-zinc-400 space-y-2 cursor-pointer" onClick={handleOpenDetail}>
         <div className="flex items-center justify-between text-zinc-500 text-[11px]">
-          <span className="truncate font-medium">{project.category}</span>
+          <span className="truncate font-medium flex-1 mr-2">{project.category}</span>
           {project.gitBranch && (
-            <div className="flex items-center gap-1 text-violet-400 font-mono shrink-0 ml-2">
-              <GitBranch className="w-3 h-3" />
-              {project.gitBranch}
+            <div 
+              className="flex items-center gap-1 text-violet-400 font-mono shrink-0 max-w-[130px] truncate"
+              title={project.gitBranch}
+            >
+              <GitBranch className="w-3 h-3 shrink-0" />
+              <span className="truncate">{project.gitBranch}</span>
             </div>
           )}
         </div>
@@ -398,11 +412,20 @@ export const ProjectCard: React.FC<ProjectCardProps> = ({ project }) => {
           <DropdownMenuTrigger asChild>
             <Button
               size="sm"
-              variant={project.status === 'running' ? 'secondary' : 'default'}
-              className="h-7 text-xs px-2.5 bg-violet-600 hover:bg-violet-700 text-white gap-1"
+              variant={isRunning ? 'secondary' : 'default'}
+              className={cn(
+                "h-7 text-xs px-2.5 gap-1",
+                isRunning
+                  ? "bg-emerald-950/40 text-emerald-300 border border-emerald-800/40 hover:bg-emerald-900/50"
+                  : "bg-violet-600 hover:bg-violet-700 text-white"
+              )}
             >
-              <Play className="w-3 h-3" />
-              Run
+              {isRunning ? (
+                <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+              ) : (
+                <Play className="w-3 h-3" />
+              )}
+              {isRunning ? 'Running' : 'Run'}
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="w-52 bg-zinc-900 border-zinc-800 text-xs">

@@ -567,21 +567,47 @@ export const ProjectDetailPage: React.FC<ProjectDetailPageProps> = ({ projectId:
             </CardHeader>
             <CardContent className="pt-0">
               <div className="flex flex-wrap gap-2">
-                {Object.entries(project.scripts).map(([name, cmd]) => (
-                  <button
-                    key={name}
-                    onClick={() => handleRunScript(name, String(cmd))}
-                    title={String(cmd)}
-                    className={cn(
-                      'flex items-center gap-1.5 rounded-md border border-zinc-800 bg-zinc-900',
-                      'px-3 py-1.5 text-xs font-medium text-zinc-300',
-                      'hover:border-violet-500 hover:text-violet-300 transition-colors'
-                    )}
-                  >
-                    <Play className="h-3 w-3 text-emerald-400" />
-                    {name}
-                  </button>
-                ))}
+                {Object.entries(project.scripts).map(([name, cmd]) => {
+                  const { runningServices, stopService } = useServiceStore.getState()
+                  const activeSrv = runningServices.find(
+                    (s) => s.projectId === project.id && s.name === name
+                  )
+                  const isRunning = Boolean(activeSrv)
+
+                  return (
+                    <button
+                      key={name}
+                      onClick={() => {
+                        if (isRunning && activeSrv) {
+                          stopService(activeSrv.id)
+                          toast.info(`Stopped script: ${name}`)
+                        } else {
+                          handleRunScript(name, String(cmd))
+                        }
+                      }}
+                      title={isRunning ? `Running: ${cmd} (Click to Stop)` : String(cmd)}
+                      className={cn(
+                        'flex items-center gap-1.5 rounded-md border px-3 py-1.5 text-xs font-medium transition-colors',
+                        isRunning
+                          ? 'border-emerald-700 bg-emerald-950/40 text-emerald-300 hover:bg-red-950/40 hover:border-red-800 hover:text-red-300'
+                          : 'border-zinc-800 bg-zinc-900 text-zinc-300 hover:border-violet-500 hover:text-violet-300'
+                      )}
+                    >
+                      {isRunning ? (
+                        <>
+                          <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+                          <span>{name}</span>
+                          <span className="text-[10px] text-zinc-400 ml-1 font-mono">(Stop)</span>
+                        </>
+                      ) : (
+                        <>
+                          <Play className="h-3 w-3 text-emerald-400" />
+                          <span>{name}</span>
+                        </>
+                      )}
+                    </button>
+                  )
+                })}
               </div>
             </CardContent>
           </Card>

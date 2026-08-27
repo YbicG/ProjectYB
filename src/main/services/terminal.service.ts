@@ -68,14 +68,30 @@ class TerminalService {
   kill(id: string) {
     const term = this.terminals.get(id);
     if (term) {
-      term.pty.kill();
+      if (process.platform === 'win32' && term.pid) {
+        try {
+          const { exec } = require('child_process');
+          exec(`taskkill /pid ${term.pid} /T /F`, () => {});
+        } catch {}
+      }
+      try {
+        term.pty.kill();
+      } catch {}
       this.terminals.delete(id);
     }
   }
 
   killAll() {
     for (const [id, term] of this.terminals.entries()) {
-      term.pty.kill();
+      if (process.platform === 'win32' && term.pid) {
+        try {
+          const { exec } = require('child_process');
+          exec(`taskkill /pid ${term.pid} /T /F`, () => {});
+        } catch {}
+      }
+      try {
+        term.pty.kill();
+      } catch {}
     }
     this.terminals.clear();
   }

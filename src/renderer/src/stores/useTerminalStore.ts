@@ -28,6 +28,8 @@ interface TerminalState {
   renameTerminal: (id: string, name: string) => void
 }
 
+const exitListeners = new Map<string, () => void>()
+
 export const useTerminalStore = create<TerminalState>((set, get) => ({
   terminals: [],
   activeTerminalId: null,
@@ -65,6 +67,14 @@ export const useTerminalStore = create<TerminalState>((set, get) => ({
         rows: 30
       })
       
+      // Register onExit handler
+      if (window.api?.terminal?.onExit) {
+        const unsub = window.api.terminal.onExit(id, (exitCode: number) => {
+          get().updateTerminalStatus(id, exitCode === 0 ? 'stopped' : 'error')
+        })
+        exitListeners.set(id, unsub)
+      }
+
       if (options.command) {
         // Allow powershell / bash 250ms to finish initializing prompt before writing
         setTimeout(() => {
@@ -93,19 +103,20 @@ export const useTerminalStore = create<TerminalState>((set, get) => ({
   },
   
   restartTerminal: async (id) => {
-    const { terminals, createTerminal, killTerminal } = get()
+    const { terminals, createTerminal, removeTerminal } = get()
     const term = terminals.find(t => t.id === id)
     if (!term) return
     
-    killTerminal(id)
-    
-    // Wait a brief moment before recreating
-    await new Promise(r => setTimeout(r, 500))
+    removeTerminal(id)
+    await new Promise(r => setTimeout(r, 200))
     
     await createTerminal({
       name: term.name,
       cwd: term.cwd,
       projectId: term.projectId,
+      projectName: term.projectName,
+      serviceId: term.serviceId,
+      isService: term.isService,
       command: term.command
     })
   },
@@ -119,6 +130,12 @@ export const useTerminalStore = create<TerminalState>((set, get) => ({
   })),
   
   removeTerminal: (id) => {
+    const unsub = exitListeners.get(id)
+    if (unsub) {
+      unsub()
+      exitListeners.delete(id)
+    }
+
     const { terminals, activeTerminalId, killTerminal } = get()
     const term = terminals.find(t => t.id === id)
     if (term && term.status !== 'stopped') {

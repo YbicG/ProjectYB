@@ -1,5 +1,5 @@
 import React from 'react';
-import { Plus, Edit2, Trash2, Server, Terminal as TerminalIcon } from 'lucide-react';
+import { Plus, Edit2, Trash2, Server, Terminal as TerminalIcon, MoreVertical, Eraser } from 'lucide-react';
 import { useTerminalStore } from '@renderer/stores/useTerminalStore';
 import { useProjectStore } from '@renderer/stores/useProjectStore';
 import { StatusDot } from '../shared/StatusDot';
@@ -107,52 +107,76 @@ export const TerminalSidebar: React.FC = () => {
                 </span>
               </div>
               <div className="space-y-1">
-                {groups[groupKey].map(term => (
-                  <DropdownMenu key={term.id}>
-                    <DropdownMenuTrigger asChild>
-                      <div
-                        onClick={() => setActiveTerminal(term.id)}
-                        className={cn(
-                          "flex flex-col gap-1 p-2 rounded-md cursor-pointer select-none transition-colors",
-                          activeTerminalId === term.id
-                            ? "bg-zinc-800 text-zinc-50 ring-1 ring-violet-500/40"
-                            : "text-zinc-400 hover:bg-zinc-900"
+                {groups[groupKey].map((term) => (
+                  <div
+                    key={term.id}
+                    onClick={() => setActiveTerminal(term.id)}
+                    className={cn(
+                      'group flex items-center justify-between p-2 rounded-md cursor-pointer select-none transition-colors gap-2',
+                      activeTerminalId === term.id
+                        ? 'bg-zinc-800 text-zinc-50 ring-1 ring-violet-500/40'
+                        : 'text-zinc-400 hover:bg-zinc-900'
+                    )}
+                  >
+                    <div className="flex flex-col gap-0.5 min-w-0 flex-1">
+                      <div className="flex items-center gap-2 min-w-0">
+                        {term.isService ? (
+                          <Server className="w-3 h-3 text-violet-400 shrink-0" />
+                        ) : (
+                          <TerminalIcon className="w-3 h-3 text-cyan-400 shrink-0" />
                         )}
-                      >
-                        <div className="flex items-center gap-2 min-w-0">
-                          {term.isService ? (
-                            <Server className="w-3 h-3 text-violet-400 shrink-0" />
-                          ) : (
-                            <TerminalIcon className="w-3 h-3 text-cyan-400 shrink-0" />
-                          )}
-                          <StatusDot status={term.status} size="sm" />
-                          <span className="text-xs font-medium truncate font-mono">{term.name}</span>
-                        </div>
-                        <span className="text-[10px] font-mono text-zinc-500 truncate pl-5">
-                          {term.cwd}
-                        </span>
+                        <StatusDot status={term.status} size="sm" />
+                        <span className="text-xs font-medium truncate font-mono">{term.name}</span>
                       </div>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="start" className="bg-zinc-900 border-zinc-800 text-xs">
-                      <DropdownMenuItem
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleRename(term.id, term.name);
-                        }}
-                        className="cursor-pointer focus:bg-zinc-800"
-                      >
-                        <Edit2 className="w-3.5 h-3.5 mr-2 text-zinc-400" />
-                        Rename Terminal
-                      </DropdownMenuItem>
-                      <DropdownMenuItem
-                        onClick={() => removeTerminal(term.id)}
-                        className="cursor-pointer focus:bg-zinc-800 text-red-400 hover:text-red-300"
-                      >
-                        <Trash2 className="w-3.5 h-3.5 mr-2" />
-                        Kill Terminal
-                      </DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
+                      <span className="text-[10px] font-mono text-zinc-500 truncate pl-5">
+                        {term.cwd}
+                      </span>
+                    </div>
+
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <button
+                          onClick={(e) => e.stopPropagation()}
+                          className="p-1 rounded opacity-0 group-hover:opacity-100 hover:bg-zinc-700 text-zinc-400 hover:text-zinc-100 transition-opacity shrink-0"
+                          title="Terminal actions"
+                        >
+                          <MoreVertical className="w-3.5 h-3.5" />
+                        </button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end" className="bg-zinc-950 border-zinc-800 text-xs">
+                        <DropdownMenuItem
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleRename(term.id, term.name);
+                          }}
+                          className="cursor-pointer focus:bg-zinc-800"
+                        >
+                          <Edit2 className="w-3.5 h-3.5 mr-2 text-zinc-400" />
+                          Rename Terminal
+                        </DropdownMenuItem>
+                        <DropdownMenuItem
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            window.api?.terminal?.write(term.id, '\x0c');
+                          }}
+                          className="cursor-pointer focus:bg-zinc-800"
+                        >
+                          <Eraser className="w-3.5 h-3.5 mr-2 text-zinc-400" />
+                          Clear Console
+                        </DropdownMenuItem>
+                        <DropdownMenuItem
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            removeTerminal(term.id);
+                          }}
+                          className="cursor-pointer focus:bg-zinc-800 text-red-400 hover:text-red-300"
+                        >
+                          <Trash2 className="w-3.5 h-3.5 mr-2" />
+                          Close Terminal
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </div>
                 ))}
               </div>
             </div>

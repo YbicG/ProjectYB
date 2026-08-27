@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
 import {
   Send,
   Plus,
@@ -12,7 +12,8 @@ import {
   Sparkles,
   RotateCw,
   Clock,
-  HardDrive
+  HardDrive,
+  ListFilter
 } from 'lucide-react';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
@@ -24,6 +25,31 @@ import { useServiceStore } from '@renderer/stores/useServiceStore';
 import { HttpMethod, KeyValuePair } from '@renderer/types/http';
 import { cn } from '@renderer/lib/utils';
 import { toast } from 'sonner';
+
+const STANDARD_HEADER_KEYS = [
+  'Accept',
+  'Accept-Encoding',
+  'Accept-Language',
+  'Authorization',
+  'Cache-Control',
+  'Content-Type',
+  'Cookie',
+  'Origin',
+  'User-Agent',
+  'X-API-Key',
+  'X-CSRF-Token',
+  'X-Requested-With'
+];
+
+const STANDARD_HEADER_VALUES = [
+  'application/json',
+  'application/x-www-form-urlencoded',
+  'multipart/form-data',
+  'text/plain',
+  'text/html',
+  'Bearer ',
+  'no-cache'
+];
 
 export const ApiTesterPage: React.FC = () => {
   const {
@@ -59,10 +85,9 @@ export const ApiTesterPage: React.FC = () => {
   const { ports, fetchPorts } = usePortStore();
   const { runningServices } = useServiceStore();
 
-  const [saveModalOpen, setSaveModalOpen] = useState(false);
-  const [requestNameInput, setRequestNameInput] = useState('');
   const [copiedResponse, setCopiedResponse] = useState(false);
   const [sidebarTab, setSidebarTab] = useState<'saved' | 'history'>('saved');
+  const [responseSubTab, setResponseSubTab] = useState<'body' | 'headers' | 'raw'>('body');
 
   useEffect(() => {
     loadHistoryAndSaved();
@@ -88,6 +113,41 @@ export const ApiTesterPage: React.FC = () => {
     if (status >= 400 && status < 500) return 'bg-amber-500/20 text-amber-300 border-amber-500/40';
     return 'bg-rose-500/20 text-rose-400 border-rose-500/40';
   };
+
+  const getStatusText = (status: number, defaultText?: string) => {
+    if (defaultText && defaultText !== 'OK') return defaultText;
+    switch (status) {
+      case 200: return 'OK';
+      case 201: return 'Created';
+      case 204: return 'No Content';
+      case 301: return 'Moved Permanently';
+      case 302: return 'Found';
+      case 304: return 'Not Modified';
+      case 400: return 'Bad Request';
+      case 401: return 'Unauthorized';
+      case 403: return 'Forbidden';
+      case 404: return 'Not Found';
+      case 409: return 'Conflict';
+      case 422: return 'Unprocessable Entity';
+      case 429: return 'Too Many Requests';
+      case 500: return 'Internal Server Error';
+      case 502: return 'Bad Gateway';
+      case 503: return 'Service Unavailable';
+      default: return defaultText || 'Status';
+    }
+  };
+
+  const safeFormattedBody = useMemo(() => {
+    if (!activeResponse?.body) return '<Empty Response Body>';
+    if (activeResponse.isJson) {
+      try {
+        return JSON.stringify(JSON.parse(activeResponse.body), null, 2);
+      } catch {
+        return activeResponse.body;
+      }
+    }
+    return activeResponse.body;
+  }, [activeResponse?.body, activeResponse?.isJson]);
 
   // Header / Param Row Helpers
   const addHeaderRow = () => {
@@ -150,6 +210,18 @@ export const ApiTesterPage: React.FC = () => {
 
   return (
     <div className="flex h-full w-full bg-zinc-950 text-zinc-50 overflow-hidden">
+      {/* ── Datalists for Header Key/Value Autocomplete ── */}
+      <datalist id="std-header-keys">
+        {STANDARD_HEADER_KEYS.map((k) => (
+          <option key={k} value={k} />
+        ))}
+      </datalist>
+      <datalist id="std-header-values">
+        {STANDARD_HEADER_VALUES.map((v) => (
+          <option key={v} value={v} />
+        ))}
+      </datalist>
+
       {/* ── Left Sidebar: Saved Requests & History ── */}
       <div className="hidden lg:flex w-64 xl:w-72 border-r border-zinc-800 bg-zinc-950/70 flex-col shrink-0 overflow-hidden">
         <div className="p-3 border-b border-zinc-800 flex items-center justify-between">
@@ -433,13 +505,15 @@ export const ApiTesterPage: React.FC = () => {
                         className="rounded border-zinc-700 bg-zinc-900 text-violet-500 focus:ring-violet-500"
                       />
                       <Input
-                        placeholder="Header"
+                        list="std-header-keys"
+                        placeholder="Header (e.g. Content-Type)"
                         value={row.key}
                         onChange={(e) => updateHeaderRow(row.id, { key: e.target.value })}
                         className="h-7 text-xs font-mono bg-zinc-900 border-zinc-800 text-zinc-200"
                       />
                       <Input
-                        placeholder="Value"
+                        list="std-header-values"
+                        placeholder="Value (e.g. application/json)"
                         value={row.value}
                         onChange={(e) => updateHeaderRow(row.id, { value: e.target.value })}
                         className="h-7 text-xs font-mono bg-zinc-900 border-zinc-800 text-zinc-200"
@@ -532,29 +606,61 @@ export const ApiTesterPage: React.FC = () => {
 
           {/* Response Inspector Pane */}
           <div className="flex flex-col overflow-hidden bg-zinc-950/60 p-3 sm:p-4">
-            <div className="flex items-center justify-between pb-2 border-b border-zinc-800 text-xs">
+            <div className="flex items-center justify-between pb-2 border-b border-zinc-800 text-xs flex-wrap gap-2">
               <div className="flex items-center gap-2">
                 <span className="font-semibold text-zinc-300 uppercase tracking-wider text-[11px]">Response</span>
                 {activeResponse && (
                   <Badge variant="outline" className={cn('text-xs font-mono font-bold', getStatusColor(activeResponse.status))}>
-                    {activeResponse.status} {activeResponse.statusText}
+                    {activeResponse.status} {getStatusText(activeResponse.status, activeResponse.statusText)}
                   </Badge>
                 )}
               </div>
 
               {activeResponse && (
-                <div className="flex items-center gap-3 text-[11px] font-mono text-zinc-400">
-                  <span className="flex items-center gap-1">
-                    <Clock className="w-3 h-3 text-zinc-500" />
-                    {activeResponse.durationMs}ms
-                  </span>
-                  <span className="flex items-center gap-1">
-                    <HardDrive className="w-3 h-3 text-zinc-500" />
-                    {(activeResponse.sizeBytes / 1024).toFixed(1)} KB
-                  </span>
-                  <Button variant="ghost" size="icon" className="h-6 w-6 text-zinc-400 hover:text-zinc-200" onClick={handleCopyResponse} title="Copy response">
-                    {copiedResponse ? <Check className="w-3 h-3 text-emerald-400" /> : <Copy className="w-3 h-3" />}
-                  </Button>
+                <div className="flex items-center gap-2">
+                  <div className="flex items-center bg-zinc-900 border border-zinc-800 rounded p-0.5 text-[10px]">
+                    <button
+                      onClick={() => setResponseSubTab('body')}
+                      className={cn(
+                        'px-2 py-0.5 rounded transition-colors',
+                        responseSubTab === 'body' ? 'bg-zinc-800 text-white font-medium shadow-sm' : 'text-zinc-400 hover:text-zinc-200'
+                      )}
+                    >
+                      Body
+                    </button>
+                    <button
+                      onClick={() => setResponseSubTab('headers')}
+                      className={cn(
+                        'px-2 py-0.5 rounded transition-colors',
+                        responseSubTab === 'headers' ? 'bg-zinc-800 text-white font-medium shadow-sm' : 'text-zinc-400 hover:text-zinc-200'
+                      )}
+                    >
+                      Headers ({Object.keys(activeResponse.headers || {}).length})
+                    </button>
+                    <button
+                      onClick={() => setResponseSubTab('raw')}
+                      className={cn(
+                        'px-2 py-0.5 rounded transition-colors',
+                        responseSubTab === 'raw' ? 'bg-zinc-800 text-white font-medium shadow-sm' : 'text-zinc-400 hover:text-zinc-200'
+                      )}
+                    >
+                      Raw
+                    </button>
+                  </div>
+
+                  <div className="flex items-center gap-2 text-[11px] font-mono text-zinc-400">
+                    <span className="flex items-center gap-1">
+                      <Clock className="w-3 h-3 text-zinc-500" />
+                      {activeResponse.durationMs}ms
+                    </span>
+                    <span className="flex items-center gap-1">
+                      <HardDrive className="w-3 h-3 text-zinc-500" />
+                      {(activeResponse.sizeBytes / 1024).toFixed(1)} KB
+                    </span>
+                    <Button variant="ghost" size="icon" className="h-6 w-6 text-zinc-400 hover:text-zinc-200" onClick={handleCopyResponse} title="Copy response">
+                      {copiedResponse ? <Check className="w-3 h-3 text-emerald-400" /> : <Copy className="w-3 h-3" />}
+                    </Button>
+                  </div>
                 </div>
               )}
             </div>
@@ -571,11 +677,22 @@ export const ApiTesterPage: React.FC = () => {
                   <p className="font-semibold flex items-center gap-1.5 text-red-400">Request Error</p>
                   <p className="font-mono">{activeResponse.error}</p>
                 </div>
+              ) : responseSubTab === 'headers' ? (
+                <div className="space-y-1 p-2">
+                  {Object.entries(activeResponse.headers || {}).map(([hk, hv]) => (
+                    <div key={hk} className="flex items-start text-xs font-mono py-1 border-b border-zinc-900">
+                      <span className="font-semibold text-violet-400 w-48 shrink-0 truncate">{hk}:</span>
+                      <span className="text-zinc-300 break-all flex-1">{String(hv)}</span>
+                    </div>
+                  ))}
+                </div>
+              ) : responseSubTab === 'raw' ? (
+                <pre className="text-xs font-mono text-zinc-200 leading-relaxed overflow-x-auto p-3 bg-zinc-900/70 border border-zinc-800 rounded-lg whitespace-pre-wrap select-text">
+                  {activeResponse.body || '<Empty Response Body>'}
+                </pre>
               ) : (
                 <pre className="text-xs font-mono text-zinc-200 leading-relaxed overflow-x-auto p-3 bg-zinc-900/70 border border-zinc-800 rounded-lg whitespace-pre-wrap select-text">
-                  {activeResponse.isJson
-                    ? JSON.stringify(JSON.parse(activeResponse.body), null, 2)
-                    : activeResponse.body || '<Empty Response Body>'}
+                  {safeFormattedBody}
                 </pre>
               )}
             </div>
