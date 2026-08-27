@@ -32,4 +32,6 @@ export function setupGitIpc() {
   ipcMain.handle('git:init', (_, path: string) => gitService.init(path));
   ipcMain.handle('git:add-remote', (_, path: string, name: string, url: string) => gitService.addRemote(path, name, url));
   ipcMain.handle('git:addRemote', (_, path: string, name: string, url: string) => gitService.addRemote(path, name, url));
+  ipcMain.handle('git:getRemoteInfo', (_, path: string) => gitService.getGitHubRemoteInfo(path));
+  ipcMain.handle('git:getRemotes', (_, path: string) => gitService.getRemotes(path));
 }

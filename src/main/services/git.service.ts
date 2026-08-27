@@ -175,6 +175,38 @@ class GitService {
   async addRemote(path: string, name: string, url: string) {
     return await this.git(path).addRemote(name, url);
   }
+
+  async getRemotes(path: string) {
+    try {
+      return await this.git(path).getRemotes(true);
+    } catch {
+      return [];
+    }
+  }
+
+  async getGitHubRemoteInfo(path: string): Promise<{ owner: string; repo: string } | null> {
+    try {
+      const remotes = await this.getRemotes(path);
+      if (!remotes || remotes.length === 0) return null;
+      const origin = remotes.find((r) => r.name === 'origin') || remotes[0];
+      if (!origin) return null;
+      const url = origin.refs.fetch || origin.refs.push;
+      if (!url) return null;
+
+      // Match https://github.com/owner/repo(.git) or git@github.com:owner/repo(.git)
+      const httpsMatch = url.match(/github\.com\/([^/]+)\/([^/.]+)(?:\.git)?/i);
+      if (httpsMatch) {
+        return { owner: httpsMatch[1], repo: httpsMatch[2] };
+      }
+      const sshMatch = url.match(/github\.com:([^/]+)\/([^/.]+)(?:\.git)?/i);
+      if (sshMatch) {
+        return { owner: sshMatch[1], repo: sshMatch[2] };
+      }
+      return null;
+    } catch {
+      return null;
+    }
+  }
 }
 
 export const gitService = new GitService();

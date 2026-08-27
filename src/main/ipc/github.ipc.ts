@@ -19,27 +19,35 @@ async function resolveToken(explicitToken?: string): Promise<string> {
 export function setupGithubIpc() {
   // getUser
   const handleGetUser = async (_: any, token?: string) => {
-    const t = await resolveToken(token);
-    return githubService.getUser(t);
+    try {
+      const t = await resolveToken(token);
+      return await githubService.getUser(t);
+    } catch (e: any) {
+      return null;
+    }
   };
   ipcMain.handle('github:getUser', handleGetUser);
   ipcMain.handle('github:get-user', handleGetUser);
 
   // getRepo
   const handleGetRepo = async (_: any, ...args: any[]) => {
-    let token: string;
-    let owner: string;
-    let repo: string;
-    if (args.length >= 3) {
-      token = await resolveToken(args[0]);
-      owner = args[1];
-      repo = args[2];
-    } else {
-      token = await resolveToken();
-      owner = args[0];
-      repo = args[1];
+    try {
+      let token: string;
+      let owner: string;
+      let repo: string;
+      if (args.length >= 3) {
+        token = await resolveToken(args[0]);
+        owner = args[1];
+        repo = args[2];
+      } else {
+        token = await resolveToken();
+        owner = args[0];
+        repo = args[1];
+      }
+      return await githubService.getRepoDetails(token, owner, repo);
+    } catch (e: any) {
+      return null;
     }
-    return githubService.getRepoDetails(token, owner, repo);
   };
   ipcMain.handle('github:getRepo', handleGetRepo);
   ipcMain.handle('github:get-repo', handleGetRepo);
@@ -69,8 +77,12 @@ export function setupGithubIpc() {
 
   // listRepos
   const handleListRepos = async (_: any, token?: string) => {
-    const t = await resolveToken(token);
-    return githubService.listRepositories(t);
+    try {
+      const t = await resolveToken(token);
+      return await githubService.listRepositories(t);
+    } catch (e: any) {
+      return [];
+    }
   };
   ipcMain.handle('github:listRepos', handleListRepos);
   ipcMain.handle('github:list-repos', handleListRepos);
@@ -109,27 +121,31 @@ export function setupGithubIpc() {
 
   // listPRs
   const handleListPRs = async (_: any, ...args: any[]) => {
-    let token: string;
-    let owner: string;
-    let repo: string;
-    let state: 'open' | 'closed' | 'all' = 'open';
+    try {
+      let token: string;
+      let owner: string;
+      let repo: string;
+      let state: 'open' | 'closed' | 'all' = 'open';
 
-    if (args.length >= 4) {
-      token = await resolveToken(args[0]);
-      owner = args[1];
-      repo = args[2];
-      state = args[3] || 'open';
-    } else if (args.length === 3 && typeof args[2] === 'string' && ['open', 'closed', 'all'].includes(args[2])) {
-      token = await resolveToken();
-      owner = args[0];
-      repo = args[1];
-      state = args[2] as any;
-    } else {
-      token = await resolveToken();
-      owner = args[0];
-      repo = args[1];
+      if (args.length >= 4) {
+        token = await resolveToken(args[0]);
+        owner = args[1];
+        repo = args[2];
+        state = args[3] || 'open';
+      } else if (args.length === 3 && typeof args[2] === 'string' && ['open', 'closed', 'all'].includes(args[2])) {
+        token = await resolveToken();
+        owner = args[0];
+        repo = args[1];
+        state = args[2] as any;
+      } else {
+        token = await resolveToken();
+        owner = args[0];
+        repo = args[1];
+      }
+      return await githubService.listPullRequests(token, owner, repo, state);
+    } catch (e: any) {
+      return [];
     }
-    return githubService.listPullRequests(token, owner, repo, state);
   };
   ipcMain.handle('github:listPRs', handleListPRs);
   ipcMain.handle('github:list-prs', handleListPRs);
@@ -165,27 +181,31 @@ export function setupGithubIpc() {
 
   // listIssues
   const handleListIssues = async (_: any, ...args: any[]) => {
-    let token: string;
-    let owner: string;
-    let repo: string;
-    let state: 'open' | 'closed' | 'all' = 'open';
+    try {
+      let token: string;
+      let owner: string;
+      let repo: string;
+      let state: 'open' | 'closed' | 'all' = 'open';
 
-    if (args.length >= 4) {
-      token = await resolveToken(args[0]);
-      owner = args[1];
-      repo = args[2];
-      state = args[3] || 'open';
-    } else if (args.length === 3 && typeof args[2] === 'string' && ['open', 'closed', 'all'].includes(args[2])) {
-      token = await resolveToken();
-      owner = args[0];
-      repo = args[1];
-      state = args[2] as any;
-    } else {
-      token = await resolveToken();
-      owner = args[0];
-      repo = args[1];
+      if (args.length >= 4) {
+        token = await resolveToken(args[0]);
+        owner = args[1];
+        repo = args[2];
+        state = args[3] || 'open';
+      } else if (args.length === 3 && typeof args[2] === 'string' && ['open', 'closed', 'all'].includes(args[2])) {
+        token = await resolveToken();
+        owner = args[0];
+        repo = args[1];
+        state = args[2] as any;
+      } else {
+        token = await resolveToken();
+        owner = args[0];
+        repo = args[1];
+      }
+      return await githubService.listIssues(token, owner, repo, state);
+    } catch (e: any) {
+      return [];
     }
-    return githubService.listIssues(token, owner, repo, state);
   };
   ipcMain.handle('github:listIssues', handleListIssues);
   ipcMain.handle('github:list-issues', handleListIssues);

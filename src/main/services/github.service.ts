@@ -1,5 +1,6 @@
 import { Octokit } from '@octokit/rest';
 import { gitService } from './git.service';
+import { logger } from '../utils/logger';
 
 class GitHubService {
   private getClient(token: string) {
@@ -17,21 +18,34 @@ class GitHubService {
   }
 
   async getRepoDetails(token: string, owner: string, repo: string) {
-    const octokit = this.getClient(token);
-    const response = await octokit.rest.repos.get({
-      owner,
-      repo
-    });
-    return response.data;
+    try {
+      const octokit = this.getClient(token);
+      const response = await octokit.rest.repos.get({
+        owner,
+        repo
+      });
+      return response.data;
+    } catch (e: any) {
+      if (e.status === 404) {
+        return null;
+      }
+      logger.error(`Error fetching repo details for ${owner}/${repo}`, e);
+      return null;
+    }
   }
 
   async listRepositories(token: string) {
-    const octokit = this.getClient(token);
-    const response = await octokit.rest.repos.listForAuthenticatedUser({
-      sort: 'updated',
-      per_page: 100
-    });
-    return response.data;
+    try {
+      const octokit = this.getClient(token);
+      const response = await octokit.rest.repos.listForAuthenticatedUser({
+        sort: 'updated',
+        per_page: 100
+      });
+      return response.data;
+    } catch (e: any) {
+      logger.error('Error listing repositories', e);
+      return [];
+    }
   }
 
   async createPullRequest(token: string, owner: string, repo: string, title: string, head: string, base: string, body?: string) {
@@ -48,13 +62,21 @@ class GitHubService {
   }
 
   async listPullRequests(token: string, owner: string, repo: string, state: 'open' | 'closed' | 'all' = 'open') {
-    const octokit = this.getClient(token);
-    const response = await octokit.rest.pulls.list({
-      owner,
-      repo,
-      state
-    });
-    return response.data;
+    try {
+      const octokit = this.getClient(token);
+      const response = await octokit.rest.pulls.list({
+        owner,
+        repo,
+        state
+      });
+      return response.data;
+    } catch (e: any) {
+      if (e.status === 404) {
+        return [];
+      }
+      logger.error(`Error listing PRs for ${owner}/${repo}`, e);
+      return [];
+    }
   }
 
   async createIssue(token: string, owner: string, repo: string, title: string, body?: string, labels?: string[]) {
@@ -70,13 +92,21 @@ class GitHubService {
   }
 
   async listIssues(token: string, owner: string, repo: string, state: 'open' | 'closed' | 'all' = 'open') {
-    const octokit = this.getClient(token);
-    const response = await octokit.rest.issues.listForRepo({
-      owner,
-      repo,
-      state
-    });
-    return response.data;
+    try {
+      const octokit = this.getClient(token);
+      const response = await octokit.rest.issues.listForRepo({
+        owner,
+        repo,
+        state
+      });
+      return response.data;
+    } catch (e: any) {
+      if (e.status === 404) {
+        return [];
+      }
+      logger.error(`Error listing issues for ${owner}/${repo}`, e);
+      return [];
+    }
   }
 
   async getUser(token: string) {
@@ -112,7 +142,7 @@ class GitHubService {
       try {
         await gitService.push(localPath, 'origin', 'master');
       } catch (err) {
-        console.error('Failed to push to origin', err);
+        logger.error('Failed to push to origin', err);
       }
     }
 

@@ -46,6 +46,8 @@ export interface IElectronAPI {
     isRepo(path: string): Promise<boolean>
     init(path: string): Promise<any>
     addRemote(path: string, name: string, url: string): Promise<any>
+    getRemoteInfo(path: string): Promise<{ owner: string; repo: string } | null>
+    getRemotes(path: string): Promise<Array<{ name: string; refs: { fetch: string; push: string } }>>
   }
   github: {
     createRepo(name: string, isPrivate: boolean, description?: string): Promise<any>

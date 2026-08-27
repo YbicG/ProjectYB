@@ -57,7 +57,9 @@ const api = {
     isRepo: (path: string) => ipcRenderer.invoke('git:isRepo', path),
     init: (path: string) => ipcRenderer.invoke('git:init', path),
     addRemote: (path: string, name: string, url: string) =>
-      ipcRenderer.invoke('git:addRemote', path, name, url)
+      ipcRenderer.invoke('git:addRemote', path, name, url),
+    getRemoteInfo: (path: string) => ipcRenderer.invoke('git:getRemoteInfo', path),
+    getRemotes: (path: string) => ipcRenderer.invoke('git:getRemotes', path)
   },
   github: {
     createRepo: (name: string, isPrivate: boolean, description?: string) =>
