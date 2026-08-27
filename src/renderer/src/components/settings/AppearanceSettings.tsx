@@ -1,13 +1,13 @@
 import React from 'react';
-import { Palette, Check, LayoutGrid, Sparkles } from 'lucide-react';
+import { Palette, Check, LayoutGrid, Sparkles, Sliders, Layers, TerminalSquare, Compass, Radio } from 'lucide-react';
 import { Card, CardHeader, CardTitle, CardContent, CardDescription } from '../ui/card';
 import { Button } from '../ui/button';
 import { Badge } from '../ui/badge';
-import { useThemeStore, AccentColor, Density } from '@renderer/stores/useThemeStore';
+import { useThemeStore, AccentColor, Density, UIMode } from '@renderer/stores/useThemeStore';
 import { cn } from '@renderer/lib/utils';
 
 export const AppearanceSettings: React.FC = () => {
-  const { accentColor, density, setAccentColor, setDensity } = useThemeStore();
+  const { accentColor, density, uiMode, setAccentColor, setDensity, setUiMode } = useThemeStore();
 
   const themes: Array<{ id: AccentColor; name: string; desc: string; bgClass: string; borderClass: string; hex: string }> = [
     { id: 'violet', name: 'Deep Violet', desc: 'ProjectYB classic violet purple', bgClass: 'bg-violet-600', borderClass: 'border-violet-500', hex: '#8b5cf6' },
@@ -23,12 +23,105 @@ export const AppearanceSettings: React.FC = () => {
       <div>
         <h3 className="text-base font-bold text-zinc-100 flex items-center gap-2">
           <Palette className="w-5 h-5 text-violet-400" />
-          Appearance & Theme
+          Appearance & UI Experience
         </h3>
         <p className="text-xs text-zinc-400 mt-1">
-          Customize ProjectYB accent colors, UI density, and visual theme.
+          Customize ProjectYB layout engines, accent colors, and visual workspace density.
         </p>
       </div>
+
+      {/* ── UI Experience Mode (Feature Flag) ── */}
+      <Card className="bg-zinc-950 border-zinc-800 ring-1 ring-violet-500/30">
+        <CardHeader className="pb-3">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Compass className="w-4 h-4 text-violet-400" />
+              <CardTitle className="text-sm">UI Experience Engine (Phase 7)</CardTitle>
+            </div>
+            <Badge variant="outline" className="text-[10px] font-mono border-violet-500/40 text-violet-300">
+              FEATURE FLAG
+            </Badge>
+          </div>
+          <CardDescription className="text-xs">
+            Seamlessly toggle between the Classic TopNav layout and the Next-Gen Phase 7 Workspace (with Activity Rail, Bento Hub & Universal Dockable Terminal).
+          </CardDescription>
+        </CardHeader>
+
+        <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-3 pt-1">
+          {/* Classic Experience */}
+          <button
+            type="button"
+            onClick={() => setUiMode('classic')}
+            className={cn(
+              'p-4 rounded-xl border text-left transition-all relative overflow-hidden flex flex-col justify-between',
+              uiMode === 'classic'
+                ? 'border-violet-500 bg-zinc-900/90 ring-1 ring-violet-500/50 shadow-lg shadow-violet-950/20'
+                : 'border-zinc-800 bg-zinc-950/60 text-zinc-400 hover:bg-zinc-900'
+            )}
+          >
+            <div>
+              <div className="flex items-center justify-between mb-2">
+                <div className="flex items-center gap-2">
+                  <Layers className="w-4 h-4 text-zinc-400" />
+                  <span className="font-bold text-xs text-zinc-100">Classic Experience (V1)</span>
+                </div>
+                {uiMode === 'classic' && (
+                  <Badge className="bg-violet-600 hover:bg-violet-600 text-white text-[10px] px-1.5 py-0">
+                    Active
+                  </Badge>
+                )}
+              </div>
+              <p className="text-[11px] text-zinc-400 leading-relaxed">
+                Horizontal top navigation bar, full-page tabs, and standard dashboard layout.
+              </p>
+            </div>
+
+            <div className="mt-3 pt-2.5 border-t border-zinc-800/80 flex items-center gap-2 text-[10px] font-mono text-zinc-500">
+              <span>• Top Tab Navigation</span>
+              <span>• Fullpage Terminals</span>
+            </div>
+          </button>
+
+          {/* Modern Experience (Phase 7) */}
+          <button
+            type="button"
+            onClick={() => setUiMode('modern')}
+            className={cn(
+              'p-4 rounded-xl border text-left transition-all relative overflow-hidden flex flex-col justify-between',
+              uiMode === 'modern'
+                ? 'border-violet-500 bg-zinc-900/90 ring-1 ring-violet-500/50 shadow-lg shadow-violet-950/30'
+                : 'border-zinc-800 bg-zinc-950/60 text-zinc-400 hover:bg-zinc-900'
+            )}
+          >
+            <div>
+              <div className="flex items-center justify-between mb-2">
+                <div className="flex items-center gap-2">
+                  <Sparkles className="w-4 h-4 text-violet-400" />
+                  <span className="font-bold text-xs text-violet-300">Modern V2 Experience (Phase 7)</span>
+                </div>
+                {uiMode === 'modern' ? (
+                  <Badge className="bg-violet-600 hover:bg-violet-600 text-white text-[10px] px-1.5 py-0">
+                    Active
+                  </Badge>
+                ) : (
+                  <Badge variant="outline" className="border-violet-500/40 text-violet-300 text-[9px] px-1.5 py-0">
+                    Next-Gen
+                  </Badge>
+                )}
+              </div>
+              <p className="text-[11px] text-zinc-300 leading-relaxed">
+                Collapsible Left Activity Rail, Omnipresent Command Omnibar, Bento Grid Dashboard, and Universal Terminal Dock (Ctrl+`).
+              </p>
+            </div>
+
+            <div className="mt-3 pt-2.5 border-t border-zinc-800/80 flex items-center gap-2 text-[10px] font-mono text-violet-400">
+              <span>• Activity Rail (Ctrl+B)</span>
+              <span>• Terminal Dock (Ctrl+`)</span>
+              <span>• Bento Hub</span>
+            </div>
+          </button>
+        </CardContent>
+      </Card>
 
       {/* ── Theme Color Palette Picker ── */}
       <Card className="bg-zinc-950 border-zinc-800">
@@ -69,51 +162,6 @@ export const AppearanceSettings: React.FC = () => {
               </button>
             );
           })}
-        </CardContent>
-      </Card>
-
-      {/* ── Live Theme Preview Showcase ── */}
-      <Card className="bg-zinc-950 border-zinc-800">
-        <CardHeader className="pb-3">
-          <CardTitle className="text-sm flex items-center gap-2">
-            <Sparkles className="w-4 h-4 text-violet-400" />
-            Live Theme Preview
-          </CardTitle>
-          <CardDescription className="text-xs">
-            Preview how badges, buttons, active highlights, and controls look with the current theme.
-          </CardDescription>
-        </CardHeader>
-
-        <CardContent className="space-y-3 pt-1">
-          <div className="p-4 rounded-lg bg-zinc-900/60 border border-zinc-800 space-y-3">
-            <div className="flex items-center justify-between flex-wrap gap-2">
-              <div className="flex items-center gap-2">
-                <Badge className="bg-violet-600 hover:bg-violet-600 text-white font-mono text-xs">
-                  Active Badge
-                </Badge>
-                <Badge variant="outline" className="border-violet-500 text-violet-400 font-mono text-xs">
-                  Outline Highlight
-                </Badge>
-              </div>
-
-              <div className="flex items-center gap-2">
-                <Button size="sm" className="bg-violet-600 hover:bg-violet-700 text-white text-xs h-7">
-                  Primary Action
-                </Button>
-                <Button size="sm" variant="outline" className="border-zinc-700 text-zinc-300 hover:border-violet-500 hover:text-violet-300 text-xs h-7">
-                  Secondary Action
-                </Button>
-              </div>
-            </div>
-
-            <div className="p-2.5 rounded bg-zinc-950 border border-zinc-800/80 flex items-center justify-between text-xs">
-              <span className="text-zinc-400">Navigation Tab Active Indicator:</span>
-              <span className="text-violet-400 font-semibold flex items-center gap-1.5">
-                <span className="w-2 h-2 rounded-full bg-violet-500 animate-pulse" />
-                Active Tab Accent
-              </span>
-            </div>
-          </div>
         </CardContent>
       </Card>
 

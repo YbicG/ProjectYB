@@ -54,6 +54,20 @@ export function useKeyboard() {
         return
       }
 
+      // Toggle Activity Rail Sidebar: Ctrl+B
+      if ((e.ctrlKey || e.metaKey) && (e.key === 'b' || e.key === 'B')) {
+        e.preventDefault()
+        useThemeStore.getState().toggleSidebar()
+        return
+      }
+
+      // Toggle Universal Terminal Dock: Ctrl+`
+      if ((e.ctrlKey || e.metaKey) && e.key === '`') {
+        e.preventDefault()
+        useThemeStore.getState().toggleTerminalDock()
+        return
+      }
+
       // Quick Scratchpad: Ctrl+N
       if ((e.ctrlKey || e.metaKey) && e.key === 'n' && !e.shiftKey) {
         e.preventDefault()

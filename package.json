@@ -36,6 +36,7 @@
     "clsx": "^2.1.1",
     "cmdk": "^1.0.4",
     "electron-store": "^10.0.0",
+    "framer-motion": "^13.1.1",
     "lucide-react": "^0.468.0",
     "node-pty": "^1.0.0",
     "react-resizable-panels": "^2.1.7",

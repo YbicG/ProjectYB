@@ -1,5 +1,8 @@
 import React, { useEffect } from 'react';
 import { AppLayout } from './components/layout/AppLayout';
+import { ModernAppLayout } from './components/modern/layout/ModernAppLayout';
+import { ModernBentoDashboard } from './components/modern/dashboard/ModernBentoDashboard';
+import { ModernProjectWorkbench } from './components/modern/project/ModernProjectWorkbench';
 import { DashboardPage } from './pages/DashboardPage';
 import { OverviewPage } from './pages/OverviewPage';
 import { ApiTesterPage } from './pages/ApiTesterPage';
@@ -32,7 +35,7 @@ export const App: React.FC = () => {
   const { activeTab } = useAppStore();
   const { scanProjects } = useProjectStore();
   const { startMonitoring, stopMonitoring } = useSystemStore();
-  const { loadPreferences } = useThemeStore();
+  const { uiMode, loadPreferences } = useThemeStore();
   const { loadCustomSnippets } = useSnippetStore();
   const { loadConfig: loadOverviewConfig } = useOverviewStore();
   const { dialogOpen: templateDialogOpen, setDialogOpen: setTemplateDialogOpen } = useTemplateStore();
@@ -60,7 +63,7 @@ export const App: React.FC = () => {
         useServiceStore.getState().updateAllServiceStats(statsMap);
       });
     }
-    
+
     return () => {
       stopMonitoring();
       unsubScan?.();
@@ -68,7 +71,7 @@ export const App: React.FC = () => {
     };
   }, []);
 
-  const renderPage = () => {
+  const renderClassicPage = () => {
     switch (activeTab) {
       case 'dashboard':
         return <DashboardPage />;
@@ -95,11 +98,41 @@ export const App: React.FC = () => {
     }
   };
 
+  const renderModernPage = () => {
+    switch (activeTab) {
+      case 'dashboard':
+        return <ModernBentoDashboard />;
+      case 'project-detail':
+        return <ModernProjectWorkbench />;
+      case 'overview':
+        return <OverviewPage />;
+      case 'api':
+        return <ApiTesterPage />;
+      case 'terminals':
+        return <TerminalsPage />;
+      case 'git':
+        return <GitPage />;
+      case 'services':
+        return <ServicesPage />;
+      case 'dependencies':
+        return <DependenciesPage />;
+      case 'optimizer':
+        return <OptimizerPage />;
+      case 'settings':
+        return <SettingsPage />;
+      default:
+        return <ModernBentoDashboard />;
+    }
+  };
+
   return (
     <>
-      <AppLayout>
-        {renderPage()}
-      </AppLayout>
+      {uiMode === 'modern' ? (
+        <ModernAppLayout>{renderModernPage()}</ModernAppLayout>
+      ) : (
+        <AppLayout>{renderClassicPage()}</AppLayout>
+      )}
+
       <CommandPalette />
       <CreateProjectDialog
         open={templateDialogOpen}
