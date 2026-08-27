@@ -9,7 +9,6 @@ import { Button } from '../ui/button';
 import { useTerminalStore } from '@renderer/stores/useTerminalStore';
 import { useServiceStore } from '@renderer/stores/useServiceStore';
 import { useGitStore } from '@renderer/stores/useGitStore';
-import { useDependencyStore } from '@renderer/stores/useDependencyStore';
 
 const tabs = [
   { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },

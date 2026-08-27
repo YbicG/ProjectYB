@@ -134,19 +134,27 @@ export const useDependencyStore = create<DependencyState>((set, get) => ({
   },
 
   upgradeSelectedPackages: async (projectPath) => {
-    const { selectedUpgradePackages, outdatedPackages, upgradePackage } = get();
+    if (!window.api?.dependencies) return;
+    const { selectedUpgradePackages, outdatedPackages } = get();
     if (selectedUpgradePackages.length === 0) return;
 
     set({ isUpgrading: true });
     let successCount = 0;
     try {
       for (const name of selectedUpgradePackages) {
-        const pkg = outdatedPackages.find(p => p.name === name);
-        const ok = await upgradePackage(projectPath, name, pkg?.latest, pkg?.packageType === 'devDependency');
-        if (ok) successCount++;
+        const pkg = outdatedPackages.find((p) => p.name === name);
+        const res = await window.api.dependencies.upgrade({
+          projectPath,
+          packageName: name,
+          targetVersion: pkg?.latest,
+          isDev: pkg?.packageType === 'devDependency'
+        });
+        if (res?.success) successCount++;
       }
       toast.success(`Upgraded ${successCount} packages!`);
-      get().loadAllForProject(projectPath);
+      await get().loadAllForProject(projectPath);
+    } catch (err: any) {
+      toast.error(`Batch upgrade error: ${err.message}`);
     } finally {
       set({ isUpgrading: false });
     }

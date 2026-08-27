@@ -111,6 +111,11 @@ export const useDiskStore = create<DiskState>((set, get) => ({
       }
       const mb = Math.round(totalFreed / (1024 * 1024));
       toast.success(`Batch clean complete! Freed ~${mb > 1024 ? `${(mb / 1024).toFixed(1)} GB` : `${mb} MB`}`);
+
+      // Refresh disk analysis across projects
+      await get().analyzeAllProjects(
+        summary.projects.map((p) => ({ id: p.projectId, name: p.projectName, path: p.projectPath }))
+      );
     } finally {
       set({ isCleaning: false });
     }

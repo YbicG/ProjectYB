@@ -1,7 +1,8 @@
 import React, { useEffect, useState } from 'react';
-import { HardDrive, Sparkles, Trash2, RefreshCw, Layers, ShieldCheck, Filter } from 'lucide-react';
+import { HardDrive, Sparkles, Trash2, RefreshCw, Layers, ShieldCheck, Filter, Search } from 'lucide-react';
 import { Card, CardHeader, CardTitle, CardContent } from '../components/ui/card';
 import { Button } from '../components/ui/button';
+import { Input } from '../components/ui/input';
 import { Badge } from '../components/ui/badge';
 import { ScrollArea } from '../components/ui/scroll-area';
 import { ProjectDiskCard } from '../components/disk/ProjectDiskCard';
@@ -128,7 +129,7 @@ export const OptimizerPage: React.FC = () => {
 
       {/* ── Project Filter Bar & Project List ── */}
       <div className="flex items-center justify-between pt-1">
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-3">
           <div className="bg-zinc-900 border border-zinc-800 rounded p-0.5 flex text-xs">
             <button
               onClick={() => setFilter('all')}
@@ -148,6 +149,16 @@ export const OptimizerPage: React.FC = () => {
             >
               Large (&gt; 500 MB)
             </button>
+          </div>
+
+          <div className="relative w-52">
+            <Search className="w-3.5 h-3.5 absolute left-2.5 top-2.5 text-zinc-500" />
+            <Input
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Filter by project..."
+              className="pl-8 h-8 bg-zinc-900 border-zinc-800 text-xs"
+            />
           </div>
         </div>
 
