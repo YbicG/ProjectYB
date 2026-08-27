@@ -31,8 +31,13 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
   scanProjects: async () => {
     set({ isScanning: true })
     try {
+      if (!window.api?.projects) {
+        console.warn('window.api.projects not available — running outside Electron?')
+        set({ projects: [], isScanning: false })
+        return
+      }
       const projects = await window.api.projects.scan()
-      set({ projects, isScanning: false })
+      set({ projects: projects || [], isScanning: false })
     } catch (error) {
       console.error('Failed to scan projects', error)
       set({ isScanning: false })

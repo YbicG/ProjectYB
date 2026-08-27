@@ -19,14 +19,13 @@ export const useSystemStore = create<SystemState>((set) => ({
   isMonitoring: false,
   
   startMonitoring: () => {
+    if (!window.api?.system) return
     set({ isMonitoring: true })
     
     // Subscribe to IPC metrics
     cleanupFn = window.api.system.onMetrics((metrics) => {
       set({ metrics })
     })
-    
-    // In a real application, you might poll getProcessStats here if needed
   },
   
   stopMonitoring: () => {

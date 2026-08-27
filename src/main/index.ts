@@ -11,11 +11,19 @@ import { setupWindowIpc } from './ipc/window.ipc';
 import { terminalService } from './services/terminal.service';
 import { systemMonitor } from './services/system-monitor';
 
-async function createWindow() {
-  const store = await getStore();
-  const bounds = store.get('windowBounds', { width: 1400, height: 900 }) as { width: number; height: number; x?: number; y?: number };
+let mainWindow: BrowserWindow | null = null;
 
-  const mainWindow = new BrowserWindow({
+async function createWindow() {
+  let bounds = { width: 1400, height: 900 } as { width: number; height: number; x?: number; y?: number };
+  
+  try {
+    const store = await getStore();
+    bounds = store.get('windowBounds', bounds) as typeof bounds;
+  } catch (err) {
+    console.error('Failed to load store, using defaults:', err);
+  }
+
+  mainWindow = new BrowserWindow({
     ...bounds,
     minWidth: 1000,
     minHeight: 600,
@@ -31,8 +39,11 @@ async function createWindow() {
     }
   });
 
-  mainWindow.on('close', () => {
-    store.set('windowBounds', mainWindow.getBounds());
+  mainWindow.on('close', async () => {
+    try {
+      const store = await getStore();
+      if (mainWindow) store.set('windowBounds', mainWindow.getBounds());
+    } catch {}
   });
 
   setupTerminalIpc(mainWindow);
@@ -40,8 +51,19 @@ async function createWindow() {
   setupGithubIpc();
   setupProjectsIpc();
   setupSystemIpc(mainWindow);
-  await setupStoreIpc();
+  
+  try {
+    await setupStoreIpc();
+  } catch (err) {
+    console.error('Failed to setup store IPC:', err);
+  }
+  
   setupWindowIpc(mainWindow);
+
+  // Open DevTools in dev mode
+  if (!app.isPackaged) {
+    mainWindow.webContents.openDevTools();
+  }
   
   if (!app.isPackaged && process.env['ELECTRON_RENDERER_URL']) {
     mainWindow.loadURL(process.env['ELECTRON_RENDERER_URL']);
@@ -50,11 +72,11 @@ async function createWindow() {
   }
 }
 
-app.whenReady().then(() => {
-  createWindow();
+app.whenReady().then(async () => {
+  await createWindow();
 
-  app.on('activate', function () {
-    if (BrowserWindow.getAllWindows().length === 0) createWindow();
+  app.on('activate', async function () {
+    if (BrowserWindow.getAllWindows().length === 0) await createWindow();
   });
 });
 
