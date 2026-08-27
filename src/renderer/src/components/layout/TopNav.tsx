@@ -1,19 +1,23 @@
 import React from 'react';
-import { LayoutDashboard, TerminalSquare, GitBranch, Server, Settings, Search } from 'lucide-react';
+import { LayoutDashboard, TerminalSquare, GitBranch, Server, Package, HardDrive, Settings, Search } from 'lucide-react';
 import { useAppStore } from '@renderer/stores/useAppStore';
 import { cn } from '@renderer/lib/utils';
 import { SystemMonitor } from '../shared/SystemMonitor';
 import { NotificationCenter } from '../shared/NotificationCenter';
+import { WorkspaceSelector } from '../workspaces/WorkspaceSelector';
 import { Button } from '../ui/button';
 import { useTerminalStore } from '@renderer/stores/useTerminalStore';
 import { useServiceStore } from '@renderer/stores/useServiceStore';
 import { useGitStore } from '@renderer/stores/useGitStore';
+import { useDependencyStore } from '@renderer/stores/useDependencyStore';
 
 const tabs = [
   { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
   { id: 'terminals', label: 'Terminals', icon: TerminalSquare },
   { id: 'git', label: 'Git', icon: GitBranch },
   { id: 'services', label: 'Services', icon: Server },
+  { id: 'dependencies', label: 'Dependencies', icon: Package },
+  { id: 'optimizer', label: 'Optimizer', icon: HardDrive },
   { id: 'settings', label: 'Settings', icon: Settings },
 ];
 
@@ -73,7 +77,8 @@ export const TopNav: React.FC = () => {
         })}
       </div>
       
-      <div className="flex items-center gap-4">
+      <div className="flex items-center gap-3">
+        <WorkspaceSelector />
         <SystemMonitor />
         <Button variant="ghost" size="icon" onClick={() => document.dispatchEvent(new KeyboardEvent('keydown', { key: 'k', metaKey: true }))}>
           <Search className="w-5 h-5" />

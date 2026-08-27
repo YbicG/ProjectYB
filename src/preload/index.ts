@@ -165,6 +165,49 @@ const api = {
         ipcRenderer.removeListener('templates:log', handler)
       }
     }
+  },
+  dependencies: {
+    getInstalled: (projectPath: string) => ipcRenderer.invoke('dependencies:getInstalled', projectPath),
+    getOutdated: (projectPath: string) => ipcRenderer.invoke('dependencies:getOutdated', projectPath),
+    getAudit: (projectPath: string) => ipcRenderer.invoke('dependencies:getAudit', projectPath),
+    upgrade: (options: { projectPath: string; packageName: string; targetVersion?: string; isDev?: boolean }) =>
+      ipcRenderer.invoke('dependencies:upgrade', options),
+    fixAudit: (projectPath: string) => ipcRenderer.invoke('dependencies:fixAudit', projectPath),
+    search: (query: string, limit?: number) => ipcRenderer.invoke('dependencies:search', query, limit),
+    install: (options: { projectPath: string; packageName: string; isDev?: boolean }) =>
+      ipcRenderer.invoke('dependencies:install', options),
+    uninstall: (options: { projectPath: string; packageName: string }) =>
+      ipcRenderer.invoke('dependencies:uninstall', options)
+  },
+  docker: {
+    getStatus: () => ipcRenderer.invoke('docker:getStatus'),
+    getProjectFiles: (projectPath: string) => ipcRenderer.invoke('docker:getProjectFiles', projectPath),
+    getServices: (projectPath: string) => ipcRenderer.invoke('docker:getServices', projectPath),
+    up: (projectPath: string, serviceName?: string, build?: boolean) =>
+      ipcRenderer.invoke('docker:up', projectPath, serviceName, build),
+    stop: (projectPath: string, serviceName?: string) =>
+      ipcRenderer.invoke('docker:stop', projectPath, serviceName),
+    restart: (projectPath: string, serviceName?: string) =>
+      ipcRenderer.invoke('docker:restart', projectPath, serviceName),
+    down: (projectPath: string) => ipcRenderer.invoke('docker:down', projectPath),
+    getLogs: (projectPath: string, serviceName?: string, tail?: number) =>
+      ipcRenderer.invoke('docker:getLogs', projectPath, serviceName, tail),
+    probeDb: (connectionUrl: string) => ipcRenderer.invoke('docker:probeDb', connectionUrl)
+  },
+  disk: {
+    analyzeProject: (projectId: string, projectName: string, projectPath: string) =>
+      ipcRenderer.invoke('disk:analyzeProject', projectId, projectName, projectPath),
+    analyzeProjects: (projects: Array<{ id: string; name: string; path: string }>) =>
+      ipcRenderer.invoke('disk:analyzeProjects', projects),
+    cleanProject: (projectPath: string, categories: string[]) =>
+      ipcRenderer.invoke('disk:cleanProject', projectPath, categories),
+    cleanGlobalCache: (type: 'pnpm' | 'npm' | 'cargo' | 'pip') =>
+      ipcRenderer.invoke('disk:cleanGlobalCache', type)
+  },
+  workspaces: {
+    getStacks: () => ipcRenderer.invoke('workspaces:getStacks'),
+    saveStack: (stack: any) => ipcRenderer.invoke('workspaces:saveStack', stack),
+    deleteStack: (stackId: string) => ipcRenderer.invoke('workspaces:deleteStack', stackId)
   }
 }
 

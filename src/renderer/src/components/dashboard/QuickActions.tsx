@@ -1,5 +1,5 @@
 import React, { useState, useRef } from 'react';
-import { TerminalSquare, RefreshCw, Code, FolderPlus, X, Check, Loader2, Sparkles } from 'lucide-react';
+import { TerminalSquare, RefreshCw, Code, FolderPlus, X, Check, Loader2, Sparkles, HardDrive } from 'lucide-react';
 import { Button } from '../ui/button';
 import { Input } from '../ui/input';
 import { useProjectStore } from '@renderer/stores/useProjectStore';
@@ -138,6 +138,15 @@ export const QuickActions: React.FC = () => {
       <Button variant="outline" className="justify-start h-10 w-full" onClick={handleOpenVSCode}>
         <Code className="w-4 h-4 mr-2" />
         Open VS Code
+      </Button>
+
+      <Button
+        variant="outline"
+        className="justify-start h-10 w-full text-amber-300/90 border-amber-900/40 bg-amber-950/10 hover:bg-amber-950/30"
+        onClick={() => setActiveTab('optimizer')}
+      >
+        <HardDrive className="w-4 h-4 mr-2 text-amber-400" />
+        Disk Optimizer
       </Button>
     </div>
   );

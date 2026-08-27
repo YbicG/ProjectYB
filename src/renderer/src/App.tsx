@@ -5,6 +5,8 @@ import { TerminalsPage } from './pages/TerminalsPage';
 import { GitPage } from './pages/GitPage';
 import { ServicesPage } from './pages/ServicesPage';
 import { SettingsPage } from './pages/SettingsPage';
+import { DependenciesPage } from './pages/DependenciesPage';
+import { OptimizerPage } from './pages/OptimizerPage';
 import { ProjectDetailPage } from './pages/ProjectDetailPage';
 import { CommandPalette } from './components/shared/CommandPalette';
 import { CreateProjectDialog } from './components/templates/CreateProjectDialog';
@@ -60,6 +62,10 @@ export const App: React.FC = () => {
         return <GitPage />;
       case 'services':
         return <ServicesPage />;
+      case 'dependencies':
+        return <DependenciesPage />;
+      case 'optimizer':
+        return <OptimizerPage />;
       case 'settings':
         return <SettingsPage />;
       case 'project-detail':

@@ -18,7 +18,9 @@ import {
   Pencil,
   BookOpen,
   Layers,
-  Lock
+  Lock,
+  Package,
+  Boxes
 } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card'
 import { Badge } from '../components/ui/badge'
@@ -26,6 +28,7 @@ import { Button } from '../components/ui/button'
 import { ScrollArea } from '../components/ui/scroll-area'
 import { ProjectConfigDialog } from '../components/dashboard/ProjectConfigDialog'
 import { EnvManagerDialog } from '../components/env/EnvManagerDialog'
+import { DockerDashboard } from '../components/docker/DockerDashboard'
 import { useProjectStore } from '@renderer/stores/useProjectStore'
 import { useAppStore } from '@renderer/stores/useAppStore'
 import { useGitStore } from '@renderer/stores/useGitStore'
@@ -263,6 +266,18 @@ export const ProjectDetailPage: React.FC<ProjectDetailPageProps> = ({ projectId:
 
           {/* Quick actions */}
           <div className="flex shrink-0 items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                selectProject(project.id)
+                setActiveTab('dependencies')
+              }}
+              className="gap-1.5 border-emerald-500/40 text-emerald-300 hover:bg-emerald-950/30"
+            >
+              <Package className="h-4 w-4" />
+              Dependencies
+            </Button>
             <Button
               variant="outline"
               size="sm"
@@ -526,6 +541,9 @@ export const ProjectDetailPage: React.FC<ProjectDetailPageProps> = ({ projectId:
             </CardContent>
           </Card>
         )}
+
+        {/* ── Docker Orchestration ── */}
+        <DockerDashboard projectPath={project.path} projectName={project.name} />
 
         {/* ── NPM & Custom scripts ── */}
         {project.scripts && Object.keys(project.scripts).length > 0 && (

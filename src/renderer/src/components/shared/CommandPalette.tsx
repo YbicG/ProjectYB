@@ -1,11 +1,12 @@
 import React, { useEffect, useState } from 'react';
-import { TerminalSquare, Server, GitBranch, Settings, LayoutDashboard, Search, Play, FolderOpen, Code, Sparkles, Radio } from 'lucide-react';
+import { TerminalSquare, Server, GitBranch, Settings, LayoutDashboard, Search, Play, FolderOpen, Code, Sparkles, Radio, Package, HardDrive, Layers } from 'lucide-react';
 import { CommandDialog, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '../ui/command';
 import { useAppStore } from '@renderer/stores/useAppStore';
 import { useProjectStore } from '@renderer/stores/useProjectStore';
 import { useTerminalStore } from '@renderer/stores/useTerminalStore';
 import { useServiceStore } from '@renderer/stores/useServiceStore';
 import { useTemplateStore } from '@renderer/stores/useTemplateStore';
+import { useWorkspaceStore } from '@renderer/stores/useWorkspaceStore';
 import { toast } from 'sonner';
 
 export const CommandPalette: React.FC = () => {
@@ -15,6 +16,7 @@ export const CommandPalette: React.FC = () => {
   const { createTerminal } = useTerminalStore();
   const { profiles, startProfile } = useServiceStore();
   const { setDialogOpen: setTemplateDialogOpen } = useTemplateStore();
+  const { openEditor: openWorkspaceEditor } = useWorkspaceStore();
 
   useEffect(() => {
     const down = (e: KeyboardEvent) => {
@@ -84,13 +86,21 @@ export const CommandPalette: React.FC = () => {
             <TerminalSquare className="mr-2 h-4 w-4" />
             Terminals
           </CommandItem>
+          <CommandItem onSelect={() => runCommand(() => setActiveTab('git'))}>
+            <GitBranch className="mr-2 h-4 w-4" />
+            Git & GitHub
+          </CommandItem>
           <CommandItem onSelect={() => runCommand(() => setActiveTab('services'))}>
             <Server className="mr-2 h-4 w-4" />
             Services & Ports
           </CommandItem>
-          <CommandItem onSelect={() => runCommand(() => setActiveTab('git'))}>
-            <GitBranch className="mr-2 h-4 w-4" />
-            Git
+          <CommandItem onSelect={() => runCommand(() => setActiveTab('dependencies'))}>
+            <Package className="mr-2 h-4 w-4 text-violet-400" />
+            Dependencies & Security
+          </CommandItem>
+          <CommandItem onSelect={() => runCommand(() => setActiveTab('optimizer'))}>
+            <HardDrive className="mr-2 h-4 w-4 text-amber-400" />
+            Disk Space Optimizer
           </CommandItem>
           <CommandItem onSelect={() => runCommand(() => setActiveTab('settings'))}>
             <Settings className="mr-2 h-4 w-4" />
@@ -111,6 +121,10 @@ export const CommandPalette: React.FC = () => {
           <CommandItem onSelect={handleCreateFromTemplate}>
             <Sparkles className="mr-2 h-4 w-4 text-violet-400" />
             Create Project from Template...
+          </CommandItem>
+          <CommandItem onSelect={() => runCommand(() => openWorkspaceEditor())}>
+            <Layers className="mr-2 h-4 w-4 text-violet-400" />
+            Create Workspace Stack...
           </CommandItem>
           <CommandItem onSelect={handleManagePorts}>
             <Radio className="mr-2 h-4 w-4 text-cyan-400" />

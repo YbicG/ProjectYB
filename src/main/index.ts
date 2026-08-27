@@ -11,6 +11,10 @@ import { setupWindowIpc } from './ipc/window.ipc';
 import { setupEnvIpc } from './ipc/env.ipc';
 import { setupPortIpc } from './ipc/port.ipc';
 import { setupTemplateIpc } from './ipc/template.ipc';
+import { setupDependencyIpc } from './ipc/dependency.ipc';
+import { setupDockerIpc } from './ipc/docker.ipc';
+import { setupDiskIpc } from './ipc/disk.ipc';
+import { setupWorkspaceIpc } from './ipc/workspace.ipc';
 import { terminalService } from './services/terminal.service';
 import { systemMonitor } from './services/system-monitor';
 import { trayService } from './services/tray.service';
@@ -59,6 +63,10 @@ async function createWindow() {
   setupEnvIpc();
   setupPortIpc();
   setupTemplateIpc(mainWindow);
+  setupDependencyIpc();
+  setupDockerIpc();
+  setupDiskIpc();
+  setupWorkspaceIpc();
   
   try {
     await setupStoreIpc();

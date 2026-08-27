@@ -114,6 +114,38 @@ export interface IElectronAPI {
     saveCustom(template: ProjectTemplate): Promise<void>
     onLog(callback: (line: string) => void): () => void
   }
+  dependencies: {
+    getInstalled(projectPath: string): Promise<any[]>
+    getOutdated(projectPath: string): Promise<any[]>
+    getAudit(projectPath: string): Promise<any>
+    upgrade(options: { projectPath: string; packageName: string; targetVersion?: string; isDev?: boolean }): Promise<{ success: boolean; output: string }>
+    fixAudit(projectPath: string): Promise<{ success: boolean; output: string }>
+    search(query: string, limit?: number): Promise<any[]>
+    install(options: { projectPath: string; packageName: string; isDev?: boolean }): Promise<{ success: boolean; output: string }>
+    uninstall(options: { projectPath: string; packageName: string }): Promise<{ success: boolean; output: string }>
+  }
+  docker: {
+    getStatus(): Promise<{ available: boolean; running: boolean; version?: string; containers?: number; images?: number }>
+    getProjectFiles(projectPath: string): Promise<{ hasDockerfile: boolean; hasCompose: boolean; composeFile?: string }>
+    getServices(projectPath: string): Promise<any[]>
+    up(projectPath: string, serviceName?: string, build?: boolean): Promise<{ success: boolean; output: string }>
+    stop(projectPath: string, serviceName?: string): Promise<{ success: boolean; output: string }>
+    restart(projectPath: string, serviceName?: string): Promise<{ success: boolean; output: string }>
+    down(projectPath: string): Promise<{ success: boolean; output: string }>
+    getLogs(projectPath: string, serviceName?: string, tail?: number): Promise<string>
+    probeDb(connectionUrl: string): Promise<{ success: boolean; protocol: string; host: string; port: number; database?: string; responseTimeMs: number; error?: string }>
+  }
+  disk: {
+    analyzeProject(projectId: string, projectName: string, projectPath: string): Promise<any>
+    analyzeProjects(projects: Array<{ id: string; name: string; path: string }>): Promise<any>
+    cleanProject(projectPath: string, categories: string[]): Promise<{ success: boolean; freedBytes: number; cleanedPaths: string[] }>
+    cleanGlobalCache(type: 'pnpm' | 'npm' | 'cargo' | 'pip'): Promise<{ success: boolean; output: string }>
+  }
+  workspaces: {
+    getStacks(): Promise<any[]>
+    saveStack(stack: any): Promise<any[]>
+    deleteStack(stackId: string): Promise<any[]>
+  }
 }
 
 declare global {
