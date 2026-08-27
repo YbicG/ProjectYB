@@ -53,7 +53,7 @@ export const ModernSidebar: React.FC = () => {
   const { runningServices } = useServiceStore();
   const { statuses } = useGitStore();
   const { setScratchpadModalOpen } = useNotesStore();
-  const { setHealthModalOpen } = useHealthStore();
+  const { setModalOpen: setHealthModalOpen } = useHealthStore();
   const { setSnippetModalOpen } = useSnippetStore();
 
   // Count uncommitted git projects
