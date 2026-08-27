@@ -1,13 +1,24 @@
 import React from 'react';
-import { Play, Square, RotateCw, TerminalSquare } from 'lucide-react';
+import { Square, RotateCw, TerminalSquare } from 'lucide-react';
 import { Badge } from '../ui/badge';
 import { Button } from '../ui/button';
 import { StatusDot } from '../shared/StatusDot';
 import { useServiceStore } from '@renderer/stores/useServiceStore';
+import { useTerminalStore } from '@renderer/stores/useTerminalStore';
+import { useAppStore } from '@renderer/stores/useAppStore';
 import { ScrollArea } from '../ui/scroll-area';
 
 export const RunningServices: React.FC = () => {
-  const { runningServices } = useServiceStore();
+  const { runningServices, stopService, restartService } = useServiceStore();
+  const { setActiveTerminal } = useTerminalStore();
+  const { setActiveTab } = useAppStore();
+
+  const handleTerminal = (terminalId?: string) => {
+    if (terminalId) {
+      setActiveTerminal(terminalId);
+      setActiveTab('terminals');
+    }
+  };
 
   return (
     <div className="flex flex-col h-full bg-zinc-950 border-l border-zinc-800 w-80">
@@ -41,13 +52,22 @@ export const RunningServices: React.FC = () => {
                 </div>
                 
                 <div className="flex gap-1 absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity bg-zinc-900 p-0.5 rounded shadow-sm">
-                  <Button variant="ghost" size="icon" className="h-6 w-6" title="Restart">
+                  <Button
+                    variant="ghost" size="icon" className="h-6 w-6" title="Restart"
+                    onClick={() => restartService(service.id)}
+                  >
                     <RotateCw className="w-3 h-3 text-zinc-400" />
                   </Button>
-                  <Button variant="ghost" size="icon" className="h-6 w-6 hover:bg-red-500/20 hover:text-red-500" title="Stop">
+                  <Button
+                    variant="ghost" size="icon" className="h-6 w-6 hover:bg-red-500/20 hover:text-red-500" title="Stop"
+                    onClick={() => stopService(service.id)}
+                  >
                     <Square className="w-3 h-3" />
                   </Button>
-                  <Button variant="ghost" size="icon" className="h-6 w-6" title="Terminal">
+                  <Button
+                    variant="ghost" size="icon" className="h-6 w-6" title="Terminal"
+                    onClick={() => handleTerminal((service as any).terminalId)}
+                  >
                     <TerminalSquare className="w-3 h-3 text-zinc-400" />
                   </Button>
                 </div>

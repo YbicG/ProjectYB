@@ -28,9 +28,8 @@ export const TopNav: React.FC = () => {
   
   let uncommittedProjectsCount = 0;
   statuses.forEach(status => {
-    if ((status.files?.length || 0) > 0) {
-      uncommittedProjectsCount++;
-    }
+    const total = (status.staged?.length || 0) + (status.unstaged?.length || 0) + (status.untracked?.length || 0);
+    if (total > 0) uncommittedProjectsCount++;
   });
 
   const getBadgeCount = (id: string) => {

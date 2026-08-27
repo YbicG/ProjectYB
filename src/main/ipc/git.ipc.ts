@@ -15,4 +15,5 @@ export function setupGitIpc() {
   ipcMain.handle('git:is-repo', (_, path: string) => gitService.isGitRepo(path));
   ipcMain.handle('git:init', (_, path: string) => gitService.init(path));
   ipcMain.handle('git:add-remote', (_, path: string, name: string, url: string) => gitService.addRemote(path, name, url));
+  ipcMain.handle('git:stageAll', (_, path: string) => gitService.stageAll(path));
 }

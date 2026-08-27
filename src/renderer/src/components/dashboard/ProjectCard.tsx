@@ -111,7 +111,24 @@ export const ProjectCard: React.FC<ProjectCardProps> = ({ project }) => {
             <FolderOpen className="w-4 h-4" />
           </Button>
         </div>
-        <Button size="sm" variant={project.status === 'running' ? 'secondary' : 'default'} className="h-8">
+        <Button
+          size="sm"
+          variant={project.status === 'running' ? 'secondary' : 'default'}
+          className="h-8"
+          onClick={() => {
+            const devCmd = (project as any).scripts?.dev ? 'pnpm dev'
+              : (project as any).scripts?.start ? 'pnpm start'
+              : null;
+            createTerminal({ name: `${project.name} run`, cwd: project.path, projectId: project.id });
+            setActiveTab('terminals');
+            // Send the command after a brief delay for the terminal to initialize
+            if (devCmd) setTimeout(() => {
+              const store = useTerminalStore.getState();
+              const tid = store.activeTerminalId;
+              if (tid) window.api?.terminal?.write(tid, devCmd + '\r');
+            }, 800);
+          }}
+        >
           <Play className="w-4 h-4 mr-1" />
           Run
         </Button>

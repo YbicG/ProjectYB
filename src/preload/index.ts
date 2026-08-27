@@ -40,6 +40,7 @@ const api = {
       ipcRenderer.invoke('git:stash', repoPath, action, message),
     log: (repoPath: string, limit?: number) => ipcRenderer.invoke('git:log', repoPath, limit),
     isRepo: (path: string) => ipcRenderer.invoke('git:isRepo', path),
+    stageAll: (path: string) => ipcRenderer.invoke('git:stageAll', path),
     init: (path: string) => ipcRenderer.invoke('git:init', path),
     addRemote: (path: string, name: string, url: string) =>
       ipcRenderer.invoke('git:addRemote', path, name, url)

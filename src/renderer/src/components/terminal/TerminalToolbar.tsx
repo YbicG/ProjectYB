@@ -7,7 +7,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '../ui/
 import { cn } from '@renderer/lib/utils';
 
 export const TerminalToolbar: React.FC = () => {
-  const { layout, setLayout, createTerminal, removeTerminal, activeTerminalId } = useTerminalStore();
+  const { layout, setLayout, createTerminal, removeTerminal, restartTerminal, activeTerminalId } = useTerminalStore();
 
   return (
     <div className="h-10 flex items-center px-2 bg-zinc-950 border-b border-zinc-800 gap-1">
@@ -25,7 +25,9 @@ export const TerminalToolbar: React.FC = () => {
 
         <Tooltip>
           <TooltipTrigger asChild>
-            <Button variant="ghost" size="icon" className="h-8 w-8 text-zinc-400 hover:text-zinc-50">
+            <Button variant="ghost" size="icon" className="h-8 w-8 text-zinc-400 hover:text-zinc-50"
+              onClick={() => { createTerminal({ name: 'Local', cwd: 'D:\\Code' }); setLayout('grid'); }}
+            >
               <PanelRight className="w-4 h-4" />
             </Button>
           </TooltipTrigger>
@@ -34,7 +36,9 @@ export const TerminalToolbar: React.FC = () => {
 
         <Tooltip>
           <TooltipTrigger asChild>
-            <Button variant="ghost" size="icon" className="h-8 w-8 text-zinc-400 hover:text-zinc-50">
+            <Button variant="ghost" size="icon" className="h-8 w-8 text-zinc-400 hover:text-zinc-50"
+              onClick={() => { createTerminal({ name: 'Local', cwd: 'D:\\Code' }); setLayout('grid'); }}
+            >
               <PanelBottom className="w-4 h-4" />
             </Button>
           </TooltipTrigger>
@@ -45,7 +49,9 @@ export const TerminalToolbar: React.FC = () => {
 
         <Tooltip>
           <TooltipTrigger asChild>
-            <Button variant="ghost" size="icon" className="h-8 w-8 text-zinc-400 hover:text-zinc-50">
+            <Button variant="ghost" size="icon" className="h-8 w-8 text-zinc-400 hover:text-zinc-50"
+              onClick={() => activeTerminalId && window.api?.terminal?.write(activeTerminalId, '\x0c')}
+            >
               <Eraser className="w-4 h-4" />
             </Button>
           </TooltipTrigger>
@@ -54,7 +60,9 @@ export const TerminalToolbar: React.FC = () => {
 
         <Tooltip>
           <TooltipTrigger asChild>
-            <Button variant="ghost" size="icon" className="h-8 w-8 text-zinc-400 hover:text-zinc-50">
+            <Button variant="ghost" size="icon" className="h-8 w-8 text-zinc-400 hover:text-zinc-50"
+              onClick={() => activeTerminalId && restartTerminal(activeTerminalId)}
+            >
               <RotateCw className="w-4 h-4" />
             </Button>
           </TooltipTrigger>

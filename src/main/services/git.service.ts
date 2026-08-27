@@ -7,13 +7,25 @@ class GitService {
 
   async getStatus(path: string) {
     const status = await this.git(path).status();
+    const staged = status.staged.map(f => ({ path: f, status: 'modified' as const }));
+    const unstaged = status.modified.filter(f => !status.staged.includes(f))
+      .map(f => ({ path: f, status: 'modified' as const }));
+    const deleted = status.deleted.map(f => ({ path: f, status: 'deleted' as const }));
+    const created = status.created.map(f => ({ path: f, status: 'added' as const }));
     return {
-      files: status.files,
-      branch: status.current,
+      branch: status.current || 'HEAD',
+      tracking: status.tracking || undefined,
       ahead: status.ahead,
       behind: status.behind,
-      isClean: status.isClean()
+      isClean: status.isClean(),
+      staged: [...staged],
+      unstaged: [...unstaged, ...deleted, ...created],
+      untracked: status.not_added,
     };
+  }
+
+  async stageAll(path: string) {
+    return await this.git(path).add('.');
   }
 
   async commit(path: string, message: string, stageAll: boolean = true) {

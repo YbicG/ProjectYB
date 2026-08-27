@@ -36,12 +36,7 @@ export const ServiceCard: React.FC<ServiceCardProps> = ({ service }) => {
       setActiveTab('terminals');
     }
   };
-  const handleStart = () => {
-    // Note: To start properly we need project info and config. 
-    // Usually 'starting' from this button might mean restarting it or using a cached config.
-    // For now we'll call restart if it has the data, or just ignore if it's purely stopped.
-    // The prompt only said "Stop button", "Restart button", "Terminal button".
-  };
+  const handleStart = () => restartService(service.id);
 
   return (
     <Card className="hover:border-zinc-700 transition-colors">
@@ -57,10 +52,12 @@ export const ServiceCard: React.FC<ServiceCardProps> = ({ service }) => {
             </div>
           </div>
           {service.port && (
-            <Button variant="outline" size="sm" className="h-7 text-xs bg-zinc-950">
-              <ExternalLink className="w-3 h-3 mr-1.5" />
-              {service.port}
-            </Button>
+          <Button variant="outline" size="sm" className="h-7 text-xs bg-zinc-950"
+            onClick={() => window.open(`http://localhost:${service.port}`, '_blank')}
+          >
+            <ExternalLink className="w-3 h-3 mr-1.5" />
+            :{service.port}
+          </Button>
           )}
         </div>
 
