@@ -39,6 +39,7 @@ const api = {
       ipcRenderer.invoke('git:deleteBranch', repoPath, branch),
     mergeBranch: (repoPath: string, branch: string) =>
       ipcRenderer.invoke('git:mergeBranch', repoPath, branch),
+    abortMerge: (repoPath: string) => ipcRenderer.invoke('git:abortMerge', repoPath),
     diff: (repoPath: string, staged?: boolean) => ipcRenderer.invoke('git:diff', repoPath, staged),
     fileDiff: (repoPath: string, filePath: string, staged?: boolean) =>
       ipcRenderer.invoke('git:fileDiff', repoPath, filePath, staged),

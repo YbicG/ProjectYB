@@ -138,6 +138,19 @@ export const GitBranches: React.FC = () => {
     }
   }
 
+  const handleAbortMerge = async () => {
+    if (!project) return
+    try {
+      await window.api.git.abortMerge(project.path)
+      setMergeConflicts([])
+      setMergeDialogOpen(false)
+      await fetchStatus(project.id, project.path)
+      toast.info('Merge aborted and working tree restored')
+    } catch (err: any) {
+      toast.error(`Failed to abort merge: ${err.message}`)
+    }
+  }
+
   const filteredBranches = branches.filter((b) =>
     b.name.toLowerCase().includes(search.toLowerCase())
   )
@@ -331,19 +344,33 @@ export const GitBranches: React.FC = () => {
             )}
           </div>
 
-          <DialogFooter>
-            <Button variant="ghost" size="sm" onClick={() => setMergeDialogOpen(false)}>
-              Cancel
-            </Button>
-            <Button
-              size="sm"
-              disabled={isMerging || !selectedMergeBranch}
-              onClick={handleExecuteMerge}
-              className="bg-violet-600 hover:bg-violet-700 gap-1.5"
-            >
-              <GitMerge className="w-3.5 h-3.5" />
-              {isMerging ? 'Merging…' : `Merge into ${currentBranch}`}
-            </Button>
+          <DialogFooter className="flex items-center justify-between">
+            {mergeConflicts.length > 0 ? (
+              <Button
+                variant="outline"
+                size="sm"
+                className="border-rose-800 text-rose-400 hover:bg-rose-950/30 text-xs"
+                onClick={handleAbortMerge}
+              >
+                Abort Merge
+              </Button>
+            ) : (
+              <div />
+            )}
+            <div className="flex items-center gap-2">
+              <Button variant="ghost" size="sm" onClick={() => setMergeDialogOpen(false)}>
+                Cancel
+              </Button>
+              <Button
+                size="sm"
+                disabled={isMerging || !selectedMergeBranch}
+                onClick={handleExecuteMerge}
+                className="bg-violet-600 hover:bg-violet-700 gap-1.5"
+              >
+                <GitMerge className="w-3.5 h-3.5" />
+                {isMerging ? 'Merging…' : `Merge into ${currentBranch}`}
+              </Button>
+            </div>
           </DialogFooter>
         </DialogContent>
       </Dialog>

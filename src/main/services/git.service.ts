@@ -6,22 +6,42 @@ class GitService {
   }
 
   async getStatus(path: string) {
-    const status = await this.git(path).status();
-    const staged = status.staged.map(f => ({ path: f, status: 'modified' as const }));
-    const unstaged = status.modified.filter(f => !status.staged.includes(f))
-      .map(f => ({ path: f, status: 'modified' as const }));
-    const deleted = status.deleted.map(f => ({ path: f, status: 'deleted' as const }));
-    const created = status.created.map(f => ({ path: f, status: 'added' as const }));
-    return {
-      branch: status.current || 'HEAD',
-      tracking: status.tracking || undefined,
-      ahead: status.ahead,
-      behind: status.behind,
-      isClean: status.isClean(),
-      staged: [...staged],
-      unstaged: [...unstaged, ...deleted, ...created],
-      untracked: status.not_added,
-    };
+    try {
+      const status = await this.git(path).status();
+      const staged: Array<{ path: string; status: 'modified' | 'added' | 'deleted' | 'renamed' }> = [];
+      const unstaged: Array<{ path: string; status: 'modified' | 'added' | 'deleted' }> = [];
+
+      for (const f of status.files) {
+        // Check Staged
+        if (f.index && f.index !== ' ' && f.index !== '?') {
+          let st: 'modified' | 'added' | 'deleted' | 'renamed' = 'modified';
+          if (f.index === 'A' || f.index === 'C') st = 'added';
+          else if (f.index === 'D') st = 'deleted';
+          else if (f.index === 'R') st = 'renamed';
+          staged.push({ path: f.path, status: st });
+        }
+
+        // Check Unstaged
+        if (f.working_dir && f.working_dir !== ' ' && f.working_dir !== '?') {
+          let st: 'modified' | 'added' | 'deleted' = 'modified';
+          if (f.working_dir === 'D') st = 'deleted';
+          unstaged.push({ path: f.path, status: st });
+        }
+      }
+
+      return {
+        branch: status.current || 'HEAD',
+        tracking: status.tracking || undefined,
+        ahead: status.ahead || 0,
+        behind: status.behind || 0,
+        isClean: status.isClean(),
+        staged,
+        unstaged,
+        untracked: status.not_added || [],
+      };
+    } catch {
+      return null;
+    }
   }
 
   async stageAll(path: string) {
@@ -33,17 +53,31 @@ class GitService {
   }
 
   async unstageFile(path: string, filePath: string) {
-    return await this.git(path).reset(['HEAD', filePath]);
+    const git = this.git(path);
+    try {
+      return await git.reset(['--', filePath]);
+    } catch {
+      try {
+        return await git.raw(['rm', '--cached', '--', filePath]);
+      } catch {
+        return await git.reset(['HEAD', filePath]);
+      }
+    }
   }
 
   async discardChanges(path: string, filePath: string) {
     const git = this.git(path);
     try {
-      // Try checkout first (for tracked files)
       return await git.checkout(['--', filePath]);
     } catch {
-      // If untracked, clean
-      return await git.clean('f', ['-d', filePath]);
+      try {
+        const fs = require('fs');
+        const pathUtil = require('path');
+        const fullPath = pathUtil.isAbsolute(filePath) ? filePath : pathUtil.join(path, filePath);
+        if (fs.existsSync(fullPath)) {
+          fs.rmSync(fullPath, { recursive: true, force: true });
+        }
+      } catch {}
     }
   }
 
@@ -67,10 +101,9 @@ class GitService {
 
   async getBranches(path: string) {
     const branches = await this.git(path).branchLocal();
-    const allBranches = await this.git(path).branch();
     return {
       current: branches.current,
-      all: allBranches.all
+      all: branches.all
     };
   }
 
@@ -102,23 +135,58 @@ class GitService {
     }
   }
 
+  async abortMerge(path: string) {
+    const git = this.git(path);
+    try {
+      await git.merge(['--abort']);
+      return { success: true };
+    } catch (error: any) {
+      return { success: false, error: error.message };
+    }
+  }
+
   async getDiff(path: string, staged: boolean = false) {
-    if (staged) return await this.git(path).diff(['--cached']);
-    return await this.git(path).diff();
+    try {
+      if (staged) return await this.git(path).diff(['--cached']);
+      return await this.git(path).diff();
+    } catch {
+      return '';
+    }
   }
 
   async getFileDiff(path: string, filePath: string, staged: boolean = false) {
     const git = this.git(path);
-    if (staged) {
-      return await git.diff(['--cached', '--', filePath]);
+    try {
+      if (staged) {
+        return await git.diff(['--cached', '--', filePath]);
+      }
+      const res = await git.diff(['--', filePath]);
+      if (!res || !res.trim()) {
+        // If untracked file or newly added, read content or diff against /dev/null
+        try {
+          const fs = require('fs');
+          const pathUtil = require('path');
+          const fullPath = pathUtil.isAbsolute(filePath) ? filePath : pathUtil.join(path, filePath);
+          if (fs.existsSync(fullPath) && fs.statSync(fullPath).isFile()) {
+            const content = await fs.promises.readFile(fullPath, 'utf8');
+            const lines = content.split('\n');
+            return `--- /dev/null\n+++ b/${filePath}\n@@ -0,0 +1,${lines.length} @@\n` + lines.map((l: string) => `+${l}`).join('\n');
+          }
+        } catch {}
+      }
+      return res;
+    } catch {
+      return '';
     }
-    return await git.diff(['--', filePath]);
   }
 
   async getCommitDiff(path: string, commitHash: string) {
-    const git = this.git(path);
-    // Show diff for specific commit
-    return await git.show([commitHash]);
+    try {
+      const git = this.git(path);
+      return await git.show([commitHash]);
+    } catch {
+      return '';
+    }
   }
 
   async stash(path: string, action: 'push' | 'pop' | 'list' | 'apply' | 'drop', message?: string, index: number = 0) {
@@ -149,15 +217,19 @@ class GitService {
   }
 
   async log(path: string, limit: number = 50) {
-    const raw = await this.git(path).log({ maxCount: limit });
-    return (raw.all || []).map(entry => ({
-      hash: entry.hash,
-      hashShort: entry.hash.substring(0, 7),
-      message: entry.message,
-      author: entry.author_name,
-      date: entry.date,
-      refs: entry.refs
-    }));
+    try {
+      const raw = await this.git(path).log({ maxCount: limit });
+      return (raw.all || []).map((entry) => ({
+        hash: entry.hash,
+        hashShort: entry.hash.substring(0, 7),
+        message: entry.message,
+        author: entry.author_name,
+        date: entry.date,
+        refs: entry.refs
+      }));
+    } catch {
+      return [];
+    }
   }
 
   async isGitRepo(path: string) {
@@ -190,15 +262,18 @@ class GitService {
       if (!remotes || remotes.length === 0) return null;
       const origin = remotes.find((r) => r.name === 'origin') || remotes[0];
       if (!origin) return null;
-      const url = origin.refs.fetch || origin.refs.push;
+      const url = (origin.refs.fetch || origin.refs.push || '').trim();
       if (!url) return null;
 
-      // Match https://github.com/owner/repo(.git) or git@github.com:owner/repo(.git)
-      const httpsMatch = url.match(/github\.com\/([^/]+)\/([^/.]+)(?:\.git)?/i);
+      // Strip optional trailing .git and trailing slashes
+      const cleanUrl = url.replace(/\.git$/i, '').replace(/\/+$/, '');
+
+      // Match https://github.com/owner/repo or git@github.com:owner/repo
+      const httpsMatch = cleanUrl.match(/github\.com\/([^/]+)\/(.+)$/i);
       if (httpsMatch) {
         return { owner: httpsMatch[1], repo: httpsMatch[2] };
       }
-      const sshMatch = url.match(/github\.com:([^/]+)\/([^/.]+)(?:\.git)?/i);
+      const sshMatch = cleanUrl.match(/github\.com:([^/]+)\/(.+)$/i);
       if (sshMatch) {
         return { owner: sshMatch[1], repo: sshMatch[2] };
       }

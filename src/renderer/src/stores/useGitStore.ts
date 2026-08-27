@@ -16,6 +16,11 @@ interface GitState {
   activeDiff: FileDiffInfo | null
   isDiffLoading: boolean
 
+  // Commit Diff state (isolated from working tree)
+  activeCommitHash: string | null
+  activeCommitDiff: string | null
+  isCommitDiffLoading: boolean
+
   // Stashes & History
   stashes: GitStashEntry[]
   commits: GitLogEntry[]
@@ -67,12 +72,16 @@ export const useGitStore = create<GitState>((set, get) => ({
   activeDiff: null,
   isDiffLoading: false,
 
+  activeCommitHash: null,
+  activeCommitDiff: null,
+  isCommitDiffLoading: false,
+
   stashes: [],
   commits: [],
   historySearch: '',
 
   setActiveSubTab: (activeSubTab) => set({ activeSubTab }),
-  selectProject: (id) => set({ selectedProjectId: id, selectedFile: null, activeDiff: null }),
+  selectProject: (id) => set({ selectedProjectId: id, selectedFile: null, activeDiff: null, activeCommitHash: null, activeCommitDiff: null }),
   setCommitMessage: (msg) => set({ commitMessage: msg }),
   setHistorySearch: (historySearch) => set({ historySearch }),
 
@@ -89,7 +98,11 @@ export const useGitStore = create<GitState>((set, get) => ({
           return { statuses: newStatuses, isLoading: false }
         })
       } else {
-        set({ isLoading: false })
+        set((state) => {
+          const newStatuses = new Map(state.statuses)
+          newStatuses.delete(projectId)
+          return { statuses: newStatuses, isLoading: false }
+        })
       }
     } catch (error) {
       console.error('Failed to fetch git status:', error)
@@ -101,13 +114,14 @@ export const useGitStore = create<GitState>((set, get) => ({
     set({ isLoading: true })
     try {
       await window.api.git.commit(path, message, stageAll)
-      set({ commitMessage: '' })
+      set({ commitMessage: '', isLoading: false })
       await get().fetchStatus(projectId, path)
       useNotificationStore.getState().addNotification('Git', 'Commit successful')
     } catch (error: any) {
       console.error('Failed to commit:', error)
       useNotificationStore.getState().addNotification('Git Error', `Commit failed: ${error.message}`)
       set({ isLoading: false })
+      throw error
     }
   },
 
@@ -115,12 +129,14 @@ export const useGitStore = create<GitState>((set, get) => ({
     set({ isLoading: true })
     try {
       await window.api.git.push(path)
+      set({ isLoading: false })
       await get().fetchStatus(projectId, path)
       useNotificationStore.getState().addNotification('Git', 'Push successful')
     } catch (error: any) {
       console.error('Failed to push:', error)
       useNotificationStore.getState().addNotification('Git Error', `Push failed: ${error.message}`)
       set({ isLoading: false })
+      throw error
     }
   },
 
@@ -128,12 +144,14 @@ export const useGitStore = create<GitState>((set, get) => ({
     set({ isLoading: true })
     try {
       await window.api.git.pull(path)
+      set({ isLoading: false })
       await get().fetchStatus(projectId, path)
       useNotificationStore.getState().addNotification('Git', 'Pull successful')
     } catch (error: any) {
       console.error('Failed to pull:', error)
       useNotificationStore.getState().addNotification('Git Error', `Pull failed: ${error.message}`)
       set({ isLoading: false })
+      throw error
     }
   },
 
@@ -201,17 +219,17 @@ export const useGitStore = create<GitState>((set, get) => ({
   },
 
   loadCommitDiff: async (path, commitHash) => {
-    set({ isDiffLoading: true, selectedFile: commitHash })
+    set({ isCommitDiffLoading: true, activeCommitHash: commitHash })
     try {
       const diffText = await window.api.git.commitDiff(path, commitHash)
       set({
-        activeDiff: { file: `Commit ${commitHash.substring(0, 7)}`, diffText: diffText || '(No diff available)', isStaged: false },
-        isDiffLoading: false
+        activeCommitDiff: diffText || '(No diff available)',
+        isCommitDiffLoading: false
       })
     } catch (error: any) {
       set({
-        activeDiff: { file: commitHash, diffText: `Error loading commit diff: ${error.message}`, isStaged: false },
-        isDiffLoading: false
+        activeCommitDiff: `Error loading commit diff: ${error.message}`,
+        isCommitDiffLoading: false
       })
     }
   },

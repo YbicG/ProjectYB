@@ -16,15 +16,15 @@ export const GitHistory: React.FC = () => {
     commits,
     loadHistory,
     loadCommitDiff,
-    activeDiff,
-    isDiffLoading
+    activeCommitHash,
+    activeCommitDiff,
+    isCommitDiffLoading
   } = useGitStore()
 
   const projects = useProjectStore((s) => s.projects)
   const project = projects.find((p) => p.id === selectedProjectId)
 
   const [search, setSearch] = useState('')
-  const [selectedCommitHash, setSelectedCommitHash] = useState<string | null>(null)
   const [copiedHash, setCopiedHash] = useState<string | null>(null)
   const [limit, setLimit] = useState(50)
 
@@ -49,7 +49,6 @@ export const GitHistory: React.FC = () => {
   }
 
   const handleSelectCommit = (hash: string) => {
-    setSelectedCommitHash(hash)
     if (project?.path) {
       loadCommitDiff(project.path, hash)
     }
@@ -130,7 +129,7 @@ export const GitHistory: React.FC = () => {
             ) : (
               <div className="divide-y divide-zinc-800/50">
                 {filteredCommits.map((commit) => {
-                  const isSelected = selectedCommitHash === commit.hash
+                  const isSelected = activeCommitHash === commit.hash
                   return (
                     <div
                       key={commit.hash}
@@ -208,15 +207,20 @@ export const GitHistory: React.FC = () => {
             Commit Details & Diff
           </CardTitle>
           <CardDescription className="text-xs">
-            {selectedCommitHash ? `Inspect changes in commit ${selectedCommitHash.substring(0, 7)}` : 'Select a commit from the log to view changes.'}
+            {activeCommitHash ? `Inspect changes in commit ${activeCommitHash.substring(0, 7)}` : 'Select a commit from the log to view changes.'}
           </CardDescription>
         </CardHeader>
 
         <CardContent className="flex-1 p-0 overflow-hidden">
-          {selectedCommitHash && activeDiff ? (
+          {isCommitDiffLoading ? (
+            <div className="h-[520px] flex items-center justify-center text-zinc-500 gap-2">
+              <RefreshCw className="w-5 h-5 animate-spin text-violet-400" />
+              <span className="text-xs">Loading commit details…</span>
+            </div>
+          ) : activeCommitHash && activeCommitDiff ? (
             <ScrollArea className="h-[520px] p-3 font-mono text-xs">
               <pre className="text-zinc-300 whitespace-pre-wrap leading-5">
-                {activeDiff.diffText.split('\n').map((line, i) => {
+                {activeCommitDiff.split('\n').map((line, i) => {
                   let cls = 'text-zinc-300'
                   if (line.startsWith('+') && !line.startsWith('+++')) cls = 'text-emerald-300 bg-emerald-950/30'
                   else if (line.startsWith('-') && !line.startsWith('---')) cls = 'text-rose-300 bg-rose-950/30'

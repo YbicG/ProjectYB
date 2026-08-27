@@ -99,7 +99,8 @@ class GitHubService {
         repo,
         state
       });
-      return response.data;
+      // GitHub REST API returns pull requests inside issues list; filter them out
+      return (response.data || []).filter((item: any) => !item.pull_request);
     } catch (e: any) {
       if (e.status === 404) {
         return [];
@@ -123,10 +124,16 @@ class GitHubService {
       await gitService.init(localPath);
     }
     
+    // Embed token for headless git authentication
+    const authCloneUrl = repo.clone_url.replace('https://', `https://x-access-token:${token}@`);
     try {
-      await gitService.addRemote(localPath, 'origin', repo.clone_url);
-    } catch (e) {
-      // Remote might exist
+      await gitService.addRemote(localPath, 'origin', authCloneUrl);
+    } catch {
+      // Remote might already exist, update it
+      try {
+        const git = (gitService as any).git(localPath);
+        await git.remote(['set-url', 'origin', authCloneUrl]);
+      } catch {}
     }
 
     try {
@@ -135,14 +142,17 @@ class GitHubService {
       // Maybe already committed
     }
 
+    let pushSuccess = false;
     try {
       await gitService.push(localPath, 'origin', 'main');
+      pushSuccess = true;
     } catch (e) {
-      // Branch might be master
       try {
         await gitService.push(localPath, 'origin', 'master');
-      } catch (err) {
+        pushSuccess = true;
+      } catch (err: any) {
         logger.error('Failed to push to origin', err);
+        throw new Error(`Repository created on GitHub (${repo.html_url}), but pushing local branch failed: ${err.message}`);
       }
     }
 

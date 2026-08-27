@@ -1,4 +1,4 @@
-import { app, BrowserWindow } from 'electron';
+import { app, BrowserWindow, shell } from 'electron';
 import * as path from 'path';
 
 import { setupTerminalIpc } from './ipc/terminal.ipc';
@@ -37,6 +37,11 @@ async function createWindow() {
       preload: path.join(__dirname, '../preload/index.js'),
       sandbox: false
     }
+  });
+
+  mainWindow.webContents.setWindowOpenHandler((details) => {
+    shell.openExternal(details.url);
+    return { action: 'deny' };
   });
 
   mainWindow.on('close', async () => {

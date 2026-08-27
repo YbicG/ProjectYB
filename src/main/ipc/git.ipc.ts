@@ -12,6 +12,8 @@ export function setupGitIpc() {
   ipcMain.handle('git:deleteBranch', (_, path: string, name: string) => gitService.deleteBranch(path, name));
   ipcMain.handle('git:merge', (_, path: string, branchName: string) => gitService.mergeBranch(path, branchName));
   ipcMain.handle('git:mergeBranch', (_, path: string, branchName: string) => gitService.mergeBranch(path, branchName));
+  ipcMain.handle('git:abortMerge', (_, path: string) => gitService.abortMerge(path));
+  ipcMain.handle('git:abort-merge', (_, path: string) => gitService.abortMerge(path));
 
   ipcMain.handle('git:diff', (_, path: string, staged?: boolean) => gitService.getDiff(path, staged));
   ipcMain.handle('git:fileDiff', (_, path: string, filePath: string, staged?: boolean) => gitService.getFileDiff(path, filePath, staged));

@@ -10,9 +10,7 @@ export interface TerminalInfo {
 
 export interface BranchSummary {
   all: string[]
-  branches: Record<string, GitBranch>
   current: string
-  detached: boolean
 }
 
 export interface IElectronAPI {
@@ -34,6 +32,7 @@ export interface IElectronAPI {
     checkout(repoPath: string, branch: string, createNew?: boolean): Promise<any>
     deleteBranch(repoPath: string, branch: string): Promise<any>
     mergeBranch(repoPath: string, branch: string): Promise<{ success: boolean; result?: any; conflicts: string[]; error?: string }>
+    abortMerge(repoPath: string): Promise<{ success: boolean; error?: string }>
     diff(repoPath: string, staged?: boolean): Promise<string>
     fileDiff(repoPath: string, filePath: string, staged?: boolean): Promise<string>
     commitDiff(repoPath: string, commitHash: string): Promise<string>

@@ -4,10 +4,19 @@ import { Button } from '../ui/button'
 import { useGitStore } from '@renderer/stores/useGitStore'
 import { useProjectStore } from '@renderer/stores/useProjectStore'
 
+import { toast } from 'sonner'
+
 export const GitCommit: React.FC = () => {
-  const [message, setMessage] = useState('')
+  const {
+    commit,
+    push,
+    selectedProjectId,
+    statuses,
+    isLoading,
+    commitMessage,
+    setCommitMessage
+  } = useGitStore()
   const [stageAll, setStageAll] = useState(false)
-  const { commit, push, selectedProjectId, statuses, isLoading } = useGitStore()
   const { projects } = useProjectStore()
 
   const project = projects.find((p) => p.id === selectedProjectId)
@@ -23,23 +32,25 @@ export const GitCommit: React.FC = () => {
   }, [status?.staged.length, status?.unstaged.length, status?.untracked.length])
 
   const handleCommit = async () => {
-    if (!message.trim() || !project) return
+    if (!commitMessage.trim() || !project) return
     try {
-      await commit(project.id, project.path, message.trim(), stageAll)
-      setMessage('')
-    } catch (error) {
+      await commit(project.id, project.path, commitMessage.trim(), stageAll)
+      toast.success('Commit created successfully')
+    } catch (error: any) {
       console.error(error)
+      toast.error(`Commit failed: ${error.message || 'Unknown error'}`)
     }
   }
 
   const handleCommitAndPush = async () => {
-    if (!message.trim() || !project) return
+    if (!commitMessage.trim() || !project) return
     try {
-      await commit(project.id, project.path, message.trim(), stageAll)
-      setMessage('')
+      await commit(project.id, project.path, commitMessage.trim(), stageAll)
       await push(project.id, project.path)
-    } catch (error) {
+      toast.success('Committed and pushed to upstream')
+    } catch (error: any) {
       console.error(error)
+      toast.error(`Failed: ${error.message || 'Unknown error'}`)
     }
   }
 
@@ -58,8 +69,8 @@ export const GitCommit: React.FC = () => {
       </div>
 
       <textarea
-        value={message}
-        onChange={(e) => setMessage(e.target.value)}
+        value={commitMessage}
+        onChange={(e) => setCommitMessage(e.target.value)}
         onKeyDown={handleKeyDown}
         placeholder="Brief summary of changes (e.g., feat: add responsive navigation)…"
         className="w-full h-20 bg-zinc-900 border border-zinc-800 rounded-md p-2.5 text-xs text-zinc-100 placeholder:text-zinc-500 focus:outline-none focus:ring-1 focus:ring-violet-500 resize-none disabled:opacity-50 font-mono"
@@ -82,7 +93,7 @@ export const GitCommit: React.FC = () => {
           <Button
             variant="outline"
             size="sm"
-            disabled={!message.trim() || isLoading || !selectedProjectId}
+            disabled={!commitMessage.trim() || isLoading || !selectedProjectId}
             onClick={handleCommit}
             className="h-7 text-xs border-zinc-700"
           >
@@ -97,7 +108,7 @@ export const GitCommit: React.FC = () => {
           <Button
             variant="default"
             size="sm"
-            disabled={!message.trim() || isLoading || !selectedProjectId}
+            disabled={!commitMessage.trim() || isLoading || !selectedProjectId}
             onClick={handleCommitAndPush}
             className="h-7 text-xs bg-violet-600 hover:bg-violet-700"
           >

@@ -21,10 +21,11 @@ import { Button } from '../components/ui/button'
 import { Badge } from '../components/ui/badge'
 import { useProjectStore } from '@renderer/stores/useProjectStore'
 import { useGitStore, GitSubTab } from '@renderer/stores/useGitStore'
+import { toast } from 'sonner'
 import { cn } from '@renderer/lib/utils'
 
 export const GitPage: React.FC = () => {
-  const { projects } = useProjectStore()
+  const { projects, selectProject: selectProjectStore } = useProjectStore()
   const {
     selectedProjectId,
     selectProject,
@@ -44,6 +45,7 @@ export const GitPage: React.FC = () => {
     if (!selectedProjectId && projects.length > 0) {
       const first = projects[0]
       selectProject(first.id)
+      selectProjectStore(first.id)
       fetchStatus(first.id, first.path)
     } else if (selectedProjectId) {
       const current = projects.find((p) => p.id === selectedProjectId)
@@ -55,6 +57,7 @@ export const GitPage: React.FC = () => {
 
   const handleSelectChange = (projectId: string) => {
     selectProject(projectId)
+    selectProjectStore(projectId)
     const p = projects.find((proj) => proj.id === projectId)
     if (p) {
       fetchStatus(p.id, p.path)
@@ -73,6 +76,17 @@ export const GitPage: React.FC = () => {
 
   const handlePull = () => {
     if (project) pull(project.id, project.path)
+  }
+
+  const handleInitRepo = async () => {
+    if (!project) return
+    try {
+      await window.api.git.init(project.path)
+      await fetchStatus(project.id, project.path)
+      toast.success(`Initialized git repository in ${project.name}`)
+    } catch (err: any) {
+      toast.error(`Failed to init git repository: ${err.message}`)
+    }
   }
 
   const subTabs: Array<{ id: GitSubTab; label: string; icon: React.ComponentType<{ className?: string }> }> = [
@@ -94,12 +108,16 @@ export const GitPage: React.FC = () => {
           <div>
             <div className="flex items-center gap-2">
               <h1 className="text-lg font-bold tracking-tight">Git Source Control</h1>
-              {status && (
+              {status ? (
                 <Badge variant="outline" className="font-mono text-xs gap-1 border-violet-500/40 text-violet-300">
                   <GitBranchIcon className="w-3 h-3 text-violet-400" />
                   {status.branch}
                 </Badge>
-              )}
+              ) : project ? (
+                <Badge variant="secondary" className="font-mono text-xs gap-1 bg-amber-950/40 text-amber-400 border border-amber-800/50">
+                  Not a git repo
+                </Badge>
+              ) : null}
             </div>
             <p className="text-xs text-zinc-500">
               {project ? project.path : 'Select a project to manage git'}
@@ -193,41 +211,64 @@ export const GitPage: React.FC = () => {
 
       {/* ── Tab Views ── */}
       <div className="flex-1 overflow-hidden">
-        {activeSubTab === 'changes' && (
-          <div className="flex h-full w-full overflow-hidden">
-            <GitStatus />
-            <div className="flex-1 flex flex-col p-4 gap-4 overflow-hidden bg-zinc-950/40">
-              <div className="flex-1 min-h-0">
-                <GitDiff />
+        {project && !status && !isLoading && activeSubTab !== 'github' ? (
+          <div className="h-full flex flex-col items-center justify-center p-8 text-center max-w-md mx-auto space-y-4">
+            <div className="w-12 h-12 rounded-full bg-violet-950/50 border border-violet-800/50 flex items-center justify-center text-violet-400">
+              <GitBranchIcon className="w-6 h-6" />
+            </div>
+            <div className="space-y-1">
+              <h2 className="text-base font-semibold text-zinc-100">Not a Git Repository</h2>
+              <p className="text-xs text-zinc-400">
+                "{project.name}" has not been initialized with Git yet.
+              </p>
+            </div>
+            <Button
+              onClick={handleInitRepo}
+              className="bg-violet-600 hover:bg-violet-700 text-xs gap-2"
+            >
+              <GitBranchIcon className="w-4 h-4" />
+              Initialize Git Repository
+            </Button>
+          </div>
+        ) : (
+          <>
+            {activeSubTab === 'changes' && (
+              <div className="flex h-full w-full overflow-hidden">
+                <GitStatus />
+                <div className="flex-1 flex flex-col p-4 gap-4 overflow-hidden bg-zinc-950/40">
+                  <div className="flex-1 min-h-0">
+                    <GitDiff />
+                  </div>
+                  <div className="shrink-0">
+                    <GitCommit />
+                  </div>
+                </div>
               </div>
-              <div className="shrink-0">
-                <GitCommit />
+            )}
+
+            {activeSubTab === 'history' && (
+              <div className="h-full p-4 overflow-hidden">
+                <GitHistory />
               </div>
-            </div>
-          </div>
-        )}
+            )}
 
-        {activeSubTab === 'history' && (
-          <div className="h-full p-4 overflow-hidden">
-            <GitHistory />
-          </div>
-        )}
+            {activeSubTab === 'branches' && (
+              <div className="h-full p-4 overflow-y-auto">
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 max-w-6xl mx-auto">
+                  <GitBranches />
+                  <GitStash />
+                </div>
+              </div>
+            )}
 
-        {activeSubTab === 'branches' && (
-          <div className="h-full p-4 overflow-y-auto">
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 max-w-6xl mx-auto">
-              <GitBranches />
-              <GitStash />
-            </div>
-          </div>
-        )}
-
-        {activeSubTab === 'github' && (
-          <div className="h-full p-4 overflow-y-auto">
-            <div className="max-w-5xl mx-auto">
-              <GitHubPanel />
-            </div>
-          </div>
+            {activeSubTab === 'github' && (
+              <div className="h-full p-4 overflow-y-auto">
+                <div className="max-w-5xl mx-auto">
+                  <GitHubPanel />
+                </div>
+              </div>
+            )}
+          </>
         )}
       </div>
     </div>
