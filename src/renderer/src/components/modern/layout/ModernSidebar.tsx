@@ -54,7 +54,7 @@ export const ModernSidebar: React.FC = () => {
   const { statuses } = useGitStore();
   const { setScratchpadModalOpen } = useNotesStore();
   const { setModalOpen: setHealthModalOpen } = useHealthStore();
-  const { setSnippetModalOpen } = useSnippetStore();
+  const { setModalOpen: setSnippetModalOpen } = useSnippetStore();
 
   // Count uncommitted git projects
   const dirtyGitCount = Array.from(statuses?.values?.() || []).filter(
