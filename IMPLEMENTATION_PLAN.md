@@ -569,7 +569,13 @@ Template scaffolding system:
 
 ---
 
-## Phase 4 — Polish & Advanced Features
+Phase 4
+Module 1: Dependency & Security Health Hub — Outdated packages scanner, security vulnerability audit (CVEs & advisories), 1-click batch upgrades, and package search/installer across npm, pip, cargo, and go.
+Module 2: Docker & Container Orchestration — Auto-detect docker-compose.yml, start/stop/restart compose services, live container resource usage, streaming log viewer, and database connection probe from .env.
+Module 3: Disk Space Optimizer & Cache Cleaner — Visual breakdown of disk usage per project (code vs node_modules vs build artifacts vs caches), 1-click safe purge to reclaim gigabytes of disk space, and global package store pruning (pnpm store prune, npm cache clean, cargo clean).
+Module 4: Multi-Project Workspace Stacks — Define multi-repo stacks with 1-click coordinated boot sequences (starting Docker -> APIs -> frontends -> browser) and integrated multi-split terminal grids.
+
+## Phase 5 — Polish & Advanced Features
 
 - **Project notes/docs** — Markdown editor per project for quick notes and TODOs
 - **Project health dashboard** — Aggregated view across all projects (last commit dates, dependency freshness, build status)
@@ -578,6 +584,7 @@ Template scaffolding system:
 - **Auto-updater** — `electron-updater` for seamless app updates
 - **Startup profiles** — Named profiles like "Full Stack Dev" that start specific services in specific order
 - **Project archival** — Mark projects as archived, hide from main view
+- **Command Palette**: `Ctrl+K`, search for a project, navigate to it
 
 ---
 
@@ -601,5 +608,4 @@ pnpm lint
 - **Git Integration**: Make a change in a project, stage, commit, push from the app — verify it works
 - **Service Runner**: Configure a service for a project, start it, verify status dot turns green, check resource monitoring
 - **Session Persistence**: Start 3 services, close app, reopen — verify restore dialog appears with correct state
-- **Command Palette**: `Ctrl+K`, search for a project, navigate to it
 - **Notifications**: Kill a running service externally, verify crash notification appears
