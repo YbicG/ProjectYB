@@ -6,7 +6,7 @@ import { useServiceStore } from '@renderer/stores/useServiceStore';
 import { ScrollArea } from '../ui/scroll-area';
 
 export const StartupProfiles: React.FC = () => {
-  const { startupProfiles } = useServiceStore();
+  const { profiles: startupProfiles } = useServiceStore();
 
   return (
     <Card className="flex flex-col h-full bg-zinc-950 border-0 rounded-none border-l border-zinc-800">
