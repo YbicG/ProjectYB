@@ -53,6 +53,10 @@ export interface IElectronAPI {
   projects: {
     scan(options?: { rootPaths?: string[]; mode?: 'git' | 'all' }): Promise<ProjectInfo[]>
     addManual(folderPath: string): Promise<ProjectInfo | null>
+    ignore(folderPath: string): Promise<string>
+    unignore(folderPath: string): Promise<string>
+    getConfig(folderPath: string): Promise<{ config: any; filePath: string | null }>
+    saveConfig(folderPath: string, config: any): Promise<string>
     getAll(): Promise<ProjectInfo[]>
     openInExplorer(path: string): Promise<void>
     openInVSCode(path: string): Promise<void>

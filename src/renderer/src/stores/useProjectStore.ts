@@ -21,6 +21,8 @@ interface ProjectState {
   selectProject: (id: string | null) => void
   updateProjectConfig: (id: string, config: Partial<ProjectConfig>) => void
   addManualProject: (folderPath: string) => Promise<void>
+  ignoreProject: (folderPath: string) => Promise<void>
+  unignoreProject: (folderPath: string) => Promise<void>
 }
 
 export const useProjectStore = create<ProjectState>((set, get) => ({
@@ -79,6 +81,28 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
       console.error('Failed to add manual project', error)
     }
   },
+  ignoreProject: async (folderPath: string) => {
+    try {
+      if (window.api?.projects) {
+        await window.api.projects.ignore(folderPath)
+        set((state) => ({
+          projects: state.projects.filter(p => p.path !== folderPath && p.id !== folderPath)
+        }))
+      }
+    } catch (error) {
+      console.error('Failed to ignore project', error)
+    }
+  },
+  unignoreProject: async (folderPath: string) => {
+    try {
+      if (window.api?.projects) {
+        await window.api.projects.unignore(folderPath)
+        await get().scanProjects()
+      }
+    } catch (error) {
+      console.error('Failed to unignore project', error)
+    }
+  },
   setSearchQuery: (searchQuery) => set({ searchQuery }),
   setFilter: (key, values) => set((state) => ({
     activeFilters: { ...state.activeFilters, [key]: values }
@@ -112,7 +136,6 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
   },
   selectProject: (id) => set({ selectedProjectId: id }),
   updateProjectConfig: (id, config) => {
-    // In a real app, you'd likely persist this
     console.log(`Updated config for project ${id}:`, config)
   }
 }))

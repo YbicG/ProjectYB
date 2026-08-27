@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { TerminalSquare, GitBranch, Code, FolderOpen, Play, Clock, MonitorPlay, ExternalLink, Settings } from 'lucide-react';
+import { TerminalSquare, GitBranch, Code, FolderOpen, Play, Clock, MonitorPlay, ExternalLink, Settings, EyeOff } from 'lucide-react';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '../ui/card';
 import { Badge } from '../ui/badge';
 import { Button } from '../ui/button';
@@ -7,9 +7,11 @@ import { StatusDot } from '../shared/StatusDot';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '../ui/dropdown-menu';
 import { RunConfigDialog } from '../services/RunConfigDialog';
 import { useRunConfigStore } from '@renderer/stores/useRunConfigStore';
+import { useProjectStore } from '@renderer/stores/useProjectStore';
 import { useAppStore } from '@renderer/stores/useAppStore';
 import { useGitStore } from '@renderer/stores/useGitStore';
 import { useTerminalStore } from '@renderer/stores/useTerminalStore';
+import { toast } from 'sonner';
 
 export interface ProjectInfo {
   id: string;
@@ -33,6 +35,7 @@ export const ProjectCard: React.FC<ProjectCardProps> = ({ project }) => {
   const { selectProject, fetchStatus } = useGitStore();
   const { createTerminal } = useTerminalStore();
   const { addConfig } = useRunConfigStore();
+  const { ignoreProject } = useProjectStore();
   const [configDialogOpen, setConfigDialogOpen] = useState(false);
 
   const handleOpenTerminal = async () => {
@@ -62,6 +65,22 @@ export const ProjectCard: React.FC<ProjectCardProps> = ({ project }) => {
     selectProject(project.id);
     fetchStatus(project.id, project.path);
     setActiveTab('git');
+  };
+
+  const handleIgnoreProject = async () => {
+    if (window.confirm(`Ignore project "${project.name}"?\n\nThis will add "ignore": true to its .projectyb.json file and hide it from your dashboard.`)) {
+      try {
+        await ignoreProject(project.path);
+        // Also persist to ignored list in electron-store for recovery
+        const ignoredList = (await window.api?.store?.get('ignoredProjects') as string[] | undefined) || [];
+        if (!ignoredList.includes(project.path)) {
+          await window.api?.store?.set('ignoredProjects', [...ignoredList, project.path]);
+        }
+        toast.info(`Ignored "${project.name}". Config updated in .projectyb.json.`);
+      } catch (err) {
+        toast.error(`Failed to ignore project`);
+      }
+    }
   };
 
   return (
@@ -111,11 +130,11 @@ export const ProjectCard: React.FC<ProjectCardProps> = ({ project }) => {
         <div className="flex gap-1">
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="icon" className="h-8 w-8 hover:bg-zinc-800" title="Open Terminal">
+              <Button variant="ghost" size="icon" className="h-8 w-8 hover:bg-zinc-800" title="Actions & Terminals">
                 <TerminalSquare className="w-4 h-4" />
               </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="start" className="w-48 bg-zinc-900 border-zinc-800">
+            <DropdownMenuContent align="start" className="w-52 bg-zinc-900 border-zinc-800">
               <DropdownMenuItem
                 className="gap-2 cursor-pointer focus:bg-zinc-800"
                 onClick={handleOpenTerminal}
@@ -148,6 +167,17 @@ export const ProjectCard: React.FC<ProjectCardProps> = ({ project }) => {
                   <div className="text-[10px] text-zinc-500">Save a reusable command</div>
                 </div>
               </DropdownMenuItem>
+              <DropdownMenuSeparator className="bg-zinc-800" />
+              <DropdownMenuItem
+                className="gap-2 cursor-pointer focus:bg-zinc-800 text-red-400 hover:text-red-300"
+                onClick={handleIgnoreProject}
+              >
+                <EyeOff className="w-4 h-4 text-red-400" />
+                <div>
+                  <div className="text-sm font-medium">Ignore Project</div>
+                  <div className="text-[10px] text-zinc-500">Updates .projectyb.json</div>
+                </div>
+              </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
           <Button variant="ghost" size="icon" className="h-8 w-8 hover:bg-zinc-800" title="Git Status" onClick={handleGitStatus}>
@@ -170,7 +200,6 @@ export const ProjectCard: React.FC<ProjectCardProps> = ({ project }) => {
               : null;
             createTerminal({ name: `${project.name} run`, cwd: project.path, projectId: project.id });
             setActiveTab('terminals');
-            // Send the command after a brief delay for the terminal to initialize
             if (devCmd) setTimeout(() => {
               const store = useTerminalStore.getState();
               const tid = store.activeTerminalId;

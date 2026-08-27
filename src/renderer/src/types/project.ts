@@ -8,19 +8,28 @@ export interface ProjectInfo {
   type: ProjectType
   category: string
   scripts?: Record<string, string>
+  dependencies?: Record<string, string>
   gitBranch?: string
+  lastCommit?: string
+  lastCommitTime?: string
   lastCommitMessage?: string
   lastCommitDate?: string
   isGitRepo: boolean
   tags: string[]
   status: ProjectStatus
   runningServices: string[]
+  ignored?: boolean
 }
 
 export interface ProjectConfig {
-  services: ServiceConfig[]
-  quickActions: QuickAction[]
-  tags: string[]
+  name?: string
+  type?: ProjectType
+  ignore?: boolean
+  ignored?: boolean
+  services?: ServiceConfig[]
+  quickActions?: QuickAction[]
+  tags?: string[]
+  scripts?: Record<string, string>
   notes?: string
 }
 

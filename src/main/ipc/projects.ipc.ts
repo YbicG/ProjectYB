@@ -2,7 +2,6 @@ import { ipcMain, shell } from 'electron';
 import { projectScanner } from '../services/project-scanner';
 import { spawn } from 'child_process';
 import * as os from 'os';
-
 import { getStore } from '../ipc/store.ipc';
 
 export function setupProjectsIpc() {
@@ -16,6 +15,22 @@ export function setupProjectsIpc() {
 
   ipcMain.handle('projects:addManual', async (_, folderPath: string) => {
     return projectScanner.scanSingleFolder(folderPath);
+  });
+
+  ipcMain.handle('projects:ignore', async (_, folderPath: string) => {
+    return projectScanner.setIgnored(folderPath, true);
+  });
+
+  ipcMain.handle('projects:unignore', async (_, folderPath: string) => {
+    return projectScanner.setIgnored(folderPath, false);
+  });
+
+  ipcMain.handle('projects:getConfig', async (_, folderPath: string) => {
+    return projectScanner.readProjectConfig(folderPath);
+  });
+
+  ipcMain.handle('projects:saveConfig', async (_, folderPath: string, config: any) => {
+    return projectScanner.writeProjectConfig(folderPath, config);
   });
 
   ipcMain.handle('projects:openInExplorer', (_, path: string) => shell.openPath(path));
