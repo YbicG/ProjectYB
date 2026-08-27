@@ -18,7 +18,7 @@ import {
   Activity,
   Layers
 } from 'lucide-react';
-import logoUrl from '../../assets/logo.png';
+import logoUrl from '@renderer/assets/logo.png';
 
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAppStore, TabType } from '@renderer/stores/useAppStore';
