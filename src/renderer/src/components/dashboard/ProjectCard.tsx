@@ -41,10 +41,11 @@ interface ProjectCardProps {
 
 export const ProjectCard: React.FC<ProjectCardProps> = ({ project }) => {
   const { setActiveTab } = useAppStore()
-  const { selectProject, fetchStatus } = useGitStore()
+  const gitSelectProject = useGitStore((s) => s.selectProject)
+  const fetchStatus = useGitStore((s) => s.fetchStatus)
   const { createTerminal } = useTerminalStore()
   const { addConfig } = useRunConfigStore()
-  const { ignoreProject } = useProjectStore()
+  const { ignoreProject, selectProject } = useProjectStore()
 
   const [runConfigDialogOpen, setRunConfigDialogOpen] = useState(false)
   const [projectConfigDialogOpen, setProjectConfigDialogOpen] = useState(false)
@@ -76,12 +77,14 @@ export const ProjectCard: React.FC<ProjectCardProps> = ({ project }) => {
 
   const handleGitStatus = () => {
     selectProject(project.id)
+    gitSelectProject(project.id)
     fetchStatus(project.id, project.path)
     setActiveTab('git')
   }
 
   const handleOpenDetail = () => {
     selectProject(project.id)
+    gitSelectProject(project.id)
     setActiveTab('project-detail')
   }
 
@@ -188,7 +191,7 @@ export const ProjectCard: React.FC<ProjectCardProps> = ({ project }) => {
         )}
       </CardHeader>
 
-      <CardContent className="flex-1 pb-3 text-xs text-zinc-400 space-y-2">
+      <CardContent className="flex-1 pb-3 text-xs text-zinc-400 space-y-2 cursor-pointer" onClick={handleOpenDetail}>
         <div className="flex items-center justify-between text-zinc-500 text-[11px]">
           <span className="truncate font-medium">{project.category}</span>
           {project.gitBranch && (

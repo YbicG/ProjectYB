@@ -24,6 +24,7 @@ import { ScrollArea } from '../components/ui/scroll-area'
 import { ProjectConfigDialog } from '../components/dashboard/ProjectConfigDialog'
 import { useProjectStore } from '@renderer/stores/useProjectStore'
 import { useAppStore } from '@renderer/stores/useAppStore'
+import { useGitStore } from '@renderer/stores/useGitStore'
 import { useTerminalStore } from '@renderer/stores/useTerminalStore'
 import { useGit } from '../hooks/useGit'
 import { useTerminal } from '../hooks/useTerminal'
@@ -93,12 +94,31 @@ interface ProjectDetailPageProps {
 export const ProjectDetailPage: React.FC<ProjectDetailPageProps> = ({ projectId: propId }) => {
   const projects = useProjectStore((s) => s.projects)
   const selectedProjectId = useProjectStore((s) => s.selectedProjectId)
+  const selectProject = useProjectStore((s) => s.selectProject)
+  const gitSelectedId = useGitStore((s) => s.selectedProjectId)
   const ignoreProject = useProjectStore((s) => s.ignoreProject)
   const { setActiveTab } = useAppStore()
   const { createTerminal } = useTerminalStore()
 
-  const effectiveId = propId ?? selectedProjectId
-  const project: ProjectInfo | undefined = projects.find((p) => p.id === effectiveId)
+  const targetId = propId || selectedProjectId || gitSelectedId
+  let project: ProjectInfo | undefined = projects.find(
+    (p) =>
+      p.id === targetId ||
+      p.path === targetId ||
+      p.name === targetId ||
+      (targetId && p.path.toLowerCase() === targetId.toLowerCase()) ||
+      (targetId && p.id.toLowerCase() === targetId.toLowerCase())
+  )
+
+  if (!project && projects.length > 0) {
+    project = projects[0]
+  }
+
+  useEffect(() => {
+    if (project && (!selectedProjectId || selectedProjectId !== project.id)) {
+      selectProject(project.id)
+    }
+  }, [project?.id, selectedProjectId])
 
   const { status, isLoading, refresh } = useGit(project?.id ?? null, project?.path ?? null)
   const { createProjectTerminal } = useTerminal()

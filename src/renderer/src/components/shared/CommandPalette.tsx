@@ -33,7 +33,7 @@ export const CommandPalette: React.FC = () => {
   const handleSelectProject = (projectId: string) => {
     runCommand(() => {
       selectProject(projectId);
-      setActiveTab('dashboard');
+      setActiveTab('project-detail');
     });
   };
 
