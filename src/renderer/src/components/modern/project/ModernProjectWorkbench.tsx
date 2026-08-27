@@ -249,6 +249,16 @@ export const ModernProjectWorkbench: React.FC = () => {
           <Button
             variant="outline"
             size="sm"
+            onClick={() => window.api?.projects?.openInExplorer?.(project.path)}
+            className="h-7 text-xs border-zinc-800 text-zinc-300 hover:bg-zinc-900 gap-1.5"
+          >
+            <FolderOpen className="w-3.5 h-3.5 text-zinc-400" />
+            Explorer
+          </Button>
+
+          <Button
+            variant="outline"
+            size="sm"
             onClick={() => setSnapshotDialogOpen(true)}
             className="h-7 text-xs border-zinc-800 text-zinc-300 hover:bg-zinc-900 gap-1.5"
             title="Export clean project .zip archive"

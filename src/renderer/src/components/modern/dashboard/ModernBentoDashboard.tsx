@@ -275,6 +275,18 @@ export const ModernBentoDashboard: React.FC = () => {
                         >
                           <Code className="w-3 h-3" />
                         </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-6 w-6 text-zinc-400 hover:text-zinc-100"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            window.api?.projects?.openInExplorer?.(proj.path);
+                          }}
+                          title="Open in Explorer"
+                        >
+                          <FolderOpen className="w-3 h-3" />
+                        </Button>
                       </div>
                     </div>
                   </motion.div>
