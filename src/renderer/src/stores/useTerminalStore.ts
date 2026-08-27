@@ -20,6 +20,7 @@ interface TerminalState {
   setLayout: (layout: TerminalLayout) => void
   updateTerminalStatus: (id: string, status: TerminalStatus) => void
   removeTerminal: (id: string) => void
+  renameTerminal: (id: string, name: string) => void
 }
 
 export const useTerminalStore = create<TerminalState>((set, get) => ({
@@ -116,5 +117,9 @@ export const useTerminalStore = create<TerminalState>((set, get) => ({
         ? (newTerminals.length > 0 ? newTerminals[0].id : null) 
         : activeTerminalId
     })
-  }
+  },
+
+  renameTerminal: (id, name) => set((state) => ({
+    terminals: state.terminals.map(t => t.id === id ? { ...t, name } : t)
+  }))
 }))

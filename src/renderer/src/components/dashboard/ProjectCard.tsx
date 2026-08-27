@@ -6,6 +6,7 @@ import { Button } from '../ui/button';
 import { StatusDot } from '../shared/StatusDot';
 import { useAppStore } from '@renderer/stores/useAppStore';
 import { useGitStore } from '@renderer/stores/useGitStore';
+import { useTerminalStore } from '@renderer/stores/useTerminalStore';
 
 export interface ProjectInfo {
   id: string;
@@ -27,11 +28,11 @@ interface ProjectCardProps {
 export const ProjectCard: React.FC<ProjectCardProps> = ({ project }) => {
   const { setActiveTab } = useAppStore();
   const { selectProject, fetchStatus } = useGitStore();
+  const { createTerminal } = useTerminalStore();
 
-  const handleOpenTerminal = () => {
-    if (window.api?.projects) {
-      window.api.projects.openTerminal(project.path);
-    }
+  const handleOpenTerminal = async () => {
+    await createTerminal({ name: project.name, cwd: project.path, projectId: project.id });
+    setActiveTab('terminals');
   };
 
   const handleOpenVSCode = () => {

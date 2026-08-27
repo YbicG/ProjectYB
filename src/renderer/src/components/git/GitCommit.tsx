@@ -2,16 +2,40 @@ import React, { useState } from 'react';
 import { Send, CheckCircle2 } from 'lucide-react';
 import { Button } from '../ui/button';
 import { useGitStore } from '@renderer/stores/useGitStore';
+import { useProjectStore } from '@renderer/stores/useProjectStore';
 
 export const GitCommit: React.FC = () => {
   const [message, setMessage] = useState('');
   const [stageAll, setStageAll] = useState(true);
-  const { commit } = useGitStore();
+  const { commit, push, selectedProjectId, isLoading } = useGitStore();
+  const { projects } = useProjectStore();
 
-  const handleCommit = () => {
-    if (message.trim()) {
-      commit(message, stageAll);
-      setMessage('');
+  const handleCommit = async () => {
+    if (message.trim() && selectedProjectId) {
+      const project = projects.find(p => p.id === selectedProjectId);
+      if (project) {
+        try {
+          await commit(selectedProjectId, project.path, message, stageAll);
+          setMessage('');
+        } catch (error) {
+          console.error(error);
+        }
+      }
+    }
+  };
+
+  const handleCommitAndPush = async () => {
+    if (message.trim() && selectedProjectId) {
+      const project = projects.find(p => p.id === selectedProjectId);
+      if (project) {
+        try {
+          await commit(selectedProjectId, project.path, message, stageAll);
+          setMessage('');
+          await push(selectedProjectId, project.path);
+        } catch (error) {
+          console.error(error);
+        }
+      }
     }
   };
 
@@ -23,7 +47,8 @@ export const GitCommit: React.FC = () => {
         value={message}
         onChange={(e) => setMessage(e.target.value)}
         placeholder="Commit message (e.g., feat: add new component)"
-        className="w-full h-24 bg-zinc-900 border border-zinc-800 rounded-md p-3 text-sm text-zinc-100 placeholder:text-zinc-500 focus:outline-none focus:ring-2 focus:ring-violet-500 resize-none mb-3"
+        className="w-full h-24 bg-zinc-900 border border-zinc-800 rounded-md p-3 text-sm text-zinc-100 placeholder:text-zinc-500 focus:outline-none focus:ring-2 focus:ring-violet-500 resize-none mb-3 disabled:opacity-50"
+        disabled={isLoading}
       />
       
       <div className="flex items-center justify-between">
@@ -33,6 +58,7 @@ export const GitCommit: React.FC = () => {
             checked={stageAll} 
             onChange={(e) => setStageAll(e.target.checked)}
             className="accent-violet-500 rounded bg-zinc-900 border-zinc-800"
+            disabled={isLoading}
           />
           Stage all changes
         </label>
@@ -41,7 +67,8 @@ export const GitCommit: React.FC = () => {
           <Button 
             variant="outline" 
             size="sm"
-            disabled={!message.trim()}
+            disabled={!message.trim() || isLoading || !selectedProjectId}
+            onClick={handleCommit}
           >
             <CheckCircle2 className="w-4 h-4 mr-2" />
             Commit
@@ -49,8 +76,8 @@ export const GitCommit: React.FC = () => {
           <Button 
             variant="default" 
             size="sm"
-            disabled={!message.trim()}
-            onClick={handleCommit}
+            disabled={!message.trim() || isLoading || !selectedProjectId}
+            onClick={handleCommitAndPush}
             className="bg-violet-600 hover:bg-violet-700"
           >
             <Send className="w-4 h-4 mr-2" />

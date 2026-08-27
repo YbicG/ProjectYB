@@ -3,18 +3,25 @@ import { Search } from 'lucide-react';
 import { Input } from '../ui/input';
 import { ProjectCard } from './ProjectCard';
 import { useProjectStore } from '@renderer/stores/useProjectStore';
+import { cn } from '@renderer/lib/utils';
+
+const TYPE_FILTERS = ['All', 'Node', 'Python', 'Rust', 'Go'] as const;
+type TypeFilter = typeof TYPE_FILTERS[number];
 
 export const ProjectGrid: React.FC = () => {
   const { projects, isScanning } = useProjectStore();
   const [search, setSearch] = useState('');
+  const [activeType, setActiveType] = useState<TypeFilter>('All');
 
-  const filteredProjects = projects.filter(p => 
-    p.name.toLowerCase().includes(search.toLowerCase())
-  );
+  const filteredProjects = projects.filter(p => {
+    const matchesSearch = p.name.toLowerCase().includes(search.toLowerCase());
+    const matchesType = activeType === 'All' || p.type?.toLowerCase() === activeType.toLowerCase();
+    return matchesSearch && matchesType;
+  });
 
   return (
     <div className="flex flex-col h-full">
-      <div className="mb-6 flex items-center gap-4">
+      <div className="mb-4 flex items-center gap-4">
         <div className="relative flex-1 max-w-md">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-500" />
           <Input 
@@ -24,7 +31,24 @@ export const ProjectGrid: React.FC = () => {
             className="pl-9 bg-zinc-900 border-zinc-800"
           />
         </div>
-        {/* Filters could go here */}
+      </div>
+
+      {/* Type filter pills */}
+      <div className="flex items-center gap-1.5 mb-5 flex-wrap">
+        {TYPE_FILTERS.map(type => (
+          <button
+            key={type}
+            onClick={() => setActiveType(type)}
+            className={cn(
+              "px-3 py-1 rounded-full text-xs font-medium border transition-colors",
+              activeType === type
+                ? "bg-violet-600 border-violet-600 text-white"
+                : "bg-transparent border-zinc-700 text-zinc-400 hover:border-zinc-500 hover:text-zinc-200"
+            )}
+          >
+            {type}
+          </button>
+        ))}
       </div>
 
       {isScanning ? (

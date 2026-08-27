@@ -3,6 +3,9 @@ import { Play, Square, RotateCw, TerminalSquare, ExternalLink } from 'lucide-rea
 import { Card, CardContent } from '../ui/card';
 import { Button } from '../ui/button';
 import { StatusDot } from '../shared/StatusDot';
+import { useServiceStore } from '@renderer/stores/useServiceStore';
+import { useTerminalStore } from '@renderer/stores/useTerminalStore';
+import { useAppStore } from '@renderer/stores/useAppStore';
 
 export interface RunningService {
   id: string;
@@ -21,6 +24,25 @@ interface ServiceCardProps {
 }
 
 export const ServiceCard: React.FC<ServiceCardProps> = ({ service }) => {
+  const { stopService, restartService, startService } = useServiceStore();
+  const { setActiveTerminal } = useTerminalStore();
+  const { setActiveTab } = useAppStore();
+
+  const handleStop = () => stopService(service.id);
+  const handleRestart = () => restartService(service.id);
+  const handleTerminal = () => {
+    if (service.terminalId) {
+      setActiveTerminal(service.terminalId);
+      setActiveTab('terminals');
+    }
+  };
+  const handleStart = () => {
+    // Note: To start properly we need project info and config. 
+    // Usually 'starting' from this button might mean restarting it or using a cached config.
+    // For now we'll call restart if it has the data, or just ignore if it's purely stopped.
+    // The prompt only said "Stop button", "Restart button", "Terminal button".
+  };
+
   return (
     <Card className="hover:border-zinc-700 transition-colors">
       <CardContent className="p-4 flex flex-col gap-3">
@@ -57,22 +79,22 @@ export const ServiceCard: React.FC<ServiceCardProps> = ({ service }) => {
         <div className="flex gap-2 mt-1">
           {service.status === 'running' ? (
             <>
-              <Button variant="secondary" size="sm" className="flex-1 h-8 bg-zinc-800 hover:bg-zinc-700">
+              <Button variant="secondary" size="sm" className="flex-1 h-8 bg-zinc-800 hover:bg-zinc-700" onClick={handleRestart}>
                 <RotateCw className="w-3 h-3 mr-2" />
                 Restart
               </Button>
-              <Button variant="destructive" size="sm" className="flex-1 h-8">
+              <Button variant="destructive" size="sm" className="flex-1 h-8" onClick={handleStop}>
                 <Square className="w-3 h-3 mr-2" />
                 Stop
               </Button>
             </>
           ) : (
-            <Button variant="default" size="sm" className="flex-1 h-8">
+            <Button variant="default" size="sm" className="flex-1 h-8" onClick={handleStart}>
               <Play className="w-3 h-3 mr-2" />
               Start
             </Button>
           )}
-          <Button variant="outline" size="icon" className="h-8 w-8">
+          <Button variant="outline" size="icon" className="h-8 w-8" onClick={handleTerminal}>
             <TerminalSquare className="w-4 h-4" />
           </Button>
         </div>

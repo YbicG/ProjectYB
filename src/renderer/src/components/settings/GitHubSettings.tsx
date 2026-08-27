@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Github, CheckCircle2, AlertCircle } from 'lucide-react';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from '../ui/card';
 import { Button } from '../ui/button';
@@ -7,10 +7,58 @@ import { Input } from '../ui/input';
 export const GitHubSettings: React.FC = () => {
   const [token, setToken] = useState('');
   const [status, setStatus] = useState<'idle' | 'testing' | 'success' | 'error'>('idle');
+  const [username, setUsername] = useState<string | null>(null);
 
-  const testConnection = () => {
+  useEffect(() => {
+    const loadToken = async () => {
+      try {
+        const savedToken = await window.api.store.get('githubToken');
+        if (savedToken) {
+          setToken(savedToken);
+        }
+      } catch (error) {
+        console.error('Failed to load GitHub token', error);
+      }
+    };
+    loadToken();
+  }, []);
+
+  const testConnection = async () => {
     setStatus('testing');
-    setTimeout(() => setStatus('success'), 1000);
+    try {
+      // First save token temporarily so getUser uses the newly entered token if test is clicked
+      await window.api.store.set('githubToken', token);
+      const user = await window.api.github.getUser();
+      if (user && user.login) {
+        setUsername(user.login);
+        setStatus('success');
+      } else {
+        setStatus('error');
+      }
+    } catch (error) {
+      console.error(error);
+      setStatus('error');
+    }
+  };
+
+  const handleSave = async () => {
+    try {
+      await window.api.store.set('githubToken', token);
+      // Optional: show a small save success indicator
+    } catch (error) {
+      console.error('Failed to save token', error);
+    }
+  };
+
+  const handleClear = async () => {
+    try {
+      await window.api.store.delete('githubToken');
+      setToken('');
+      setStatus('idle');
+      setUsername(null);
+    } catch (error) {
+      console.error('Failed to clear token', error);
+    }
   };
 
   return (
@@ -31,7 +79,10 @@ export const GitHubSettings: React.FC = () => {
               type="password" 
               placeholder="ghp_xxxxxxxxxxxxxxxxxxxx" 
               value={token}
-              onChange={(e) => setToken(e.target.value)}
+              onChange={(e) => {
+                setToken(e.target.value);
+                setStatus('idle');
+              }}
               className="bg-zinc-900"
             />
             <Button variant="secondary" onClick={testConnection} disabled={!token || status === 'testing'}>
@@ -48,7 +99,7 @@ export const GitHubSettings: React.FC = () => {
             <CheckCircle2 className="w-5 h-5 text-green-500 mt-0.5" />
             <div>
               <p className="text-sm font-medium text-green-500">Connection Successful</p>
-              <p className="text-xs text-green-500/80">Authenticated as djcoo.</p>
+              <p className="text-xs text-green-500/80">Authenticated as {username || 'unknown'}.</p>
             </div>
           </div>
         )}
@@ -65,10 +116,10 @@ export const GitHubSettings: React.FC = () => {
       </CardContent>
       
       <CardFooter className="flex justify-between border-t border-zinc-800 pt-4">
-        <Button variant="ghost" className="text-red-500 hover:text-red-400 hover:bg-red-500/10">
+        <Button variant="ghost" className="text-red-500 hover:text-red-400 hover:bg-red-500/10" onClick={handleClear}>
           Clear Token
         </Button>
-        <Button className="bg-violet-600 hover:bg-violet-700">
+        <Button className="bg-violet-600 hover:bg-violet-700" onClick={handleSave} disabled={!token}>
           Save Settings
         </Button>
       </CardFooter>

@@ -8,6 +8,7 @@ export function setupGitIpc() {
   ipcMain.handle('git:pull', (_, path: string, remote?: string, branch?: string) => gitService.pull(path, remote, branch));
   ipcMain.handle('git:branches', (_, path: string) => gitService.getBranches(path));
   ipcMain.handle('git:checkout', (_, path: string, name: string, createNew?: boolean) => gitService.checkoutBranch(path, name, createNew));
+  ipcMain.handle('git:delete-branch', (_, path: string, name: string) => gitService.deleteBranch(path, name));
   ipcMain.handle('git:diff', (_, path: string, staged?: boolean) => gitService.getDiff(path, staged));
   ipcMain.handle('git:stash', (_, path: string, action: 'push'|'pop'|'list', message?: string) => gitService.stash(path, action, message));
   ipcMain.handle('git:log', (_, path: string, limit?: number) => gitService.log(path, limit));

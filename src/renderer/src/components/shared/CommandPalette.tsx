@@ -3,11 +3,16 @@ import { TerminalSquare, Server, GitBranch, Settings, LayoutDashboard, Search, P
 import { CommandDialog, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '../ui/command';
 import { useAppStore } from '@renderer/stores/useAppStore';
 import { useProjectStore } from '@renderer/stores/useProjectStore';
+import { useTerminalStore } from '@renderer/stores/useTerminalStore';
+import { useServiceStore } from '@renderer/stores/useServiceStore';
+import { toast } from 'sonner';
 
 export const CommandPalette: React.FC = () => {
   const [open, setOpen] = useState(false);
   const { setActiveTab } = useAppStore();
-  const { projects } = useProjectStore();
+  const { projects, selectProject } = useProjectStore();
+  const { createTerminal } = useTerminalStore();
+  const { profiles, startProfile } = useServiceStore();
 
   useEffect(() => {
     const down = (e: KeyboardEvent) => {
@@ -23,6 +28,31 @@ export const CommandPalette: React.FC = () => {
   const runCommand = (command: () => void) => {
     setOpen(false);
     command();
+  };
+
+  const handleSelectProject = (projectId: string) => {
+    runCommand(() => {
+      selectProject(projectId);
+      setActiveTab('dashboard');
+    });
+  };
+
+  const handleOpenNewTerminal = () => {
+    runCommand(async () => {
+      await createTerminal({ name: 'Local', cwd: '.' });
+      setActiveTab('terminals');
+    });
+  };
+
+  const handleStartAllServices = () => {
+    runCommand(() => {
+      if (profiles.length === 0) {
+        toast.info('No service profiles configured. Add profiles in the Services tab.');
+        return;
+      }
+      startProfile(profiles[0].id);
+      setActiveTab('services');
+    });
   };
 
   return (
@@ -56,7 +86,7 @@ export const CommandPalette: React.FC = () => {
 
         <CommandGroup heading="Projects">
           {projects.map((project) => (
-            <CommandItem key={project.id} onSelect={() => runCommand(() => setActiveTab('dashboard'))}>
+            <CommandItem key={project.id} onSelect={() => handleSelectProject(project.id)}>
               <FolderOpen className="mr-2 h-4 w-4" />
               {project.name}
             </CommandItem>
@@ -64,11 +94,11 @@ export const CommandPalette: React.FC = () => {
         </CommandGroup>
 
         <CommandGroup heading="Actions">
-          <CommandItem onSelect={() => runCommand(() => {})}>
+          <CommandItem onSelect={handleOpenNewTerminal}>
             <TerminalSquare className="mr-2 h-4 w-4" />
             Open New Terminal
           </CommandItem>
-          <CommandItem onSelect={() => runCommand(() => {})}>
+          <CommandItem onSelect={handleStartAllServices}>
             <Play className="mr-2 h-4 w-4" />
             Start All Services
           </CommandItem>

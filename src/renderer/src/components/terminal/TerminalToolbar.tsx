@@ -14,7 +14,7 @@ export const TerminalToolbar: React.FC = () => {
       <TooltipProvider>
         <Tooltip>
           <TooltipTrigger asChild>
-            <Button variant="ghost" size="icon" className="h-8 w-8 text-zinc-400 hover:text-zinc-50" onClick={() => createTerminal({ name: 'Local', cwd: '.' })}>
+            <Button variant="ghost" size="icon" className="h-8 w-8 text-zinc-400 hover:text-zinc-50" onClick={() => createTerminal({ name: 'Local', cwd: 'D:\\Code' })}>
               <Plus className="w-4 h-4" />
             </Button>
           </TooltipTrigger>

@@ -7,7 +7,7 @@ interface GitState {
   isLoading: boolean
   commitMessage: string
   fetchStatus: (projectId: string, path: string) => Promise<void>
-  commit: (projectId: string, path: string, message: string) => Promise<void>
+  commit: (projectId: string, path: string, message: string, stageAll?: boolean) => Promise<void>
   push: (projectId: string, path: string) => Promise<void>
   pull: (projectId: string, path: string) => Promise<void>
   setCommitMessage: (msg: string) => void
@@ -40,10 +40,10 @@ export const useGitStore = create<GitState>((set, get) => ({
     }
   },
   
-  commit: async (projectId, path, message) => {
+  commit: async (projectId, path, message, stageAll) => {
     set({ isLoading: true })
     try {
-      await window.api.git.commit(path, message)
+      await window.api.git.commit(path, message, stageAll)
       set({ commitMessage: '' })
       await get().fetchStatus(projectId, path)
     } catch (error) {

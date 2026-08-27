@@ -52,14 +52,10 @@ export const useServiceStore = create<ServiceState>((set, get) => ({
       autoRestart: config.autoRestart
     }
     
-    set((state) => ({ services: [...state.services, service] }))
-    
-    // Simulate updating status to running after terminal spawns
-    setTimeout(() => {
-      set((state) => ({
-        services: state.services.map(s => s.id === id ? { ...s, status: 'running' } : s)
-      }))
-    }, 1000)
+    set((state) => ({ 
+      services: [...state.services, { ...service, status: 'running' }],
+      runningServices: [...state.services, { ...service, status: 'running' }]
+    }))
     
     return id
   },
@@ -71,7 +67,8 @@ export const useServiceStore = create<ServiceState>((set, get) => ({
     if (service) {
       useTerminalStore.getState().killTerminal(service.terminalId)
       set((state) => ({
-        services: state.services.filter(s => s.id !== id)
+        services: state.services.filter(s => s.id !== id),
+        runningServices: state.services.filter(s => s.id !== id)
       }))
     }
   },
@@ -92,13 +89,17 @@ export const useServiceStore = create<ServiceState>((set, get) => ({
     }
   },
   
-  updateServiceStats: (id, stats) => set((state) => ({
-    services: state.services.map(s => s.id === id ? {
+  updateServiceStats: (id, stats) => set((state) => {
+    const updatedServices = state.services.map(s => s.id === id ? {
       ...s,
       cpuUsage: stats.cpu,
       memoryUsage: stats.memory
-    } : s)
-  })),
+    } : s);
+    return {
+      services: updatedServices,
+      runningServices: updatedServices
+    };
+  }),
   
   addProfile: (profile) => set((state) => ({ profiles: [...state.profiles, profile] })),
   

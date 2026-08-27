@@ -8,21 +8,19 @@ import { SettingsPage } from './pages/SettingsPage';
 import { CommandPalette } from './components/shared/CommandPalette';
 import { useAppStore } from '@renderer/stores/useAppStore';
 import { useProjectStore } from '@renderer/stores/useProjectStore';
+import { useSystemStore } from '@renderer/stores/useSystemStore';
 
 export const App: React.FC = () => {
   const { activeTab } = useAppStore();
   const { scanProjects } = useProjectStore();
+  const { startMonitoring, stopMonitoring } = useSystemStore();
 
   useEffect(() => {
     // Initial load
     scanProjects();
+    startMonitoring();
     
-    // Simulate system monitor starting
-    const interval = setInterval(() => {
-      // Mock system update would go here if not handled in store
-    }, 2000);
-    
-    return () => clearInterval(interval);
+    return () => stopMonitoring();
   }, []);
 
   const renderPage = () => {

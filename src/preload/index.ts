@@ -26,13 +26,15 @@ const api = {
   },
   git: {
     status: (repoPath: string) => ipcRenderer.invoke('git:status', repoPath),
-    commit: (repoPath: string, message: string) =>
-      ipcRenderer.invoke('git:commit', repoPath, message),
+    commit: (repoPath: string, message: string, stageAll?: boolean) =>
+      ipcRenderer.invoke('git:commit', repoPath, message, stageAll),
     push: (repoPath: string) => ipcRenderer.invoke('git:push', repoPath),
     pull: (repoPath: string) => ipcRenderer.invoke('git:pull', repoPath),
     branches: (repoPath: string) => ipcRenderer.invoke('git:branches', repoPath),
     checkout: (repoPath: string, branch: string, createNew?: boolean) =>
       ipcRenderer.invoke('git:checkout', repoPath, branch, createNew),
+    deleteBranch: (repoPath: string, branch: string) =>
+      ipcRenderer.invoke('git:delete-branch', repoPath, branch),
     diff: (repoPath: string, staged?: boolean) => ipcRenderer.invoke('git:diff', repoPath, staged),
     stash: (repoPath: string, action: string, message?: string) =>
       ipcRenderer.invoke('git:stash', repoPath, action, message),

@@ -51,6 +51,10 @@ class GitService {
     return await git.checkout(name);
   }
 
+  async deleteBranch(path: string, name: string) {
+    return await this.git(path).deleteLocalBranch(name);
+  }
+
   async getDiff(path: string, staged: boolean = false) {
     if (staged) return await this.git(path).diff(['--cached']);
     return await this.git(path).diff();

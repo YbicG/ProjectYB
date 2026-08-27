@@ -3,7 +3,7 @@ import si from 'systeminformation';
 class SystemMonitor {
   private intervalId: NodeJS.Timeout | null = null;
 
-  startMonitoring(callback: (metrics: any) => void, intervalMs: number = 3000) {
+  startMonitoring(mainWindow: any, intervalMs: number = 2000) {
     if (this.intervalId) this.stopMonitoring();
 
     this.intervalId = setInterval(async () => {
@@ -17,14 +17,14 @@ class SystemMonitor {
         const rx = network.reduce((acc, n) => acc + (n.rx_sec || 0), 0);
         const tx = network.reduce((acc, n) => acc + (n.tx_sec || 0), 0);
 
-        callback({
-          cpu: { currentLoad: cpu.currentLoad },
+        mainWindow.webContents.send('system:metrics', {
+          cpu: { usage: cpu.currentLoad },
           memory: {
             total: mem.total,
             used: mem.active,
             percentage: (mem.active / mem.total) * 100
           },
-          network: { rx, tx }
+          network: { rxSec: rx, txSec: tx }
         });
       } catch (error) {
         console.error('Error fetching system metrics', error);
