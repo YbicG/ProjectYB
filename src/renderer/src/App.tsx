@@ -9,8 +9,10 @@ import { CommandPalette } from './components/shared/CommandPalette';
 import { useAppStore } from '@renderer/stores/useAppStore';
 import { useProjectStore } from '@renderer/stores/useProjectStore';
 import { useSystemStore } from '@renderer/stores/useSystemStore';
+import { useKeyboard } from './hooks/useKeyboard';
 
 export const App: React.FC = () => {
+  useKeyboard();
   const { activeTab } = useAppStore();
   const { scanProjects } = useProjectStore();
   const { startMonitoring, stopMonitoring } = useSystemStore();

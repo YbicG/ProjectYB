@@ -39,7 +39,7 @@ export const CommandPalette: React.FC = () => {
 
   const handleOpenNewTerminal = () => {
     runCommand(async () => {
-      await createTerminal({ name: 'Local', cwd: '.' });
+      await createTerminal({ name: 'Local', cwd: 'D:\\Code' });
       setActiveTab('terminals');
     });
   };

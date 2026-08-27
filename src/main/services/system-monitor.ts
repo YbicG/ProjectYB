@@ -8,24 +8,30 @@ class SystemMonitor {
 
     this.intervalId = setInterval(async () => {
       try {
+        if (!mainWindow || mainWindow.isDestroyed() || !mainWindow.webContents) {
+          return;
+        }
+
         const [cpu, mem, network] = await Promise.all([
           si.currentLoad(),
           si.mem(),
           si.networkStats()
         ]);
 
-        const rx = network.reduce((acc, n) => acc + (n.rx_sec || 0), 0);
-        const tx = network.reduce((acc, n) => acc + (n.tx_sec || 0), 0);
+        const rx = Array.isArray(network) ? network.reduce((acc, n) => acc + (n.rx_sec || 0), 0) : 0;
+        const tx = Array.isArray(network) ? network.reduce((acc, n) => acc + (n.tx_sec || 0), 0) : 0;
 
-        mainWindow.webContents.send('system:metrics', {
-          cpu: { usage: cpu.currentLoad },
-          memory: {
-            total: mem.total,
-            used: mem.active,
-            percentage: (mem.active / mem.total) * 100
-          },
-          network: { rxSec: rx, txSec: tx }
-        });
+        if (!mainWindow.isDestroyed() && mainWindow.webContents) {
+          mainWindow.webContents.send('system:metrics', {
+            cpu: { usage: cpu.currentLoad || 0 },
+            memory: {
+              total: mem.total || 0,
+              used: mem.active || 0,
+              percentage: mem.total > 0 ? (mem.active / mem.total) * 100 : 0
+            },
+            network: { rxSec: rx, txSec: tx }
+          });
+        }
       } catch (error) {
         console.error('Error fetching system metrics', error);
       }

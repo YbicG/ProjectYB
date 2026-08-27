@@ -5,15 +5,18 @@ export const Titlebar: React.FC = () => {
   const [isMaximized, setIsMaximized] = useState(false);
 
   useEffect(() => {
-    // Assuming window.api is injected via preload script
     if (window.api?.window) {
-      window.api.window.onMaximized?.(() => setIsMaximized(true));
-      window.api.window.onUnmaximized?.(() => setIsMaximized(false));
+      window.api.window.isMaximized?.().then(max => setIsMaximized(Boolean(max)));
+      const unsub = window.api.window.onMaximizedChange?.((max) => setIsMaximized(max));
+      return () => {
+        if (typeof unsub === 'function') unsub();
+      };
     }
+    return undefined;
   }, []);
 
   const handleMinimize = () => window.api?.window?.minimize?.();
-  const handleMaximize = () => window.api?.window?.toggleMaximize?.();
+  const handleMaximize = () => window.api?.window?.maximize?.();
   const handleClose = () => window.api?.window?.close?.();
 
   return (
@@ -27,18 +30,21 @@ export const Titlebar: React.FC = () => {
         <button
           onClick={handleMinimize}
           className="h-full px-4 inline-flex items-center justify-center text-zinc-400 hover:bg-zinc-800 hover:text-zinc-50 transition-colors"
+          title="Minimize"
         >
           <Minus className="w-4 h-4" />
         </button>
         <button
           onClick={handleMaximize}
           className="h-full px-4 inline-flex items-center justify-center text-zinc-400 hover:bg-zinc-800 hover:text-zinc-50 transition-colors"
+          title={isMaximized ? "Restore" : "Maximize"}
         >
           {isMaximized ? <Copy className="w-4 h-4 scale-90" /> : <Square className="w-3.5 h-3.5" />}
         </button>
         <button
           onClick={handleClose}
           className="h-full px-4 inline-flex items-center justify-center text-zinc-400 hover:bg-red-500 hover:text-zinc-50 transition-colors"
+          title="Close"
         >
           <X className="w-4 h-4" />
         </button>

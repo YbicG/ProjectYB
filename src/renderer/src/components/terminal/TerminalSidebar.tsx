@@ -1,5 +1,5 @@
 import React from 'react';
-import { Plus } from 'lucide-react';
+import { Plus, Edit2, Trash2 } from 'lucide-react';
 import { useTerminalStore } from '@renderer/stores/useTerminalStore';
 import { useProjectStore } from '@renderer/stores/useProjectStore';
 import { StatusDot } from '../shared/StatusDot';
@@ -9,8 +9,15 @@ import { cn } from '@renderer/lib/utils';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '../ui/dropdown-menu';
 
 export const TerminalSidebar: React.FC = () => {
-  const { terminals, activeTerminalId, setActiveTerminal, createTerminal, removeTerminal } = useTerminalStore();
+  const { terminals, activeTerminalId, setActiveTerminal, createTerminal, removeTerminal, renameTerminal } = useTerminalStore();
   const { projects } = useProjectStore();
+
+  const handleRename = (id: string, currentName: string) => {
+    const newName = prompt('Rename terminal:', currentName);
+    if (newName && newName.trim()) {
+      renameTerminal(id, newName.trim());
+    }
+  };
 
   // Group terminals by projectId
   const groups = terminals.reduce<Record<string, typeof terminals>>((acc, term) => {
@@ -69,8 +76,22 @@ export const TerminalSidebar: React.FC = () => {
                         </span>
                       </div>
                     </DropdownMenuTrigger>
-                    <DropdownMenuContent>
-                      <DropdownMenuItem onClick={() => removeTerminal(term.id)} className="text-red-500">
+                    <DropdownMenuContent align="start" className="bg-zinc-900 border-zinc-800">
+                      <DropdownMenuItem
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleRename(term.id, term.name);
+                        }}
+                        className="cursor-pointer focus:bg-zinc-800"
+                      >
+                        <Edit2 className="w-3.5 h-3.5 mr-2 text-zinc-400" />
+                        Rename Terminal
+                      </DropdownMenuItem>
+                      <DropdownMenuItem
+                        onClick={() => removeTerminal(term.id)}
+                        className="cursor-pointer focus:bg-zinc-800 text-red-500 hover:text-red-400"
+                      >
+                        <Trash2 className="w-3.5 h-3.5 mr-2" />
                         Kill Terminal
                       </DropdownMenuItem>
                     </DropdownMenuContent>

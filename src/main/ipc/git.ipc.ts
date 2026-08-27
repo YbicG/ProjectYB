@@ -9,11 +9,14 @@ export function setupGitIpc() {
   ipcMain.handle('git:branches', (_, path: string) => gitService.getBranches(path));
   ipcMain.handle('git:checkout', (_, path: string, name: string, createNew?: boolean) => gitService.checkoutBranch(path, name, createNew));
   ipcMain.handle('git:delete-branch', (_, path: string, name: string) => gitService.deleteBranch(path, name));
+  ipcMain.handle('git:deleteBranch', (_, path: string, name: string) => gitService.deleteBranch(path, name));
   ipcMain.handle('git:diff', (_, path: string, staged?: boolean) => gitService.getDiff(path, staged));
   ipcMain.handle('git:stash', (_, path: string, action: 'push'|'pop'|'list', message?: string) => gitService.stash(path, action, message));
   ipcMain.handle('git:log', (_, path: string, limit?: number) => gitService.log(path, limit));
   ipcMain.handle('git:is-repo', (_, path: string) => gitService.isGitRepo(path));
+  ipcMain.handle('git:isRepo', (_, path: string) => gitService.isGitRepo(path));
   ipcMain.handle('git:init', (_, path: string) => gitService.init(path));
   ipcMain.handle('git:add-remote', (_, path: string, name: string, url: string) => gitService.addRemote(path, name, url));
+  ipcMain.handle('git:addRemote', (_, path: string, name: string, url: string) => gitService.addRemote(path, name, url));
   ipcMain.handle('git:stageAll', (_, path: string) => gitService.stageAll(path));
 }

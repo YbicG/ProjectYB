@@ -17,7 +17,7 @@ export interface BranchSummary {
 
 export interface IElectronAPI {
   terminal: {
-    spawn(options: { id: string; cwd?: string; cols: number; rows: number }): Promise<boolean>
+    spawn(options: { id: string; cwd?: string; cols: number; rows: number; shell?: string }): Promise<boolean>
     write(id: string, data: string): void
     resize(id: string, cols: number, rows: number): void
     kill(id: string): void
@@ -27,15 +27,17 @@ export interface IElectronAPI {
   }
   git: {
     status(repoPath: string): Promise<GitStatus>
-    commit(repoPath: string, message: string): Promise<any>
-    push(repoPath: string): Promise<any>
-    pull(repoPath: string): Promise<any>
+    commit(repoPath: string, message: string, stageAll?: boolean): Promise<any>
+    push(repoPath: string, remote?: string, branch?: string): Promise<any>
+    pull(repoPath: string, remote?: string, branch?: string): Promise<any>
     branches(repoPath: string): Promise<BranchSummary>
     checkout(repoPath: string, branch: string, createNew?: boolean): Promise<any>
+    deleteBranch(repoPath: string, branch: string): Promise<any>
     diff(repoPath: string, staged?: boolean): Promise<string>
     stash(repoPath: string, action: string, message?: string): Promise<any>
     log(repoPath: string, limit?: number): Promise<GitLogEntry[]>
     isRepo(path: string): Promise<boolean>
+    stageAll(path: string): Promise<any>
     init(path: string): Promise<any>
     addRemote(path: string, name: string, url: string): Promise<any>
   }
@@ -49,7 +51,8 @@ export interface IElectronAPI {
     initAndPush(localPath: string, repoName: string, isPrivate: boolean): Promise<any>
   }
   projects: {
-    scan(): Promise<ProjectInfo[]>
+    scan(options?: { rootPaths?: string[]; mode?: 'git' | 'all' }): Promise<ProjectInfo[]>
+    addManual(folderPath: string): Promise<ProjectInfo | null>
     getAll(): Promise<ProjectInfo[]>
     openInExplorer(path: string): Promise<void>
     openInVSCode(path: string): Promise<void>
@@ -61,7 +64,7 @@ export interface IElectronAPI {
     onMetrics(callback: (metrics: SystemMetrics) => void): () => void
   }
   store: {
-    get(key: string): Promise<any>
+    get(key: string, defaultValue?: any): Promise<any>
     set(key: string, value: any): Promise<void>
     delete(key: string): Promise<void>
   }
