@@ -13,7 +13,10 @@ import {
   Activity,
   Lock,
   FileCode,
-  Info
+  Info,
+  ShieldAlert,
+  CheckCircle2,
+  Shield
 } from 'lucide-react';
 import { Card, CardHeader, CardTitle, CardContent } from '../components/ui/card';
 import { Badge } from '../components/ui/badge';
@@ -37,10 +40,16 @@ export const LocalProxyPage: React.FC = () => {
   const {
     routes,
     status,
+    hostsStatus,
     isLoading,
+    isSyncingHosts,
     isEditorOpen,
     editingRoute,
     fetchStatus,
+    checkHostsStatus,
+    syncAllToHosts,
+    syncSingleToHosts,
+    clearHosts,
     startProxy,
     stopProxy,
     addRoute,
@@ -61,12 +70,13 @@ export const LocalProxyPage: React.FC = () => {
   const [formHostname, setFormHostname] = useState('');
   const [formTargetPort, setFormTargetPort] = useState('3000');
   const [formUseHttps, setFormUseHttps] = useState(true);
+  const [formAutoSyncHosts, setFormAutoSyncHosts] = useState(true);
 
   useEffect(() => {
     fetchStatus();
     const interval = setInterval(() => {
       fetchStatus();
-    }, 3000);
+    }, 4000);
     return () => clearInterval(interval);
   }, []);
 
@@ -75,10 +85,12 @@ export const LocalProxyPage: React.FC = () => {
       setFormHostname(editingRoute.hostname);
       setFormTargetPort(editingRoute.targetPort.toString());
       setFormUseHttps(editingRoute.useHttps);
+      setFormAutoSyncHosts(false);
     } else {
       setFormHostname('');
       setFormTargetPort('3000');
       setFormUseHttps(true);
+      setFormAutoSyncHosts(true);
     }
   }, [editingRoute, isEditorOpen]);
 
@@ -96,13 +108,16 @@ export const LocalProxyPage: React.FC = () => {
         useHttps: formUseHttps
       });
     } else {
-      await addRoute({
-        hostname: formHostname.trim().toLowerCase(),
-        targetPort: portNum,
-        targetHost: '127.0.0.1',
-        useHttps: formUseHttps,
-        enabled: true
-      });
+      await addRoute(
+        {
+          hostname: formHostname.trim().toLowerCase(),
+          targetPort: portNum,
+          targetHost: '127.0.0.1',
+          useHttps: formUseHttps,
+          enabled: true
+        },
+        formAutoSyncHosts
+      );
     }
   };
 
@@ -113,6 +128,8 @@ export const LocalProxyPage: React.FC = () => {
       startProxy(parseInt(httpPortInput, 10) || 8080, parseInt(httpsPortInput, 10) || 8443);
     }
   };
+
+  const allSynced = routes.length > 0 && routes.every((r) => !r.enabled || hostsStatus[r.hostname]);
 
   return (
     <div className="p-4 sm:p-6 space-y-6 max-w-7xl mx-auto overflow-y-auto">
@@ -137,11 +154,26 @@ export const LocalProxyPage: React.FC = () => {
             </Badge>
           </h1>
           <p className="text-xs sm:text-sm text-zinc-400 mt-1">
-            Map custom development domains (e.g. <code>https://app.test</code>) directly to your project ports with SSL.
+            Map custom development domains (e.g. <code>https://app.test</code>) directly to your project ports with SSL and Hosts file sync.
           </p>
         </div>
 
-        <div className="flex items-center gap-2.5 w-full sm:w-auto">
+        <div className="flex items-center gap-2.5 w-full sm:w-auto flex-wrap">
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => syncAllToHosts()}
+            disabled={isSyncingHosts || routes.length === 0}
+            className={cn(
+              'text-xs h-9 gap-1.5 font-medium border-zinc-800 transition-colors',
+              allSynced ? 'text-cyan-400 bg-cyan-950/10' : 'text-amber-400 bg-amber-950/20 border-amber-800/40'
+            )}
+            title="Update Windows System Hosts file with all active domains"
+          >
+            <Shield className="w-3.5 h-3.5" />
+            {isSyncingHosts ? 'Syncing...' : allSynced ? 'Hosts Synced' : 'Sync All to Hosts'}
+          </Button>
+
           <Button
             size="sm"
             onClick={handleToggleProxy}
@@ -251,6 +283,16 @@ export const LocalProxyPage: React.FC = () => {
               {routes.length}
             </Badge>
           </CardTitle>
+
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => checkHostsStatus()}
+            className="text-[11px] h-7 text-zinc-400 hover:text-zinc-200 gap-1"
+          >
+            <RefreshCw className="w-3 h-3" />
+            Check Hosts Status
+          </Button>
         </CardHeader>
 
         <CardContent className="p-0">
@@ -268,6 +310,7 @@ export const LocalProxyPage: React.FC = () => {
                 const proxyUrl = `${route.useHttps ? 'https' : 'http'}://${route.hostname}:${
                   route.useHttps ? status.httpsPort : status.httpPort
                 }`;
+                const isMappedInHosts = hostsStatus[route.hostname];
 
                 return (
                   <div
@@ -275,7 +318,7 @@ export const LocalProxyPage: React.FC = () => {
                     className="p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 hover:bg-zinc-900/40 transition-colors"
                   >
                     <div className="space-y-1 min-w-0">
-                      <div className="flex items-center gap-2.5 flex-wrap">
+                      <div className="flex items-center gap-2 flex-wrap">
                         <span className="font-bold text-sm font-mono text-zinc-100">
                           {route.hostname}
                         </span>
@@ -291,6 +334,34 @@ export const LocalProxyPage: React.FC = () => {
                         >
                           {route.useHttps ? 'HTTPS (SSL)' : 'HTTP'}
                         </Badge>
+
+                        <button
+                          type="button"
+                          onClick={() => !isMappedInHosts && syncSingleToHosts(route.hostname)}
+                          title={
+                            isMappedInHosts
+                              ? 'Resolved in System Hosts file (127.0.0.1)'
+                              : 'Click to add this domain to Windows Hosts file'
+                          }
+                          className={cn(
+                            'text-[9px] font-mono px-1.5 py-0.5 rounded border transition-colors flex items-center gap-1',
+                            isMappedInHosts
+                              ? 'border-cyan-500/40 text-cyan-300 bg-cyan-950/30'
+                              : 'border-amber-500/40 text-amber-300 bg-amber-950/30 hover:bg-amber-900/40 cursor-pointer'
+                          )}
+                        >
+                          {isMappedInHosts ? (
+                            <>
+                              <CheckCircle2 className="w-2.5 h-2.5 text-cyan-400" />
+                              <span>IN HOSTS</span>
+                            </>
+                          ) : (
+                            <>
+                              <ShieldAlert className="w-2.5 h-2.5 text-amber-400" />
+                              <span>+ ADD TO HOSTS</span>
+                            </>
+                          )}
+                        </button>
 
                         <Badge
                           variant="outline"
@@ -366,16 +437,25 @@ export const LocalProxyPage: React.FC = () => {
 
       {/* ── DNS & Hosts Guide Box ── */}
       <div className="p-4 rounded-xl bg-zinc-950/60 border border-zinc-800/80 text-xs text-zinc-400 space-y-2">
-        <div className="flex items-center gap-2 text-zinc-200 font-bold">
-          <Info className="w-4 h-4 text-cyan-400" />
-          Tip: Routing custom `.test` / `.local` domains on Windows
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2 text-zinc-200 font-bold">
+            <Info className="w-4 h-4 text-cyan-400" />
+            Automatic System Hosts Resolution
+          </div>
+
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => clearHosts()}
+            className="text-[10px] h-6 text-zinc-500 hover:text-rose-400"
+          >
+            Clear ProjectYB Block
+          </Button>
         </div>
         <p className="leading-relaxed text-zinc-400">
-          To resolve custom domains locally, add a line to your <code>C:\Windows\System32\drivers\etc\hosts</code> file:
+          Clicking <strong>"Sync All to Hosts"</strong> uses elevated Windows PowerShell to write all active routes into{' '}
+          <code>C:\Windows\System32\drivers\etc\hosts</code> wrapped safely inside a ProjectYB managed block, followed by an immediate DNS flush (`ipconfig /flushdns`).
         </p>
-        <div className="p-2.5 rounded-lg bg-zinc-900 font-mono text-zinc-300 text-[11px] border border-zinc-800 select-all">
-          127.0.0.1 app.test api.test backend.local
-        </div>
       </div>
 
       {/* ── Route Editor Modal ── */}
@@ -464,6 +544,20 @@ export const LocalProxyPage: React.FC = () => {
                 </div>
               </div>
             </div>
+
+            {!editingRoute && (
+              <div className="p-2.5 rounded-lg bg-zinc-900/80 border border-zinc-800 text-xs">
+                <label className="flex items-center gap-2 text-zinc-300 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={formAutoSyncHosts}
+                    onChange={(e) => setFormAutoSyncHosts(e.target.checked)}
+                    className="rounded bg-zinc-900 border-zinc-800 text-cyan-500 focus:ring-0"
+                  />
+                  <span>Automatically add to Windows Hosts file on creation</span>
+                </label>
+              </div>
+            )}
 
             <div className="flex items-center justify-end gap-2 pt-2 border-t border-zinc-800">
               <Button type="button" variant="ghost" size="sm" onClick={closeEditor} className="text-xs text-zinc-400">

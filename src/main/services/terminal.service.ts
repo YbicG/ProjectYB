@@ -1,5 +1,6 @@
 import * as pty from 'node-pty';
 import { logger } from '../utils/logger';
+import { logStreamService } from './logstream.service';
 
 export interface TerminalInstance {
   id: string;
@@ -37,6 +38,13 @@ class TerminalService {
       ptyProcess.onData(data => {
         instance.buffer = (instance.buffer + data).slice(-300000);
         if (onData) onData(data);
+
+        // Stream clean lines to LogStream Studio
+        const clean = data.trim();
+        if (clean && clean.length > 2 && !clean.includes('\r\n\r\n')) {
+          const level = clean.toLowerCase().includes('error') ? 'error' : clean.toLowerCase().includes('warn') ? 'warn' : 'info';
+          logStreamService.log('terminal', level, `Terminal`, clean);
+        }
       });
 
       ptyProcess.onExit(({ exitCode }) => {

@@ -75,7 +75,14 @@ export const ModernSidebar: React.FC = () => {
     { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard, category: 'core' },
     { id: 'overview', label: 'Mission Control', icon: Radio, category: 'core' },
     { id: 'api', label: 'API Tester', icon: Send, category: 'core' },
+    { id: 'openapi', label: 'OpenAPI / Swagger', icon: FileText, category: 'core' },
     // Dev Tools
+    {
+      id: 'logstream',
+      label: 'LogStream Studio',
+      icon: Activity,
+      category: 'dev'
+    },
     {
       id: 'terminals',
       label: 'Terminals',

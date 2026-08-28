@@ -298,6 +298,38 @@ const api = {
     exportToFile: (bundle: any) => ipcRenderer.invoke('sync:exportToFile', bundle),
     importFromFile: () => ipcRenderer.invoke('sync:importFromFile')
   },
+  hosts: {
+    checkStatus: (domains: string[]) => ipcRenderer.invoke('hosts:checkStatus', domains),
+    getMappedDomains: () => ipcRenderer.invoke('hosts:getMappedDomains'),
+    syncDomains: (domains: string[]) => ipcRenderer.invoke('hosts:syncDomains', domains),
+    clearDomains: () => ipcRenderer.invoke('hosts:clearDomains'),
+    readRaw: () => ipcRenderer.invoke('hosts:readRaw')
+  },
+  logstream: {
+    getRecent: (limit?: number) => ipcRenderer.invoke('logstream:getRecent', limit),
+    clear: () => ipcRenderer.invoke('logstream:clear'),
+    emit: (source: string, level: string, tag: string, message: string, projectId?: string) =>
+      ipcRenderer.invoke('logstream:emit', source, level, tag, message, projectId),
+    onLog: (callback: (entry: any) => void) => {
+      const handler = (_event: any, entry: any) => callback(entry);
+      ipcRenderer.on('logstream:event', handler);
+      return () => {
+        ipcRenderer.removeListener('logstream:event', handler);
+      };
+    }
+  },
+  openapi: {
+    discover: (projectPath: string) => ipcRenderer.invoke('openapi:discover', projectPath),
+    loadFromFile: (filePath: string) => ipcRenderer.invoke('openapi:loadFromFile', filePath),
+    loadFromUrl: (url: string) => ipcRenderer.invoke('openapi:loadFromUrl', url)
+  },
+  gitConflict: {
+    getConflictedFiles: (repoPath: string) => ipcRenderer.invoke('gitConflict:getConflictedFiles', repoPath),
+    parseFile: (repoPath: string, relativePath: string) => ipcRenderer.invoke('gitConflict:parseFile', repoPath, relativePath),
+    resolveFile: (repoPath: string, relativePath: string, content: string) =>
+      ipcRenderer.invoke('gitConflict:resolveFile', repoPath, relativePath, content),
+    abortMerge: (repoPath: string) => ipcRenderer.invoke('gitConflict:abortMerge', repoPath)
+  },
   database: {
     discoverConnections: (projects: Array<{ id: string; name: string; path: string }>) =>
       ipcRenderer.invoke('database:discoverConnections', projects),

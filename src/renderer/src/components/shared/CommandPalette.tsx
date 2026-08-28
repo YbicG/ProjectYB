@@ -126,8 +126,16 @@ export const CommandPalette: React.FC = () => {
             Mission Control Wallboard
           </CommandItem>
           <CommandItem onSelect={() => runCommand(() => setActiveTab('api'))}>
-            <Send className="mr-2 h-4 w-4 text-emerald-400" />
+            <Send className="mr-2 h-4 w-4" />
             HTTP API Tester
+          </CommandItem>
+          <CommandItem onSelect={() => runCommand(() => setActiveTab('openapi'))}>
+            <FileText className="mr-2 h-4 w-4 text-blue-400" />
+            OpenAPI & Swagger Explorer
+          </CommandItem>
+          <CommandItem onSelect={() => runCommand(() => setActiveTab('logstream'))}>
+            <Activity className="mr-2 h-4 w-4 text-violet-400" />
+            Multi-Process LogStream Studio
           </CommandItem>
           <CommandItem onSelect={() => runCommand(() => setActiveTab('terminals'))}>
             <TerminalSquare className="mr-2 h-4 w-4" />

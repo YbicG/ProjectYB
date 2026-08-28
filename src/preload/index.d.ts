@@ -272,6 +272,30 @@ export interface IElectronAPI {
     exportToFile(bundle: any): Promise<{ success: boolean; canceled?: boolean; filePath?: string }>
     importFromFile(): Promise<{ success: boolean; canceled?: boolean; bundle?: any; filePath?: string }>
   }
+  hosts: {
+    checkStatus(domains: string[]): Promise<Record<string, boolean>>
+    getMappedDomains(): Promise<string[]>
+    syncDomains(domains: string[]): Promise<{ success: boolean; error?: string }>
+    clearDomains(): Promise<{ success: boolean; error?: string }>
+    readRaw(): Promise<string>
+  }
+  logstream: {
+    getRecent(limit?: number): Promise<any[]>
+    clear(): Promise<{ success: boolean }>
+    emit(source: string, level: string, tag: string, message: string, projectId?: string): Promise<{ success: boolean }>
+    onLog(callback: (entry: any) => void): () => void
+  }
+  openapi: {
+    discover(projectPath: string): Promise<string[]>
+    loadFromFile(filePath: string): Promise<{ success: boolean; spec?: any; error?: string }>
+    loadFromUrl(url: string): Promise<{ success: boolean; spec?: any; error?: string }>
+  }
+  gitConflict: {
+    getConflictedFiles(repoPath: string): Promise<string[]>
+    parseFile(repoPath: string, relativePath: string): Promise<any>
+    resolveFile(repoPath: string, relativePath: string, content: string): Promise<{ success: boolean; error?: string }>
+    abortMerge(repoPath: string): Promise<{ success: boolean; error?: string }>
+  }
   database: {
     discoverConnections(projects: Array<{ id: string; name: string; path: string }>): Promise<any[]>
     testConnection(conn: any): Promise<{ success: boolean; message: string; pingMs?: number }>

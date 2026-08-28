@@ -6,6 +6,8 @@ import { ModernProjectWorkbench } from './components/modern/project/ModernProjec
 import { DashboardPage } from './pages/DashboardPage';
 import { OverviewPage } from './pages/OverviewPage';
 import { ApiTesterPage } from './pages/ApiTesterPage';
+import { OpenApiPage } from './pages/OpenApiPage';
+import { LogStreamPage } from './pages/LogStreamPage';
 import { TerminalsPage } from './pages/TerminalsPage';
 import { GitPage } from './pages/GitPage';
 import { ServicesPage } from './pages/ServicesPage';
@@ -91,6 +93,10 @@ export const App: React.FC = () => {
         return <OverviewPage />;
       case 'api':
         return <ApiTesterPage />;
+      case 'openapi':
+        return <OpenApiPage />;
+      case 'logstream':
+        return <LogStreamPage />;
       case 'terminals':
         return <TerminalsPage />;
       case 'git':
@@ -132,6 +138,10 @@ export const App: React.FC = () => {
         return <OverviewPage />;
       case 'api':
         return <ApiTesterPage />;
+      case 'openapi':
+        return <OpenApiPage />;
+      case 'logstream':
+        return <LogStreamPage />;
       case 'terminals':
         return <TerminalsPage />;
       case 'git':

@@ -40,6 +40,8 @@ const tabs = [
   { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
   { id: 'overview', label: 'Mission Control', icon: Radio },
   { id: 'api', label: 'API Tester', icon: Send },
+  { id: 'openapi', label: 'OpenAPI', icon: FileText },
+  { id: 'logstream', label: 'LogStream', icon: Activity },
   { id: 'terminals', label: 'Terminals', icon: TerminalSquare },
   { id: 'git', label: 'Git', icon: GitBranch },
   { id: 'services', label: 'Services', icon: Server },

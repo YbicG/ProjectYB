@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react'
+import React, { useEffect, useState } from 'react'
 import {
   FileEdit,
   History,
@@ -8,7 +8,8 @@ import {
   ArrowDown,
   RefreshCw,
   UploadCloud,
-  DownloadCloud
+  DownloadCloud,
+  GitMerge
 } from 'lucide-react'
 import { GitStatus } from '../components/git/GitStatus'
 import { GitDiff } from '../components/git/GitDiff'
@@ -17,6 +18,7 @@ import { GitHistory } from '../components/git/GitHistory'
 import { GitBranches } from '../components/git/GitBranches'
 import { GitStash } from '../components/git/GitStash'
 import { GitHubPanel } from '../components/git/GitHubPanel'
+import { GitConflictResolverModal } from '../components/git/GitConflictResolverModal'
 import { Button } from '../components/ui/button'
 import { Badge } from '../components/ui/badge'
 import { useProjectStore } from '@renderer/stores/useProjectStore'
@@ -25,6 +27,7 @@ import { toast } from 'sonner'
 import { cn } from '@renderer/lib/utils'
 
 export const GitPage: React.FC = () => {
+  const [conflictModalOpen, setConflictModalOpen] = useState(false)
   const { projects, selectProject: selectProjectStore } = useProjectStore()
   const {
     selectedProjectId,
@@ -155,6 +158,16 @@ export const GitPage: React.FC = () => {
                 </Button>
               )}
               <Button
+                size="sm"
+                variant="outline"
+                className="h-7 text-xs px-2 gap-1 border-amber-700/60 text-amber-400 hover:text-amber-300 bg-amber-950/20"
+                onClick={() => setConflictModalOpen(true)}
+                title="Open Visual 3-Way Git Merge Conflict Resolver"
+              >
+                <GitMerge className="w-3.5 h-3.5" />
+                Resolve Conflicts
+              </Button>
+              <Button
                 variant="ghost"
                 size="icon"
                 className="h-7 w-7"
@@ -271,6 +284,11 @@ export const GitPage: React.FC = () => {
           </>
         )}
       </div>
+
+      <GitConflictResolverModal
+        open={conflictModalOpen}
+        onOpenChange={setConflictModalOpen}
+      />
     </div>
   )
 }
