@@ -179,14 +179,44 @@ export const LocalProxyPage: React.FC = () => {
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5">
         <Card className="bg-zinc-950/80 border-zinc-800/80 p-4">
           <div className="text-xs text-zinc-400 font-medium flex items-center justify-between">
-            <span>HTTP / HTTPS Ports</span>
+            <span>Listener Ports (HTTP / HTTPS)</span>
             <Lock className="w-3.5 h-3.5 text-cyan-400" />
           </div>
-          <div className="text-xl font-bold font-mono text-zinc-100 mt-2">
-            :{status.httpPort} <span className="text-xs text-zinc-500 font-normal">HTTP</span> / :{status.httpsPort}{' '}
-            <span className="text-xs text-zinc-500 font-normal">HTTPS</span>
-          </div>
-          <p className="text-[10px] text-zinc-500 mt-1">Configurable local listener ports</p>
+          {status.running ? (
+            <div className="text-xl font-bold font-mono text-zinc-100 mt-2">
+              :{status.httpPort} <span className="text-xs text-zinc-500 font-normal">HTTP</span> / :{status.httpsPort}{' '}
+              <span className="text-xs text-zinc-500 font-normal">HTTPS</span>
+            </div>
+          ) : (
+            <div className="flex items-center gap-2 mt-2">
+              <div className="flex items-center gap-1">
+                <span className="text-xs text-zinc-500 font-mono">:</span>
+                <Input
+                  type="number"
+                  value={httpPortInput}
+                  onChange={(e) => setHttpPortInput(e.target.value)}
+                  className="w-16 h-7 bg-zinc-900 border-zinc-800 text-xs font-mono px-1.5 text-zinc-200"
+                  placeholder="8080"
+                />
+                <span className="text-[10px] text-zinc-500 uppercase">HTTP</span>
+              </div>
+              <span className="text-zinc-600">/</span>
+              <div className="flex items-center gap-1">
+                <span className="text-xs text-zinc-500 font-mono">:</span>
+                <Input
+                  type="number"
+                  value={httpsPortInput}
+                  onChange={(e) => setHttpsPortInput(e.target.value)}
+                  className="w-16 h-7 bg-zinc-900 border-zinc-800 text-xs font-mono px-1.5 text-zinc-200"
+                  placeholder="8443"
+                />
+                <span className="text-[10px] text-zinc-500 uppercase">HTTPS</span>
+              </div>
+            </div>
+          )}
+          <p className="text-[10px] text-zinc-500 mt-1">
+            {status.running ? 'Live local listener ports' : 'Custom ports applied on proxy start'}
+          </p>
         </Card>
 
         <Card className="bg-zinc-950/80 border-zinc-800/80 p-4">

@@ -13,6 +13,7 @@ import { Badge } from '../ui/badge';
 import { useCloudflareStore } from '@renderer/stores/useCloudflareStore';
 import { usePortStore } from '@renderer/stores/usePortStore';
 import { useServiceStore } from '@renderer/stores/useServiceStore';
+import { useAppStore } from '@renderer/stores/useAppStore';
 import { CloudLightning, KeyRound, Sparkles, Globe, Server, ArrowRight, Zap, Settings } from 'lucide-react';
 import { cn } from '@renderer/lib/utils';
 import { toast } from 'sonner';
@@ -325,7 +326,7 @@ export const CreateTunnelDialog: React.FC = () => {
                     size="sm"
                     onClick={() => {
                       setCreateModalOpen(false);
-                      useCloudflareStore.getState().saveConfig({});
+                      useAppStore.getState().setActiveTab('settings');
                     }}
                     className="text-xs border-amber-600 text-amber-200 hover:bg-amber-900/30"
                   >
