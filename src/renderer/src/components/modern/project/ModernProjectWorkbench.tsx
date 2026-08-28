@@ -27,6 +27,7 @@ import {
 } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { useProjectStore } from '@renderer/stores/useProjectStore';
+import { useWorkspaceProjects } from '@renderer/hooks/useWorkspaceProjects';
 import { useServiceStore } from '@renderer/stores/useServiceStore';
 import { useTerminalStore } from '@renderer/stores/useTerminalStore';
 import { useRunConfigStore, type RunConfig } from '@renderer/stores/useRunConfigStore';
@@ -48,7 +49,8 @@ import type { ProjectInfo, SubProject } from '@renderer/types/project';
 import type { GitLogEntry } from '@renderer/types/git';
 
 export const ModernProjectWorkbench: React.FC = () => {
-  const { selectedProjectId, projects, selectProject, ignoreProject } = useProjectStore();
+  const { selectedProjectId, selectProject, ignoreProject } = useProjectStore();
+  const { projects, isWorkspaceScoped, activeWorkspace } = useWorkspaceProjects();
   const { runningServices, startService, stopService } = useServiceStore();
   const { createTerminal } = useTerminalStore();
   const { configs: allConfigs, addConfig, updateConfig } = useRunConfigStore();

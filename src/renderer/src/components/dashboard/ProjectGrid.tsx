@@ -1,9 +1,11 @@
 import React, { useState, useMemo, useDeferredValue } from 'react';
-import { Search, X, FolderGit2, Layers } from 'lucide-react';
+import { Search, X, FolderGit2, Layers, Plus } from 'lucide-react';
 import { Input } from '../ui/input';
 import { Badge } from '../ui/badge';
+import { Button } from '../ui/button';
 import { ProjectCard } from './ProjectCard';
 import { useProjectStore } from '@renderer/stores/useProjectStore';
+import { useWorkspaceProjects } from '@renderer/hooks/useWorkspaceProjects';
 import { useWorkspaceStore } from '@renderer/stores/useWorkspaceStore';
 import { cn } from '@renderer/lib/utils';
 
@@ -11,26 +13,16 @@ const TYPE_FILTERS = ['All', 'Node', 'Python', 'Godot', 'Git', 'Rust', 'Go', '.N
 type TypeFilter = typeof TYPE_FILTERS[number];
 
 export const ProjectGrid: React.FC = () => {
-  const { projects, isScanning, pinnedProjectIds, searchQuery, setSearchQuery } = useProjectStore();
-  const { workspaces, activeWorkspaceId, setActiveWorkspace } = useWorkspaceStore();
+  const { isScanning, pinnedProjectIds, searchQuery, setSearchQuery } = useProjectStore();
+  const { projects, allProjects, activeWorkspace, isWorkspaceScoped, setActiveWorkspace } = useWorkspaceProjects();
+  const { openEditor } = useWorkspaceStore();
   const [activeType, setActiveType] = useState<TypeFilter>('All');
   const deferredSearch = useDeferredValue(searchQuery);
 
-  const activeWorkspace = useMemo(() => {
-    return workspaces.find((w) => w.id === activeWorkspaceId);
-  }, [workspaces, activeWorkspaceId]);
-
   const filteredProjects = useMemo(() => {
     const q = deferredSearch.toLowerCase().trim();
-    let baseProjects = projects;
 
-    if (activeWorkspace && activeWorkspace.projectIds && activeWorkspace.projectIds.length > 0) {
-      baseProjects = projects.filter(
-        (p) => activeWorkspace.projectIds.includes(p.id) || activeWorkspace.projectIds.includes(p.path)
-      );
-    }
-
-    return baseProjects
+    return projects
       .filter((p) => {
         const matchesSearch =
           !q ||
@@ -43,9 +35,13 @@ export const ProjectGrid: React.FC = () => {
         if (activeType === '.NET') {
           matchesType = p.type === 'dotnet';
         } else if (activeType === 'Docs') {
-          matchesType = p.type === 'docs' || Boolean(p.subprojects?.some((s) => s.type === 'docs' || s.name.toLowerCase().includes('doc')));
+          matchesType =
+            p.type === 'docs' ||
+            Boolean(p.subprojects?.some((s) => s.type === 'docs' || s.name.toLowerCase().includes('doc')));
         } else if (activeType !== 'All') {
-          matchesType = p.type?.toLowerCase() === activeType.toLowerCase() || Boolean(p.subprojects?.some((s) => s.type?.toLowerCase() === activeType.toLowerCase()));
+          matchesType =
+            p.type?.toLowerCase() === activeType.toLowerCase() ||
+            Boolean(p.subprojects?.some((s) => s.type?.toLowerCase() === activeType.toLowerCase()));
         }
 
         return matchesSearch && matchesType;
@@ -56,7 +52,7 @@ export const ProjectGrid: React.FC = () => {
         if (aPinned !== bPinned) return aPinned ? -1 : 1;
         return a.name.localeCompare(b.name);
       });
-  }, [projects, deferredSearch, activeType, pinnedProjectIds, activeWorkspace]);
+  }, [projects, deferredSearch, activeType, pinnedProjectIds]);
 
   return (
     <div className="flex flex-col h-full">
@@ -65,7 +61,11 @@ export const ProjectGrid: React.FC = () => {
         <div className="relative flex-1 max-w-md">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-500" />
           <Input
-            placeholder="Search projects by name, category, tag, or subfolder..."
+            placeholder={
+              isWorkspaceScoped
+                ? `Search within ${activeWorkspace?.name}...`
+                : 'Search projects by name, category, tag, or subfolder...'
+            }
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             className="pl-9 pr-8 h-9 bg-zinc-900 border-zinc-800 text-xs font-mono text-zinc-100 focus-visible:ring-violet-500"
@@ -84,25 +84,38 @@ export const ProjectGrid: React.FC = () => {
         <div className="flex items-center gap-2">
           <Badge variant="outline" className="text-[11px] font-mono text-zinc-400 border-zinc-800 bg-zinc-900">
             Showing <span className="text-zinc-100 font-bold ml-1 mr-1">{filteredProjects.length}</span> of {projects.length}
+            {isWorkspaceScoped && (
+              <span className="text-violet-400 ml-1">({allProjects.length} total)</span>
+            )}
           </Badge>
         </div>
       </div>
 
       {/* ── Active Workspace Filter Banner ── */}
       {activeWorkspace && (
-        <div className="flex items-center justify-between gap-2 mb-3 px-3 py-2 rounded-xl bg-violet-950/30 border border-violet-500/30 text-violet-200 text-xs">
-          <div className="flex items-center gap-2 min-w-0">
+        <div className="flex items-center justify-between gap-2 mb-3 px-3.5 py-2.5 rounded-xl bg-violet-950/40 border border-violet-500/40 text-violet-200 text-xs shadow-sm">
+          <div className="flex items-center gap-2.5 min-w-0">
+            <div className="w-2 h-2 rounded-full bg-violet-400 animate-pulse shrink-0" />
             <Layers className="w-4 h-4 text-violet-400 shrink-0" />
             <span className="truncate">
-              Active Workspace: <strong className="text-white font-semibold">{activeWorkspace.name}</strong> ({activeWorkspace.projectIds?.length || 0} projects)
+              Workspace Scope: <strong className="text-white font-bold">{activeWorkspace.name}</strong>{' '}
+              <span className="text-violet-300 font-mono">({projects.length} project{projects.length !== 1 ? 's' : ''} visible)</span>
             </span>
           </div>
-          <button
-            onClick={() => setActiveWorkspace(null)}
-            className="text-[11px] text-zinc-400 hover:text-white underline font-mono shrink-0 ml-2"
-          >
-            Show All Projects
-          </button>
+          <div className="flex items-center gap-3 shrink-0 ml-2">
+            <button
+              onClick={() => openEditor(activeWorkspace)}
+              className="text-[11px] text-violet-300 hover:text-white font-medium hover:underline flex items-center gap-1"
+            >
+              Configure
+            </button>
+            <button
+              onClick={() => setActiveWorkspace(null)}
+              className="text-[11px] text-zinc-400 hover:text-white underline font-mono"
+            >
+              Show All Projects
+            </button>
+          </div>
         </div>
       )}
 
@@ -140,6 +153,25 @@ export const ProjectGrid: React.FC = () => {
               </div>
             </div>
           ))}
+        </div>
+      ) : projects.length === 0 && isWorkspaceScoped ? (
+        <div className="flex-1 flex flex-col items-center justify-center p-12 text-zinc-500 space-y-3 text-center">
+          <div className="w-12 h-12 rounded-2xl bg-violet-950/50 border border-violet-500/30 flex items-center justify-center text-violet-400 shadow-lg">
+            <Layers className="w-6 h-6" />
+          </div>
+          <div>
+            <p className="text-sm font-bold text-zinc-200">Workspace &quot;{activeWorkspace?.name}&quot; is empty</p>
+            <p className="text-xs text-zinc-400 mt-1 max-w-sm">No projects have been added to this workspace yet. Select the projects you want included in this workspace view.</p>
+          </div>
+          <div className="flex gap-2 pt-2">
+            <Button size="sm" onClick={() => openEditor(activeWorkspace)} className="bg-violet-600 hover:bg-violet-500 text-xs">
+              <Plus className="w-3.5 h-3.5 mr-1.5" />
+              Add Projects to Workspace
+            </Button>
+            <Button size="sm" variant="outline" onClick={() => setActiveWorkspace(null)} className="border-zinc-800 text-xs">
+              Show All Projects
+            </Button>
+          </div>
         </div>
       ) : filteredProjects.length === 0 ? (
         <div className="flex-1 flex flex-col items-center justify-center p-12 text-zinc-600 space-y-2">

@@ -8,7 +8,7 @@ import { RunConfigDialog } from '../components/services/RunConfigDialog'
 import { PortManager } from '../components/ports/PortManager'
 import { useServiceStore } from '@renderer/stores/useServiceStore'
 import { useRunConfigStore, type RunConfig } from '@renderer/stores/useRunConfigStore'
-import { useProjectStore } from '@renderer/stores/useProjectStore'
+import { useWorkspaceProjects } from '@renderer/hooks/useWorkspaceProjects'
 import { usePortStore } from '@renderer/stores/usePortStore'
 import type { RunningService } from '@renderer/types/service'
 import { cn } from '@renderer/lib/utils'
@@ -18,7 +18,7 @@ export const ServicesPage: React.FC = () => {
   const [subTab, setSubTab] = useState<'services' | 'configs' | 'ports'>('services')
   const { runningServices, stopService, restartService } = useServiceStore()
   const { addConfig, configs } = useRunConfigStore()
-  const { projects } = useProjectStore()
+  const { projects, activeWorkspace, isWorkspaceScoped } = useWorkspaceProjects()
   const { ports } = usePortStore()
 
   const [dialogOpen, setDialogOpen] = useState(false)
@@ -35,11 +35,23 @@ export const ServicesPage: React.FC = () => {
     await addConfig(data)
   }
 
+  // Filter running services to active workspace when scoped
+  const scopedRunningServices = useMemo(() => {
+    if (!isWorkspaceScoped) return runningServices
+    const projIds = new Set(projects.map(p => p.id))
+    const projNames = new Set(projects.map(p => p.name.toLowerCase()))
+    return runningServices.filter(s => 
+      (s.projectId && projIds.has(s.projectId)) ||
+      (s.projectName && projNames.has(s.projectName.toLowerCase())) ||
+      (s.projectId === 'workspace' && s.projectName === activeWorkspace?.name)
+    )
+  }, [runningServices, projects, isWorkspaceScoped, activeWorkspace])
+
   // Group running services by project
   const groupedServices = useMemo(() => {
     const map = new Map<string, { projectId: string; projectName: string; projectPath?: string; services: RunningService[] }>()
     
-    for (const service of runningServices) {
+    for (const service of scopedRunningServices) {
       const key = service.projectId || service.projectName || 'other'
       if (!map.has(key)) {
         const proj = projects.find(p => p.id === service.projectId || p.name === service.projectName)
@@ -54,7 +66,7 @@ export const ServicesPage: React.FC = () => {
     }
     
     return Array.from(map.values())
-  }, [runningServices, projects])
+  }, [scopedRunningServices, projects])
 
   const dialogProject = projects.find(p => p.id === selectedProjectId) ?? projects[0]
 

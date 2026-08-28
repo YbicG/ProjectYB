@@ -3,7 +3,7 @@ import { GitBranch, GitCommit, ArrowUp, ArrowDown, FolderGit2, RefreshCw } from 
 import { Card, CardHeader, CardTitle, CardContent } from '../ui/card';
 import { Badge } from '../ui/badge';
 import { Button } from '../ui/button';
-import { useProjectStore } from '@renderer/stores/useProjectStore';
+import { useWorkspaceProjects } from '@renderer/hooks/useWorkspaceProjects';
 import { useGitStore } from '@renderer/stores/useGitStore';
 import { useAppStore } from '@renderer/stores/useAppStore';
 
@@ -17,7 +17,7 @@ interface CommitFeedEntry {
 }
 
 export const GitActivityFeedWidget: React.FC = () => {
-  const { projects } = useProjectStore();
+  const { projects } = useWorkspaceProjects();
   const { statuses, fetchStatus } = useGitStore();
   const { setActiveTab } = useAppStore();
 

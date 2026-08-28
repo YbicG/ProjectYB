@@ -17,6 +17,7 @@ import { useServiceStore } from '@renderer/stores/useServiceStore';
 import { usePortStore } from '@renderer/stores/usePortStore';
 import { useSearchStore } from '@renderer/stores/useSearchStore';
 import { useThemeStore } from '@renderer/stores/useThemeStore';
+import { useWorkspaceProjects } from '@renderer/hooks/useWorkspaceProjects';
 import { NotificationCenter } from '../../shared/NotificationCenter';
 import { Button } from '../../ui/button';
 import { Badge } from '../../ui/badge';
@@ -24,7 +25,8 @@ import { cn } from '@renderer/lib/utils';
 
 export const ModernHeader: React.FC = () => {
   const { activeTab } = useAppStore();
-  const { selectedProjectId, projects } = useProjectStore();
+  const { selectedProjectId } = useProjectStore();
+  const { projects, activeWorkspace, isWorkspaceScoped, setActiveWorkspace } = useWorkspaceProjects();
   const { metrics } = useSystemStore();
   const { runningServices } = useServiceStore();
   const { ports } = usePortStore();
@@ -67,9 +69,21 @@ export const ModernHeader: React.FC = () => {
     <header className="h-14 px-4 bg-zinc-950/80 backdrop-blur-xl border-b border-zinc-800/80 flex items-center justify-between gap-4 select-none shrink-0 z-10">
       {/* ── Left: Contextual Breadcrumbs ── */}
       <div className="flex items-center gap-1.5 min-w-0 text-xs">
-        <span className="font-semibold text-zinc-400 hover:text-zinc-200 transition-colors">
-          Workspace
-        </span>
+        {isWorkspaceScoped && activeWorkspace ? (
+          <button
+            onClick={() => setActiveWorkspace(null)}
+            title="Click to switch back to All Projects"
+            className="flex items-center gap-1.5 font-bold text-violet-400 hover:text-violet-300 transition-colors px-2 py-1 rounded-md bg-violet-950/40 border border-violet-500/30"
+          >
+            <span>📁</span>
+            <span className="truncate max-w-[140px]">{activeWorkspace.name}</span>
+            <span className="text-[10px] font-mono text-violet-300/80">({projects.length})</span>
+          </button>
+        ) : (
+          <span className="font-semibold text-zinc-400 hover:text-zinc-200 transition-colors">
+            🌐 All Projects
+          </span>
+        )}
         <ChevronRight className="w-3.5 h-3.5 text-zinc-600 shrink-0" />
         <span className="font-bold text-zinc-100 truncate flex items-center gap-1.5">
           {getSectionTitle()}

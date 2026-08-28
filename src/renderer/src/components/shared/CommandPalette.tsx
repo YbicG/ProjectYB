@@ -32,6 +32,7 @@ import {
 import { CommandDialog, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '../ui/command';
 import { useAppStore } from '@renderer/stores/useAppStore';
 import { useProjectStore } from '@renderer/stores/useProjectStore';
+import { useWorkspaceProjects } from '@renderer/hooks/useWorkspaceProjects';
 import { useTerminalStore } from '@renderer/stores/useTerminalStore';
 import { useServiceStore } from '@renderer/stores/useServiceStore';
 import { useCloudflareStore } from '@renderer/stores/useCloudflareStore';
@@ -55,7 +56,8 @@ import { toast } from 'sonner';
 export const CommandPalette: React.FC = () => {
   const { setActiveTab, commandPaletteOpen, setCommandPaletteOpen } = useAppStore();
   const { setModalOpen: setMobileModalOpen } = useMobileStore();
-  const { projects, selectProject } = useProjectStore();
+  const { selectProject } = useProjectStore();
+  const { projects, activeWorkspace, isWorkspaceScoped, setActiveWorkspace } = useWorkspaceProjects();
   const { createTerminal } = useTerminalStore();
   const { profiles, startProfile } = useServiceStore();
   const { setDialogOpen: setTemplateDialogOpen } = useTemplateStore();
@@ -199,7 +201,7 @@ export const CommandPalette: React.FC = () => {
           </CommandItem>
         </CommandGroup>
 
-        <CommandGroup heading="Projects">
+        <CommandGroup heading={isWorkspaceScoped && activeWorkspace ? `Projects in Workspace: ${activeWorkspace.name}` : "Projects"}>
           {projects.map((project) => (
             <CommandItem key={project.id} onSelect={() => handleSelectProject(project.id)}>
               <FolderOpen className="mr-2 h-4 w-4" />

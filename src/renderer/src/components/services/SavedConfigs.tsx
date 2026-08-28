@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useState, useMemo } from 'react'
 import { Play, Pencil, Trash2, Plus, Terminal, Layers, ChevronDown } from 'lucide-react'
 import { Button } from '../ui/button'
 import { Badge } from '../ui/badge'
@@ -11,7 +11,7 @@ import {
 } from '../ui/dropdown-menu'
 import { useRunConfigStore, type RunConfig, type ExecutionMode } from '@renderer/stores/useRunConfigStore'
 import { useServiceStore } from '@renderer/stores/useServiceStore'
-import { useProjectStore } from '@renderer/stores/useProjectStore'
+import { useWorkspaceProjects } from '@renderer/hooks/useWorkspaceProjects'
 import { RunConfigDialog } from './RunConfigDialog'
 import { toast } from 'sonner'
 
@@ -23,7 +23,7 @@ interface SavedConfigsProps {
 export const SavedConfigs: React.FC<SavedConfigsProps> = ({ projectId }) => {
   const { configs, load, addConfig, updateConfig, deleteConfig } = useRunConfigStore()
   const { startService } = useServiceStore()
-  const { projects } = useProjectStore()
+  const { projects, isWorkspaceScoped } = useWorkspaceProjects()
 
   const [dialogOpen, setDialogOpen] = useState(false)
   const [editing, setEditing] = useState<RunConfig | undefined>()
@@ -33,7 +33,16 @@ export const SavedConfigs: React.FC<SavedConfigsProps> = ({ projectId }) => {
     load()
   }, [])
 
-  const displayed = projectId ? configs.filter((c) => c.projectId === projectId) : configs
+  const displayed = useMemo(() => {
+    if (projectId) {
+      return configs.filter((c) => c.projectId === projectId)
+    }
+    if (isWorkspaceScoped) {
+      const allowedIds = new Set(projects.map((p) => p.id))
+      return configs.filter((c) => allowedIds.has(c.projectId) || c.projectId === 'workspace')
+    }
+    return configs
+  }, [configs, projectId, isWorkspaceScoped, projects])
 
   const handleLaunch = async (config: RunConfig, overrideMode?: ExecutionMode) => {
     const cmds = config.commands?.length
@@ -136,9 +145,9 @@ export const SavedConfigs: React.FC<SavedConfigsProps> = ({ projectId }) => {
             </p>
           </div>
         ) : (
-          displayed.map((config) => {
+          displayed.map((config: RunConfig) => {
             const cmdList = config.commands?.length
-              ? config.commands.filter((c) => c.command.trim())
+              ? config.commands.filter((c: any) => c.command.trim())
               : config.command
                 ? [{ id: '1', name: '', command: config.command }]
                 : []
@@ -206,7 +215,7 @@ export const SavedConfigs: React.FC<SavedConfigsProps> = ({ projectId }) => {
 
                 {/* Commands Preview */}
                 <div className="space-y-1 bg-zinc-950/90 p-2 rounded-lg border border-zinc-850 w-full min-w-0 overflow-hidden">
-                  {cmdList.map((cmd, idx) => (
+                  {cmdList.map((cmd: any, idx: number) => (
                     <div
                       key={cmd.id || idx}
                       className="flex items-center gap-1.5 text-[11px] font-mono text-zinc-300 min-w-0 w-full overflow-hidden"

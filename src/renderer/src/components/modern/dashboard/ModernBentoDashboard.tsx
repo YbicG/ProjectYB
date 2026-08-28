@@ -38,6 +38,8 @@ import {
 } from '../../ui/dropdown-menu';
 import { StatusDot } from '../../shared/StatusDot';
 import { useProjectStore } from '@renderer/stores/useProjectStore';
+import { useWorkspaceProjects } from '@renderer/hooks/useWorkspaceProjects';
+import { useWorkspaceStore } from '@renderer/stores/useWorkspaceStore';
 import { useServiceStore } from '@renderer/stores/useServiceStore';
 import { useSystemStore } from '@renderer/stores/useSystemStore';
 import { useTerminalStore } from '@renderer/stores/useTerminalStore';
@@ -62,7 +64,6 @@ const PROJECT_TYPE_FILTERS: Array<{ id: ProjectType | 'all'; label: string }> = 
 
 export const ModernBentoDashboard: React.FC = () => {
   const {
-    projects,
     pinnedProjectIds,
     togglePinProject,
     selectProject,
@@ -71,6 +72,15 @@ export const ModernBentoDashboard: React.FC = () => {
     isScanning
   } = useProjectStore();
 
+  const {
+    projects,
+    allProjects,
+    activeWorkspace,
+    isWorkspaceScoped,
+    setActiveWorkspace
+  } = useWorkspaceProjects();
+
+  const { openEditor } = useWorkspaceStore();
   const { runningServices, startService, stopService, restartService } = useServiceStore();
   const { metrics } = useSystemStore();
   const { createTerminal } = useTerminalStore();
@@ -138,6 +148,49 @@ export const ModernBentoDashboard: React.FC = () => {
 
   return (
     <div className="p-4 sm:p-6 space-y-6 max-w-7xl mx-auto overflow-y-auto">
+      {/* ── Active Workspace Scope Banner ── */}
+      {activeWorkspace && (
+        <div className="flex items-center justify-between gap-3 p-3.5 rounded-2xl bg-gradient-to-r from-violet-950/60 via-zinc-900/80 to-zinc-950/80 border border-violet-500/40 backdrop-blur-xl shadow-lg">
+          <div className="flex items-center gap-3 min-w-0">
+            <div className="w-9 h-9 rounded-xl bg-violet-600/20 border border-violet-500/30 flex items-center justify-center text-violet-400 shrink-0">
+              <Layers className="w-5 h-5" />
+            </div>
+            <div className="min-w-0">
+              <div className="flex items-center gap-2">
+                <span className="text-[10px] uppercase font-bold tracking-wider text-violet-400 font-mono">Workspace Scope</span>
+                <span className="w-1.5 h-1.5 rounded-full bg-violet-400 animate-pulse" />
+              </div>
+              <h2 className="text-sm font-black text-white truncate">
+                {activeWorkspace.name}
+                <span className="text-xs text-zinc-400 font-normal ml-2 font-mono">
+                  ({projects.length} of {allProjects.length} repos visible)
+                </span>
+              </h2>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2 shrink-0">
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => openEditor(activeWorkspace)}
+              className="h-8 text-xs border-violet-500/30 text-violet-300 hover:bg-violet-950/40"
+            >
+              <Settings className="w-3.5 h-3.5 mr-1.5 text-violet-400" />
+              Edit Workspace
+            </Button>
+            <Button
+              size="sm"
+              variant="ghost"
+              onClick={() => setActiveWorkspace(null)}
+              className="h-8 text-xs text-zinc-400 hover:text-white"
+            >
+              Show All Repos
+            </Button>
+          </div>
+        </div>
+      )}
+
       {/* ── Top Bento Row: Quick Telemetry & Pinned Projects Hub ── */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
         {/* Bento Tile 1: Telemetry Command Pill (4 cols) */}
@@ -385,7 +438,26 @@ export const ModernBentoDashboard: React.FC = () => {
       </div>
 
       {/* ── Main Projects Bento Grid ── */}
-      {filteredProjects.length === 0 ? (
+      {projects.length === 0 && isWorkspaceScoped ? (
+        <div className="py-16 rounded-3xl border border-dashed border-violet-500/30 bg-violet-950/20 flex flex-col items-center justify-center text-center p-8 space-y-3">
+          <div className="w-12 h-12 rounded-2xl bg-violet-600/20 border border-violet-500/30 flex items-center justify-center text-violet-400">
+            <Layers className="w-6 h-6" />
+          </div>
+          <div>
+            <p className="text-sm font-bold text-zinc-200">Workspace &quot;{activeWorkspace?.name}&quot; is empty</p>
+            <p className="text-xs text-zinc-400 mt-1 max-w-sm">No repositories have been assigned to this workspace yet.</p>
+          </div>
+          <div className="flex gap-2 pt-2">
+            <Button size="sm" onClick={() => openEditor(activeWorkspace)} className="bg-violet-600 hover:bg-violet-500 text-xs">
+              <Plus className="w-3.5 h-3.5 mr-1.5" />
+              Add Repos to Workspace
+            </Button>
+            <Button size="sm" variant="outline" onClick={() => setActiveWorkspace(null)} className="border-zinc-800 text-xs text-zinc-300">
+              Show All Repos
+            </Button>
+          </div>
+        </div>
+      ) : filteredProjects.length === 0 ? (
         <div className="py-16 rounded-2xl border border-dashed border-zinc-800 flex flex-col items-center justify-center text-center p-6 text-zinc-500 space-y-2">
           <FolderOpen className="w-8 h-8 opacity-40 mb-1" />
           <p className="text-sm font-semibold text-zinc-300">No matching projects found</p>
@@ -441,46 +513,60 @@ export const ModernBentoDashboard: React.FC = () => {
                             togglePinProject(project.id);
                           }}
                           className={cn(
-                            'p-1 rounded transition-colors',
-                            isPinned ? 'text-amber-400' : 'text-zinc-600 hover:text-zinc-300'
+                            'p-1 rounded-md transition-colors',
+                            isPinned
+                              ? 'text-amber-400 hover:text-zinc-400'
+                              : 'text-zinc-600 hover:text-zinc-300 opacity-0 group-hover:opacity-100'
                           )}
-                          title={isPinned ? 'Unpin' : 'Pin to favorites'}
+                          title={isPinned ? 'Unpin' : 'Pin to top'}
                         >
                           <Pin className={cn('w-3.5 h-3.5', isPinned && 'fill-amber-400')} />
                         </button>
 
                         <DropdownMenu>
-                          <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
-                            <Button variant="ghost" size="icon" className="h-6 w-6 text-zinc-500 hover:text-zinc-200">
+                          <DropdownMenuTrigger asChild>
+                            <button
+                              onClick={(e) => e.stopPropagation()}
+                              className="p-1 text-zinc-500 hover:text-zinc-200 rounded-md transition-colors"
+                            >
                               <MoreVertical className="w-3.5 h-3.5" />
-                            </Button>
+                            </button>
                           </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end" className="bg-zinc-950 border-zinc-800 text-xs w-48 z-50">
-                            <DropdownMenuItem onClick={(e) => { e.stopPropagation(); setConfigProject(project); }}>
-                              <Settings className="w-3.5 h-3.5 mr-2 text-zinc-400" />
-                              Configure Project...
+                          <DropdownMenuContent align="end" className="w-44 bg-zinc-900 border-zinc-800 text-zinc-300">
+                            <DropdownMenuItem
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setConfigProject(project);
+                              }}
+                            >
+                              <Settings className="w-3.5 h-3.5 mr-2 text-violet-400" />
+                              Configure Project
                             </DropdownMenuItem>
-                            <DropdownMenuItem onClick={(e) => { e.stopPropagation(); setEnvProject(project); }}>
+                            <DropdownMenuItem
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setEnvProject(project);
+                              }}
+                            >
                               <Lock className="w-3.5 h-3.5 mr-2 text-amber-400" />
-                              Manage Env (.env)
+                              Manage .env
                             </DropdownMenuItem>
-                            <DropdownMenuItem onClick={(e) => { e.stopPropagation(); setSnapshotProject(project); }}>
+                            <DropdownMenuItem
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setSnapshotProject(project);
+                              }}
+                            >
                               <Archive className="w-3.5 h-3.5 mr-2 text-cyan-400" />
-                              Create Snapshot Backup...
-                            </DropdownMenuItem>
-                            <DropdownMenuSeparator className="bg-zinc-800" />
-                            <DropdownMenuItem onClick={(e) => { e.stopPropagation(); handleOpenVSCode(project.path); }}>
-                              <Code className="w-3.5 h-3.5 mr-2 text-blue-400" />
-                              Open in VS Code
-                            </DropdownMenuItem>
-                            <DropdownMenuItem onClick={(e) => { e.stopPropagation(); handleOpenFolder(project.path); }}>
-                              <FolderOpen className="w-3.5 h-3.5 mr-2 text-emerald-400" />
-                              Open in Explorer
+                              Snapshot / Backup
                             </DropdownMenuItem>
                             <DropdownMenuSeparator className="bg-zinc-800" />
                             <DropdownMenuItem
-                              onClick={(e) => { e.stopPropagation(); handleIgnoreProject(project); }}
-                              className="text-rose-400 focus:text-rose-300 focus:bg-rose-950/30"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleIgnoreProject(project);
+                              }}
+                              className="text-rose-400 focus:text-rose-300 focus:bg-rose-950/40"
                             >
                               <EyeOff className="w-3.5 h-3.5 mr-2" />
                               Ignore Project
@@ -490,29 +576,73 @@ export const ModernBentoDashboard: React.FC = () => {
                       </div>
                     </div>
 
-                    {/* Tags & Badges */}
-                    <div className="flex items-center gap-1.5 flex-wrap mt-3">
-                      <Badge variant="outline" className="text-[9px] font-mono px-1.5 py-0 uppercase bg-zinc-900 border-zinc-800 text-zinc-300">
+                    {/* Middle: Category & Tags */}
+                    <div className="flex items-center gap-1.5 flex-wrap mt-2.5">
+                      {project.category && (
+                        <span className="text-[10px] font-mono px-2 py-0.5 rounded-md bg-zinc-900 border border-zinc-800 text-zinc-400">
+                          {project.category}
+                        </span>
+                      )}
+                      <Badge variant="outline" className="text-[9px] font-mono uppercase px-1.5 py-0 border-zinc-800 text-zinc-400">
                         {project.type}
                       </Badge>
-                      <Badge variant="outline" className="text-[9px] font-mono px-1.5 py-0 bg-zinc-900 border-zinc-800 text-zinc-400">
-                        {project.category}
-                      </Badge>
                       {project.isGitRepo && (
-                        <Badge variant="outline" className="text-[9px] font-mono px-1.5 py-0 border-violet-500/30 text-violet-400 flex items-center gap-1">
-                          <GitBranch className="w-2.5 h-2.5" /> git
-                        </Badge>
+                        <span className="flex items-center gap-1 text-[10px] font-mono text-zinc-500">
+                          <GitBranch className="w-3 h-3 text-violet-400" />
+                          git
+                        </span>
                       )}
                     </div>
                   </div>
 
-                  {/* Bottom Action Footer */}
-                  <div className="flex items-center justify-between pt-3 mt-3 border-t border-zinc-800/80">
-                    <span className="text-[11px] text-zinc-500 font-mono">
-                      {scriptKeys.length} scripts
-                    </span>
+                  {/* Bottom: Quick 1-Tap Scripts or Default Actions */}
+                  <div className="pt-3 mt-3 border-t border-zinc-900 flex items-center justify-between gap-2">
+                    <div className="flex items-center gap-1 overflow-x-auto no-scrollbar flex-1">
+                      {scriptKeys.slice(0, 2).map((scriptName) => {
+                        const cmd = project.scripts![scriptName];
+                        const isThisRunning = runningServices.some(
+                          (s) => s.projectId === project.id && s.name === scriptName
+                        );
 
-                    <div className="flex items-center gap-1 opacity-80 group-hover:opacity-100 transition-opacity">
+                        return (
+                          <button
+                            key={scriptName}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              if (isThisRunning) {
+                                const svc = runningServices.find(
+                                  (s) => s.projectId === project.id && s.name === scriptName
+                                );
+                                if (svc) stopService(svc.id);
+                              } else {
+                                startService(project.id, project.name, {
+                                  name: scriptName,
+                                  command: cmd,
+                                  cwd: project.path,
+                                  autoRestart: false,
+                                  env: {}
+                                });
+                              }
+                            }}
+                            className={cn(
+                              'px-2 py-1 rounded-lg text-[10px] font-mono transition-colors flex items-center gap-1 border shrink-0',
+                              isThisRunning
+                                ? 'bg-emerald-950/60 border-emerald-500/40 text-emerald-300'
+                                : 'bg-zinc-900 hover:bg-zinc-850 border-zinc-800 text-zinc-300'
+                            )}
+                          >
+                            {isThisRunning ? (
+                              <Square className="w-2.5 h-2.5 fill-emerald-400 text-emerald-400" />
+                            ) : (
+                              <Play className="w-2.5 h-2.5 fill-current" />
+                            )}
+                            {scriptName}
+                          </button>
+                        );
+                      })}
+                    </div>
+
+                    <div className="flex items-center gap-0.5 shrink-0">
                       <Button
                         variant="ghost"
                         size="icon"
@@ -533,7 +663,7 @@ export const ModernBentoDashboard: React.FC = () => {
                           e.stopPropagation();
                           handleOpenVSCode(project.path);
                         }}
-                        title="Open in VS Code"
+                        title="Open VS Code"
                       >
                         <Code className="w-3.5 h-3.5" />
                       </Button>

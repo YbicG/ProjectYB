@@ -1,6 +1,6 @@
 import React, { useMemo } from 'react'
 import { FolderGit2, Activity, GitBranch, Clock, Sparkles } from 'lucide-react'
-import { useProjectStore } from '@renderer/stores/useProjectStore'
+import { useWorkspaceProjects } from '@renderer/hooks/useWorkspaceProjects'
 import { useServiceStore } from '@renderer/stores/useServiceStore'
 import { useGitStore } from '@renderer/stores/useGitStore'
 import { useHealthStore } from '@renderer/stores/useHealthStore'
@@ -38,8 +38,7 @@ const StatCard: React.FC<StatCardProps> = ({ icon, label, value, accent, onClick
  * Shows: total projects, running services, projects with git changes, last scan time, and Health Analytics trigger.
  */
 export const HealthOverview: React.FC = () => {
-  const projects = useProjectStore((s) => s.projects)
-  const isScanning = useProjectStore((s) => s.isScanning)
+  const { projects, isScanning } = useWorkspaceProjects()
   const runningServices = useServiceStore((s) => s.runningServices)
   const statuses = useGitStore((s) => s.statuses)
   const { setModalOpen } = useHealthStore()

@@ -22,13 +22,15 @@ import { GitConflictResolverModal } from '../components/git/GitConflictResolverM
 import { Button } from '../components/ui/button'
 import { Badge } from '../components/ui/badge'
 import { useProjectStore } from '@renderer/stores/useProjectStore'
+import { useWorkspaceProjects } from '@renderer/hooks/useWorkspaceProjects'
 import { useGitStore, GitSubTab } from '@renderer/stores/useGitStore'
 import { toast } from 'sonner'
 import { cn } from '@renderer/lib/utils'
 
 export const GitPage: React.FC = () => {
   const [conflictModalOpen, setConflictModalOpen] = useState(false)
-  const { projects, selectProject: selectProjectStore } = useProjectStore()
+  const { selectProject: selectProjectStore } = useProjectStore()
+  const { projects, activeWorkspace, isWorkspaceScoped } = useWorkspaceProjects()
   const {
     selectedProjectId,
     selectProject,
@@ -41,19 +43,19 @@ export const GitPage: React.FC = () => {
     isLoading
   } = useGitStore()
 
-  const project = projects.find((p) => p.id === selectedProjectId)
-  const status = selectedProjectId ? statuses.get(selectedProjectId) : undefined
+  const project = projects.find((p) => p.id === selectedProjectId) || projects[0]
+  const status = project ? statuses.get(project.id) : undefined
 
   useEffect(() => {
-    if (!selectedProjectId && projects.length > 0) {
-      const first = projects[0]
-      selectProject(first.id)
-      selectProjectStore(first.id)
-      fetchStatus(first.id, first.path)
-    } else if (selectedProjectId) {
-      const current = projects.find((p) => p.id === selectedProjectId)
-      if (current) {
-        fetchStatus(current.id, current.path)
+    if (projects.length > 0) {
+      const isCurrentInList = projects.some((p) => p.id === selectedProjectId)
+      if (!selectedProjectId || !isCurrentInList) {
+        const first = projects[0]
+        selectProject(first.id)
+        selectProjectStore(first.id)
+        fetchStatus(first.id, first.path)
+      } else if (project) {
+        fetchStatus(project.id, project.path)
       }
     }
   }, [projects, selectedProjectId])
@@ -177,6 +179,12 @@ export const GitPage: React.FC = () => {
                 <RefreshCw className={cn('w-3.5 h-3.5', isLoading && 'animate-spin')} />
               </Button>
             </div>
+          )}
+
+          {isWorkspaceScoped && activeWorkspace && (
+            <Badge variant="outline" className="text-[10px] font-mono border-violet-500/40 text-violet-300">
+              📁 {activeWorkspace.name}
+            </Badge>
           )}
 
           <select
