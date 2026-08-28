@@ -38,18 +38,31 @@ const StatCard: React.FC<StatCardProps> = ({ icon, label, value, accent, onClick
  * Shows: total projects, running services, projects with git changes, last scan time, and Health Analytics trigger.
  */
 export const HealthOverview: React.FC = () => {
-  const { projects, isScanning } = useWorkspaceProjects()
+  const { projects, isScanning, isWorkspaceScoped, activeWorkspace } = useWorkspaceProjects()
   const runningServices = useServiceStore((s) => s.runningServices)
   const statuses = useGitStore((s) => s.statuses)
   const { setModalOpen } = useHealthStore()
 
   const projectsWithChanges = useMemo(() => {
+    const projectIds = new Set(projects.map((p) => p.id))
     let count = 0
-    statuses.forEach((status) => {
-      if (!status.isClean) count++
+    statuses.forEach((status, id) => {
+      if (projectIds.has(id) && !status.isClean) count++
     })
     return count
-  }, [statuses])
+  }, [statuses, projects])
+
+  const scopedRunningCount = useMemo(() => {
+    if (!isWorkspaceScoped) return runningServices.length
+    const projectIds = new Set(projects.map((p) => p.id))
+    const projectNames = new Set(projects.map((p) => p.name.toLowerCase()))
+    return runningServices.filter(
+      (s) =>
+        (s.projectId && projectIds.has(s.projectId)) ||
+        (s.projectName && projectNames.has(s.projectName.toLowerCase())) ||
+        (s.projectId === 'workspace' && s.projectName === activeWorkspace?.name)
+    ).length
+  }, [runningServices, projects, isWorkspaceScoped, activeWorkspace])
 
   const lastScan = useMemo(() => {
     if (isScanning) return 'Scanning…'
@@ -68,7 +81,7 @@ export const HealthOverview: React.FC = () => {
       <StatCard
         icon={<Activity className="h-4 w-4 text-green-400" />}
         label="Running Services"
-        value={runningServices.length}
+        value={scopedRunningCount}
         accent="bg-green-500/10"
       />
       <StatCard

@@ -25,9 +25,9 @@ export const ServicesPage: React.FC = () => {
   const [selectedProjectId, setSelectedProjectId] = useState<string>('')
 
   const handleStopAll = () => {
-    const count = runningServices.length
+    const count = scopedRunningServices.length
     if (count === 0) return
-    runningServices.forEach(service => stopService(service.id))
+    scopedRunningServices.forEach(service => stopService(service.id))
     toast.info(`Stopped ${count} running service${count > 1 ? 's' : ''}`)
   }
 
@@ -82,7 +82,7 @@ export const ServicesPage: React.FC = () => {
           )}
         >
           <Server className="w-4 h-4" />
-          Running Services ({runningServices.length})
+          Running Services ({scopedRunningServices.length})
         </button>
 
         {/* Dedicated Saved Configs tab */}
@@ -105,7 +105,7 @@ export const ServicesPage: React.FC = () => {
           )}
         >
           <Radio className="w-4 h-4" />
-          Active Ports ({ports.length})
+          Ports ({ports.length})
         </button>
       </div>
 
@@ -116,7 +116,7 @@ export const ServicesPage: React.FC = () => {
       )}
 
       {subTab === 'configs' && (
-        <div className="flex-1 overflow-hidden p-4 bg-zinc-950/50">
+        <div className="flex-1 overflow-y-auto p-4 sm:p-6 bg-zinc-950/50">
           <div className="max-w-2xl mx-auto h-full">
             <SavedConfigs />
           </div>
@@ -131,7 +131,7 @@ export const ServicesPage: React.FC = () => {
               <div>
                 <h1 className="text-lg sm:text-xl font-bold tracking-tight">Services</h1>
                 <p className="text-xs sm:text-sm text-zinc-400 mt-0.5">
-                  {runningServices.length} running service{runningServices.length !== 1 ? 's' : ''} across {groupedServices.length} project{groupedServices.length !== 1 ? 's' : ''}
+                  {scopedRunningServices.length} running service{scopedRunningServices.length !== 1 ? 's' : ''} across {groupedServices.length} project{groupedServices.length !== 1 ? 's' : ''}
                 </p>
               </div>
 
@@ -165,7 +165,7 @@ export const ServicesPage: React.FC = () => {
                   size="sm"
                   className="h-8 sm:h-9 text-xs border-red-500/20 text-red-400 hover:bg-red-500/10 hover:text-red-400"
                   onClick={handleStopAll}
-                  disabled={runningServices.length === 0}
+                  disabled={scopedRunningServices.length === 0}
                 >
                   <Square className="w-3.5 h-3.5 mr-1 sm:mr-2" />
                   Stop All
@@ -174,7 +174,7 @@ export const ServicesPage: React.FC = () => {
             </div>
 
             <div className="flex-1 p-3 sm:p-6 overflow-y-auto bg-zinc-950/50 space-y-4 sm:space-y-6">
-              {runningServices.length === 0 ? (
+              {scopedRunningServices.length === 0 ? (
                 <div className="flex flex-col items-center justify-center h-full text-zinc-500 gap-2 p-8 text-center">
                   <p className="text-sm">No services are currently running.</p>
                   <p className="text-xs text-zinc-600 max-w-sm">

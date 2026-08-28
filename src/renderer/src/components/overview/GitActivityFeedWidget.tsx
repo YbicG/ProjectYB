@@ -62,8 +62,10 @@ export const GitActivityFeedWidget: React.FC = () => {
   useEffect(() => {
     if (projects.length > 0) {
       loadFeed();
+    } else {
+      setRecentCommits([]);
     }
-  }, [projects.length]);
+  }, [projects]);
 
   return (
     <Card className="bg-zinc-950/80 border-zinc-800/90 flex flex-col h-full overflow-hidden backdrop-blur-sm">
