@@ -37,6 +37,7 @@ import { useHealthStore } from '@renderer/stores/useHealthStore';
 import { useThemeStore } from '@renderer/stores/useThemeStore';
 import { useSearchStore } from '@renderer/stores/useSearchStore';
 import { useSnippetStore } from '@renderer/stores/useSnippetStore';
+import { useMobileStore } from '@renderer/stores/useMobileStore';
 
 const tabs: Array<{ id: TabType; label: string; icon: React.ComponentType<{ className?: string }> }> = [
   { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
@@ -60,7 +61,7 @@ const tabs: Array<{ id: TabType; label: string; icon: React.ComponentType<{ clas
 ];
 
 export const TopNav: React.FC = () => {
-  const { activeTab, setActiveTab, setCommandPaletteOpen, setMobileModalOpen } = useAppStore();
+  const { activeTab, setActiveTab, setCommandPaletteOpen } = useAppStore();
   const { terminals } = useTerminalStore();
   const { services } = useServiceStore();
   const { statuses } = useGitStore();
@@ -70,6 +71,7 @@ export const TopNav: React.FC = () => {
   const { setShortcutsModalOpen } = useThemeStore();
   const { setModalOpen: setSearchModalOpen } = useSearchStore();
   const { setModalOpen: setSnippetModalOpen } = useSnippetStore();
+  const { setModalOpen: setMobileModalOpen } = useMobileStore();
 
   const activeTerminalsCount = terminals.filter(t => t.status === 'running').length;
   const runningServicesCount = services.filter(s => s.status === 'running').length;

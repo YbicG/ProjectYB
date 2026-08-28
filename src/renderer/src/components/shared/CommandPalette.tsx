@@ -49,10 +49,12 @@ import { usePipelineStore } from '@renderer/stores/usePipelineStore';
 import { useProxyStore } from '@renderer/stores/useProxyStore';
 import { useSyncStore } from '@renderer/stores/useSyncStore';
 import { useMockServerStore } from '@renderer/stores/useMockServerStore';
+import { useMobileStore } from '@renderer/stores/useMobileStore';
 import { toast } from 'sonner';
 
 export const CommandPalette: React.FC = () => {
-  const { setActiveTab, commandPaletteOpen, setCommandPaletteOpen, setMobileModalOpen } = useAppStore();
+  const { setActiveTab, commandPaletteOpen, setCommandPaletteOpen } = useAppStore();
+  const { setModalOpen: setMobileModalOpen } = useMobileStore();
   const { projects, selectProject } = useProjectStore();
   const { createTerminal } = useTerminalStore();
   const { profiles, startProfile } = useServiceStore();
@@ -234,6 +236,10 @@ export const CommandPalette: React.FC = () => {
           <CommandItem onSelect={() => runCommand(() => { setActiveTab('proxy'); openProxyEditor(); })}>
             <Globe className="mr-2 h-4 w-4 text-cyan-400" />
             Add Local HTTPS Domain Route (.test / .local)...
+          </CommandItem>
+          <CommandItem onSelect={() => runCommand(() => setMobileModalOpen(true))}>
+            <Smartphone className="mr-2 h-4 w-4 text-violet-400" />
+            Launch Mobile Remote Companion (PWA & Tunnel) (Ctrl+Shift+M)...
           </CommandItem>
           <CommandItem onSelect={() => runCommand(() => { setActiveTab('settings'); setBackupModalOpen(true); })}>
             <Shield className="mr-2 h-4 w-4 text-violet-400" />

@@ -6,6 +6,7 @@ import { useThemeStore } from '../stores/useThemeStore'
 import { useSearchStore } from '../stores/useSearchStore'
 import { useSnippetStore } from '../stores/useSnippetStore'
 import { useOverviewStore } from '../stores/useOverviewStore'
+import { useMobileStore } from '../stores/useMobileStore'
 import { useAiStore } from '../stores/useAiStore'
 import type { TabType } from '../stores/useAppStore'
 
@@ -18,6 +19,7 @@ export function useKeyboard() {
   const { setShortcutsModalOpen, shortcutsModalOpen } = useThemeStore()
   const { setModalOpen: setSearchModalOpen, isModalOpen: searchModalOpen } = useSearchStore()
   const { setModalOpen: setSnippetModalOpen, isModalOpen: snippetModalOpen } = useSnippetStore()
+  const { setModalOpen: setMobileModalOpen, modalOpen: mobileModalOpen } = useMobileStore()
   const { toggleFullscreen } = useOverviewStore()
 
   useEffect(() => {
@@ -26,6 +28,13 @@ export function useKeyboard() {
         e.target instanceof HTMLInputElement ||
         e.target instanceof HTMLTextAreaElement ||
         (e.target as HTMLElement)?.isContentEditable
+
+      // Mobile Remote Companion: Ctrl+Shift+M
+      if ((e.ctrlKey || e.metaKey) && e.shiftKey && (e.key === 'M' || e.key === 'm')) {
+        e.preventDefault()
+        setMobileModalOpen(!mobileModalOpen)
+        return
+      }
 
       // Global Search: Ctrl+Shift+F
       if ((e.ctrlKey || e.metaKey) && e.shiftKey && (e.key === 'F' || e.key === 'f')) {

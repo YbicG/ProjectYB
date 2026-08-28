@@ -24,6 +24,7 @@ export const ShortcutsCheatSheetModal: React.FC = () => {
     {
       title: 'Search, Tools & Vaults',
       items: [
+        { keys: ['Ctrl', 'Shift', 'M'], label: 'Mobile Remote Companion (PWA & Tunnel)' },
         { keys: ['Ctrl', 'Shift', 'F'], label: 'Global Cross-Project Search' },
         { keys: ['Ctrl', 'Shift', 'S'], label: 'Command Snippets Vault' },
         { keys: ['F11'], label: 'Toggle Fullscreen Wallboard Mode' },

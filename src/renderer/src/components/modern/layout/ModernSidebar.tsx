@@ -37,6 +37,7 @@ import { useCloudflareStore } from '@renderer/stores/useCloudflareStore';
 import { useNotesStore } from '@renderer/stores/useNotesStore';
 import { useHealthStore } from '@renderer/stores/useHealthStore';
 import { useSnippetStore } from '@renderer/stores/useSnippetStore';
+import { useMobileStore } from '@renderer/stores/useMobileStore';
 import { WorkspaceSelector } from '../../workspaces/WorkspaceSelector';
 import { cn } from '@renderer/lib/utils';
 import { Button } from '../../ui/button';
@@ -51,7 +52,8 @@ interface NavItem {
 }
 
 export const ModernSidebar: React.FC = () => {
-  const { activeTab, setActiveTab, setMobileModalOpen } = useAppStore();
+  const { activeTab, setActiveTab } = useAppStore();
+  const { setModalOpen: setMobileModalOpen } = useMobileStore();
   const {
     isSidebarCollapsed,
     toggleSidebar,
