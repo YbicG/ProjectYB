@@ -1,9 +1,10 @@
 import React, { useState, useMemo, useDeferredValue } from 'react';
-import { Search, X, FolderGit2 } from 'lucide-react';
+import { Search, X, FolderGit2, Layers } from 'lucide-react';
 import { Input } from '../ui/input';
 import { Badge } from '../ui/badge';
 import { ProjectCard } from './ProjectCard';
 import { useProjectStore } from '@renderer/stores/useProjectStore';
+import { useWorkspaceStore } from '@renderer/stores/useWorkspaceStore';
 import { cn } from '@renderer/lib/utils';
 
 const TYPE_FILTERS = ['All', 'Node', 'Python', 'Godot', 'Git', 'Rust', 'Go', '.NET', 'Docs'] as const;
@@ -11,12 +12,25 @@ type TypeFilter = typeof TYPE_FILTERS[number];
 
 export const ProjectGrid: React.FC = () => {
   const { projects, isScanning, pinnedProjectIds, searchQuery, setSearchQuery } = useProjectStore();
+  const { workspaces, activeWorkspaceId, setActiveWorkspace } = useWorkspaceStore();
   const [activeType, setActiveType] = useState<TypeFilter>('All');
   const deferredSearch = useDeferredValue(searchQuery);
 
+  const activeWorkspace = useMemo(() => {
+    return workspaces.find((w) => w.id === activeWorkspaceId);
+  }, [workspaces, activeWorkspaceId]);
+
   const filteredProjects = useMemo(() => {
     const q = deferredSearch.toLowerCase().trim();
-    return projects
+    let baseProjects = projects;
+
+    if (activeWorkspace && activeWorkspace.projectIds && activeWorkspace.projectIds.length > 0) {
+      baseProjects = projects.filter(
+        (p) => activeWorkspace.projectIds.includes(p.id) || activeWorkspace.projectIds.includes(p.path)
+      );
+    }
+
+    return baseProjects
       .filter((p) => {
         const matchesSearch =
           !q ||
@@ -42,7 +56,7 @@ export const ProjectGrid: React.FC = () => {
         if (aPinned !== bPinned) return aPinned ? -1 : 1;
         return a.name.localeCompare(b.name);
       });
-  }, [projects, deferredSearch, activeType, pinnedProjectIds]);
+  }, [projects, deferredSearch, activeType, pinnedProjectIds, activeWorkspace]);
 
   return (
     <div className="flex flex-col h-full">
@@ -73,6 +87,24 @@ export const ProjectGrid: React.FC = () => {
           </Badge>
         </div>
       </div>
+
+      {/* ── Active Workspace Filter Banner ── */}
+      {activeWorkspace && (
+        <div className="flex items-center justify-between gap-2 mb-3 px-3 py-2 rounded-xl bg-violet-950/30 border border-violet-500/30 text-violet-200 text-xs">
+          <div className="flex items-center gap-2 min-w-0">
+            <Layers className="w-4 h-4 text-violet-400 shrink-0" />
+            <span className="truncate">
+              Active Workspace: <strong className="text-white font-semibold">{activeWorkspace.name}</strong> ({activeWorkspace.projectIds?.length || 0} projects)
+            </span>
+          </div>
+          <button
+            onClick={() => setActiveWorkspace(null)}
+            className="text-[11px] text-zinc-400 hover:text-white underline font-mono shrink-0 ml-2"
+          >
+            Show All Projects
+          </button>
+        </div>
+      )}
 
       {/* ── Type Filter Pills ── */}
       <div className="flex items-center gap-1.5 mb-4 overflow-x-auto no-scrollbar flex-nowrap shrink-0">

@@ -13,44 +13,88 @@ export interface StackServiceItem {
   delayMs?: number;
 }
 
-export interface WorkspaceStack {
+export interface Workspace {
   id: string;
   name: string;
   description?: string;
   color?: string;
   icon?: string;
+  projectIds: string[];
   services: StackServiceItem[];
+  executionMode?: 'parallel' | 'sequential';
   createdAt: number;
   updatedAt: number;
 }
 
+export type WorkspaceStack = Workspace;
+
 class WorkspaceService {
-  async getStacks(): Promise<WorkspaceStack[]> {
+  async getWorkspaces(): Promise<Workspace[]> {
     const store = await getStore();
-    return (store.get('workspaceStacks', []) as WorkspaceStack[]) || [];
+    const list = (store.get('workspaceStacks', []) as Workspace[]) || [];
+    return list.map((w) => ({
+      ...w,
+      projectIds: Array.isArray(w.projectIds) ? w.projectIds : [],
+      services: Array.isArray(w.services) ? w.services : []
+    }));
   }
 
-  async saveStack(stack: WorkspaceStack): Promise<WorkspaceStack[]> {
+  async getStacks(): Promise<Workspace[]> {
+    return this.getWorkspaces();
+  }
+
+  async saveWorkspace(workspace: Workspace): Promise<Workspace[]> {
     const store = await getStore();
-    const stacks = (store.get('workspaceStacks', []) as WorkspaceStack[]) || [];
-    const index = stacks.findIndex(s => s.id === stack.id);
+    const workspaces = await this.getWorkspaces();
+    const index = workspaces.findIndex((s) => s.id === workspace.id);
+
+    const formatted: Workspace = {
+      ...workspace,
+      projectIds: Array.isArray(workspace.projectIds) ? workspace.projectIds : [],
+      services: Array.isArray(workspace.services) ? workspace.services : [],
+      updatedAt: Date.now()
+    };
 
     if (index >= 0) {
-      stacks[index] = { ...stack, updatedAt: Date.now() };
+      workspaces[index] = formatted;
     } else {
-      stacks.push({ ...stack, createdAt: Date.now(), updatedAt: Date.now() });
+      workspaces.push({ ...formatted, createdAt: Date.now() });
     }
 
-    store.set('workspaceStacks', stacks);
-    return stacks;
+    store.set('workspaceStacks', workspaces);
+    return workspaces;
   }
 
-  async deleteStack(stackId: string): Promise<WorkspaceStack[]> {
+  async saveStack(stack: WorkspaceStack): Promise<Workspace[]> {
+    return this.saveWorkspace(stack);
+  }
+
+  async deleteWorkspace(workspaceId: string): Promise<Workspace[]> {
     const store = await getStore();
-    const stacks = (store.get('workspaceStacks', []) as WorkspaceStack[]) || [];
-    const filtered = stacks.filter(s => s.id !== stackId);
+    const workspaces = await this.getWorkspaces();
+    const filtered = workspaces.filter((s) => s.id !== workspaceId);
     store.set('workspaceStacks', filtered);
+
+    const activeId = store.get('activeWorkspaceId') as string | null;
+    if (activeId === workspaceId) {
+      store.set('activeWorkspaceId', null);
+    }
+
     return filtered;
+  }
+
+  async deleteStack(stackId: string): Promise<Workspace[]> {
+    return this.deleteWorkspace(stackId);
+  }
+
+  async getActiveWorkspaceId(): Promise<string | null> {
+    const store = await getStore();
+    return (store.get('activeWorkspaceId', null) as string | null) || null;
+  }
+
+  async setActiveWorkspaceId(id: string | null): Promise<void> {
+    const store = await getStore();
+    store.set('activeWorkspaceId', id);
   }
 }
 

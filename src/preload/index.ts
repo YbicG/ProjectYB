@@ -211,8 +211,13 @@ const api = {
   },
   workspaces: {
     getStacks: () => ipcRenderer.invoke('workspaces:getStacks'),
+    getWorkspaces: () => ipcRenderer.invoke('workspaces:getWorkspaces'),
     saveStack: (stack: any) => ipcRenderer.invoke('workspaces:saveStack', stack),
-    deleteStack: (stackId: string) => ipcRenderer.invoke('workspaces:deleteStack', stackId)
+    saveWorkspace: (workspace: any) => ipcRenderer.invoke('workspaces:saveWorkspace', workspace),
+    deleteStack: (stackId: string) => ipcRenderer.invoke('workspaces:deleteStack', stackId),
+    deleteWorkspace: (workspaceId: string) => ipcRenderer.invoke('workspaces:deleteWorkspace', workspaceId),
+    getActive: () => ipcRenderer.invoke('workspaces:getActive'),
+    setActive: (id: string | null) => ipcRenderer.invoke('workspaces:setActive', id)
   },
   notes: {
     read: (projectPath: string) => ipcRenderer.invoke('notes:read', projectPath),

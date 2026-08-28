@@ -147,8 +147,13 @@ export interface IElectronAPI {
   }
   workspaces: {
     getStacks(): Promise<any[]>
+    getWorkspaces(): Promise<any[]>
     saveStack(stack: any): Promise<any[]>
+    saveWorkspace(workspace: any): Promise<any[]>
     deleteStack(stackId: string): Promise<any[]>
+    deleteWorkspace(workspaceId: string): Promise<any[]>
+    getActive(): Promise<string | null>
+    setActive(id: string | null): Promise<void>
   }
   notes: {
     read(projectPath: string): Promise<{ content: string; updatedAt: number; filePath?: string }>

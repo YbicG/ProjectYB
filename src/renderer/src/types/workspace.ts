@@ -11,15 +11,20 @@ export interface StackServiceItem {
   delayMs?: number;
 }
 
-export interface WorkspaceStack {
+export interface Workspace {
   id: string;
   name: string;
   description?: string;
-  color?: string;
+  color?: string; // violet, cyan, emerald, amber, rose, blue
   icon?: string;
-  services: StackServiceItem[];
+  projectIds: string[]; // Project IDs or paths belonging to this workspace
+  services: StackServiceItem[]; // Services in this workspace stack
+  executionMode?: 'parallel' | 'sequential';
   createdAt: number;
   updatedAt: number;
 }
+
+// Alias for backwards compatibility
+export type WorkspaceStack = Workspace;
 
 export type StackBootState = 'idle' | 'booting' | 'running' | 'error';
