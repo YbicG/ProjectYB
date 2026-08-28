@@ -21,6 +21,8 @@ import {
   Code2,
   Maximize2,
   CloudLightning,
+  Globe,
+  Shield,
   Database,
   Workflow,
   Bot
@@ -42,6 +44,8 @@ import { useOverviewStore } from '@renderer/stores/useOverviewStore';
 import { useAiStore } from '@renderer/stores/useAiStore';
 import { useDatabaseStore } from '@renderer/stores/useDatabaseStore';
 import { usePipelineStore } from '@renderer/stores/usePipelineStore';
+import { useProxyStore } from '@renderer/stores/useProxyStore';
+import { useSyncStore } from '@renderer/stores/useSyncStore';
 import { useMockServerStore } from '@renderer/stores/useMockServerStore';
 import { toast } from 'sonner';
 
@@ -61,6 +65,8 @@ export const CommandPalette: React.FC = () => {
   const { setCreateModalOpen } = useCloudflareStore();
   const { setChatModalOpen } = useAiStore();
   const { openEditor: openPipelineEditor } = usePipelineStore();
+  const { openEditor: openProxyEditor } = useProxyStore();
+  const { setBackupModalOpen } = useSyncStore();
 
   const runCommand = (command: () => void) => {
     setCommandPaletteOpen(false);
@@ -139,6 +145,10 @@ export const CommandPalette: React.FC = () => {
             <CloudLightning className="mr-2 h-4 w-4 text-orange-400" />
             Cloudflare Tunnels (TryCloudflare & Zero Trust)
           </CommandItem>
+          <CommandItem onSelect={() => runCommand(() => setActiveTab('proxy'))}>
+            <Globe className="mr-2 h-4 w-4 text-cyan-400" />
+            Local HTTPS Reverse Proxy (.test Domains)
+          </CommandItem>
           <CommandItem onSelect={() => runCommand(() => setActiveTab('database'))}>
             <Database className="mr-2 h-4 w-4 text-blue-400" />
             Database Studio (SQLite, Postgres, Redis, MySQL)
@@ -201,7 +211,15 @@ export const CommandPalette: React.FC = () => {
           </CommandItem>
           <CommandItem onSelect={() => runCommand(() => { setActiveTab('tunnels'); setCreateModalOpen(true); })}>
             <CloudLightning className="mr-2 h-4 w-4 text-orange-400" />
-            Launch Cloudflare Public Tunnel...
+            Launch Cloudflare Public Tunnel (1-Click API / TryCF)...
+          </CommandItem>
+          <CommandItem onSelect={() => runCommand(() => { setActiveTab('proxy'); openProxyEditor(); })}>
+            <Globe className="mr-2 h-4 w-4 text-cyan-400" />
+            Add Local HTTPS Domain Route (.test / .local)...
+          </CommandItem>
+          <CommandItem onSelect={() => runCommand(() => { setActiveTab('settings'); setBackupModalOpen(true); })}>
+            <Shield className="mr-2 h-4 w-4 text-violet-400" />
+            Backup Workspace to Encrypted Cloud Vault (AES-256)...
           </CommandItem>
           <CommandItem onSelect={handleCreateFromTemplate}>
             <Sparkles className="mr-2 h-4 w-4 text-violet-400" />

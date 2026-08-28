@@ -13,6 +13,7 @@ import { SettingsPage } from './pages/SettingsPage';
 import { DependenciesPage } from './pages/DependenciesPage';
 import { OptimizerPage } from './pages/OptimizerPage';
 import { TunnelsPage } from './pages/TunnelsPage';
+import { LocalProxyPage } from './pages/LocalProxyPage';
 import { DatabasePage } from './pages/DatabasePage';
 import { PipelinesPage } from './pages/PipelinesPage';
 import { MockServerPage } from './pages/MockServerPage';
@@ -98,6 +99,8 @@ export const App: React.FC = () => {
         return <ServicesPage />;
       case 'tunnels':
         return <TunnelsPage />;
+      case 'proxy':
+        return <LocalProxyPage />;
       case 'database':
         return <DatabasePage />;
       case 'pipelines':
@@ -137,6 +140,8 @@ export const App: React.FC = () => {
         return <ServicesPage />;
       case 'tunnels':
         return <TunnelsPage />;
+      case 'proxy':
+        return <LocalProxyPage />;
       case 'database':
         return <DatabasePage />;
       case 'pipelines':

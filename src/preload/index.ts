@@ -268,7 +268,35 @@ const api = {
       return () => {
         ipcRenderer.removeListener('cloudflare:log-line', handler);
       };
+    },
+    api: {
+      verify: (config: any) => ipcRenderer.invoke('cloudflare:api:verify', config),
+      listZones: (config: any) => ipcRenderer.invoke('cloudflare:api:listZones', config),
+      createNamedTunnel: (name: string, config: any) => ipcRenderer.invoke('cloudflare:api:createNamedTunnel', name, config),
+      getTunnelToken: (tunnelId: string, config: any) => ipcRenderer.invoke('cloudflare:api:getTunnelToken', tunnelId, config),
+      configureIngress: (tunnelId: string, hostname: string, localPort: number, config: any) =>
+        ipcRenderer.invoke('cloudflare:api:configureIngress', tunnelId, hostname, localPort, config),
+      createDnsCname: (zoneId: string, subdomain: string, tunnelId: string, config: any) =>
+        ipcRenderer.invoke('cloudflare:api:createDnsCname', zoneId, subdomain, tunnelId, config)
     }
+  },
+  proxy: {
+    start: (httpPort?: number, httpsPort?: number) => ipcRenderer.invoke('proxy:start', httpPort, httpsPort),
+    stop: () => ipcRenderer.invoke('proxy:stop'),
+    getStatus: () => ipcRenderer.invoke('proxy:getStatus'),
+    setRoutes: (routes: any[]) => ipcRenderer.invoke('proxy:setRoutes', routes),
+    getRoutes: () => ipcRenderer.invoke('proxy:getRoutes')
+  },
+  sync: {
+    exportData: () => ipcRenderer.invoke('sync:exportData'),
+    encrypt: (payload: any, password: string) => ipcRenderer.invoke('sync:encrypt', payload, password),
+    decryptAndRestore: (bundle: any, password: string) => ipcRenderer.invoke('sync:decryptAndRestore', bundle, password),
+    githubGist: (bundle: any, githubToken: string, gistId?: string) =>
+      ipcRenderer.invoke('sync:githubGist', bundle, githubToken, gistId),
+    restoreFromGist: (gistId: string, password: string, githubToken?: string) =>
+      ipcRenderer.invoke('sync:restoreFromGist', gistId, password, githubToken),
+    exportToFile: (bundle: any) => ipcRenderer.invoke('sync:exportToFile', bundle),
+    importFromFile: () => ipcRenderer.invoke('sync:importFromFile')
   },
   database: {
     discoverConnections: (projects: Array<{ id: string; name: string; path: string }>) =>

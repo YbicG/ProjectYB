@@ -29,6 +29,7 @@ interface CloudflareState {
   config: CloudflareConfig;
   accounts: CloudflareAccount[];
   remoteTunnels: RemoteTunnelInfo[];
+  zones: Array<{ id: string; name: string; status: string }>;
   isTestingToken: boolean;
   tokenVerified: boolean;
 
@@ -36,6 +37,7 @@ interface CloudflareState {
   checkBinaryStatus: () => Promise<CloudflareBinaryStatus>;
   installBinary: () => Promise<boolean>;
   loadActiveTunnels: () => Promise<void>;
+  fetchZones: () => Promise<void>;
   startQuickTunnel: (options: {
     localPort: number;
     localHost?: string;
@@ -50,6 +52,12 @@ interface CloudflareState {
     localPort?: number;
     customHostname?: string;
   }) => Promise<ActiveTunnel | null>;
+  autoCreateAndLaunchNamedTunnel: (options: {
+    name: string;
+    localPort: number;
+    customHostname?: string;
+    zoneId?: string;
+  }) => Promise<{ success: boolean; tunnel?: ActiveTunnel; error?: string }>;
   stopTunnel: (tunnelId: string) => Promise<boolean>;
   fetchTunnelLogs: (tunnelId: string) => Promise<string[]>;
 
@@ -88,6 +96,7 @@ export const useCloudflareStore = create<CloudflareState>((set, get) => ({
   config: {},
   accounts: [],
   remoteTunnels: [],
+  zones: [],
   isTestingToken: false,
   tokenVerified: false,
 
@@ -213,6 +222,93 @@ export const useCloudflareStore = create<CloudflareState>((set, get) => ({
         category: 'network'
       });
       return null;
+    }
+  },
+
+  fetchZones: async () => {
+    const { config } = get();
+    if (!window.api?.cloudflare?.api || !config.apiToken || !config.accountId) return;
+    try {
+      const res = await window.api.cloudflare.api.listZones({
+        apiToken: config.apiToken,
+        accountId: config.accountId
+      });
+      if (res.success && res.zones) {
+        set({ zones: res.zones });
+      }
+    } catch (err) {
+      console.error('Failed to list Cloudflare zones', err);
+    }
+  },
+
+  autoCreateAndLaunchNamedTunnel: async (options) => {
+    const { config } = get();
+    if (!window.api?.cloudflare?.api) {
+      return { success: false, error: 'Cloudflare API not available' };
+    }
+    if (!config.apiToken || !config.accountId) {
+      return { success: false, error: 'Cloudflare API Token & Account ID required in Settings' };
+    }
+
+    try {
+      toast.loading(`Creating named tunnel "${options.name}" on Cloudflare...`, { id: 'cf-create' });
+
+      // Step 1: Provision Named Tunnel
+      const createRes = await window.api.cloudflare.api.createNamedTunnel(options.name, {
+        apiToken: config.apiToken,
+        accountId: config.accountId
+      });
+
+      if (!createRes.success || !createRes.tunnelId) {
+        toast.error(`Cloudflare API error: ${createRes.error}`, { id: 'cf-create' });
+        return { success: false, error: createRes.error };
+      }
+
+      const tunnelId = createRes.tunnelId;
+      const token = createRes.token;
+
+      if (!token) {
+        toast.error('Tunnel created, but failed to retrieve run token from Cloudflare API', { id: 'cf-create' });
+        return { success: false, error: 'Missing run token' };
+      }
+
+      // Step 2 (Optional): Configure Remote Ingress Routing
+      if (options.customHostname) {
+        toast.loading(`Configuring ingress for ${options.customHostname}...`, { id: 'cf-create' });
+        await window.api.cloudflare.api.configureIngress(
+          tunnelId,
+          options.customHostname,
+          options.localPort,
+          { apiToken: config.apiToken, accountId: config.accountId }
+        );
+
+        // Step 3 (Optional): Create CNAME DNS record if zone provided
+        if (options.zoneId) {
+          toast.loading(`Creating DNS CNAME for ${options.customHostname}...`, { id: 'cf-create' });
+          await window.api.cloudflare.api.createDnsCname(
+            options.zoneId,
+            options.customHostname,
+            tunnelId,
+            { apiToken: config.apiToken, accountId: config.accountId }
+          );
+        }
+      }
+
+      toast.loading(`Launching tunnel daemon for "${options.name}"...`, { id: 'cf-create' });
+
+      // Step 4: Spawn tunnel runner with token
+      const launchedTunnel = await get().startNamedTunnel({
+        name: options.name,
+        tunnelToken: token,
+        localPort: options.localPort,
+        customHostname: options.customHostname
+      });
+
+      toast.success(`Cloudflare Named Tunnel "${options.name}" is LIVE!`, { id: 'cf-create' });
+      return { success: true, tunnel: launchedTunnel || undefined };
+    } catch (err: any) {
+      toast.error(`Failed to auto-create tunnel: ${err.message}`, { id: 'cf-create' });
+      return { success: false, error: err.message };
     }
   },
 

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Dialog,
   DialogContent,
@@ -13,7 +13,7 @@ import { Badge } from '../ui/badge';
 import { useCloudflareStore } from '@renderer/stores/useCloudflareStore';
 import { usePortStore } from '@renderer/stores/usePortStore';
 import { useServiceStore } from '@renderer/stores/useServiceStore';
-import { CloudLightning, KeyRound, Sparkles, Globe, Server, ArrowRight } from 'lucide-react';
+import { CloudLightning, KeyRound, Sparkles, Globe, Server, ArrowRight, Zap, Settings } from 'lucide-react';
 import { cn } from '@renderer/lib/utils';
 import { toast } from 'sonner';
 
@@ -23,15 +23,19 @@ export const CreateTunnelDialog: React.FC = () => {
     setCreateModalOpen,
     startQuickTunnel,
     startNamedTunnel,
+    autoCreateAndLaunchNamedTunnel,
     binaryStatus,
     installBinary,
-    isDownloadingBinary
+    isDownloadingBinary,
+    config,
+    zones,
+    fetchZones
   } = useCloudflareStore();
 
   const { ports } = usePortStore();
   const { runningServices } = useServiceStore();
 
-  const [mode, setMode] = useState<'quick' | 'named'>('quick');
+  const [mode, setMode] = useState<'quick' | 'auto' | 'manual'>('quick');
 
   // Quick Tunnel fields
   const [port, setPort] = useState<string>('5173');
@@ -39,11 +43,29 @@ export const CreateTunnelDialog: React.FC = () => {
   const [protocol, setProtocol] = useState<'http' | 'https' | 'tcp'>('http');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // Named Tunnel fields
-  const [namedName, setNamedName] = useState<string>('');
+  // Auto Named Tunnel (1-Click Cloudflare API)
+  const [autoName, setAutoName] = useState<string>('');
+  const [autoPort, setAutoPort] = useState<string>('3000');
+  const [autoSubdomain, setAutoSubdomain] = useState<string>('');
+  const [selectedZoneId, setSelectedZoneId] = useState<string>('');
+
+  // Manual Named Tunnel (Token)
+  const [manualName, setManualName] = useState<string>('');
   const [tunnelToken, setTunnelToken] = useState<string>('');
   const [customHostname, setCustomHostname] = useState<string>('');
-  const [namedPort, setNamedPort] = useState<string>('3000');
+  const [manualPort, setManualPort] = useState<string>('3000');
+
+  useEffect(() => {
+    if (createModalOpen && config.apiToken && config.accountId) {
+      fetchZones();
+    }
+  }, [createModalOpen, config.apiToken, config.accountId]);
+
+  useEffect(() => {
+    if (zones.length > 0 && !selectedZoneId) {
+      setSelectedZoneId(zones[0].id);
+    }
+  }, [zones]);
 
   const handleLaunch = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -73,6 +95,35 @@ export const CreateTunnelDialog: React.FC = () => {
         if (res) {
           setCreateModalOpen(false);
         }
+      } else if (mode === 'auto') {
+        if (!config.apiToken || !config.accountId) {
+          toast.error('Cloudflare API Token & Account ID required in Settings to use 1-click auto provisioning');
+          setIsSubmitting(false);
+          return;
+        }
+
+        const portNum = parseInt(autoPort, 10);
+        if (isNaN(portNum) || portNum <= 0 || portNum > 65535) {
+          toast.error('Please enter a valid port number');
+          setIsSubmitting(false);
+          return;
+        }
+
+        const selectedZone = zones.find((z) => z.id === selectedZoneId);
+        const fullHostname = autoSubdomain.trim() && selectedZone
+          ? `${autoSubdomain.trim()}.${selectedZone.name}`
+          : undefined;
+
+        const res = await autoCreateAndLaunchNamedTunnel({
+          name: autoName.trim() || `tunnel-port-${portNum}`,
+          localPort: portNum,
+          customHostname: fullHostname,
+          zoneId: selectedZoneId || undefined
+        });
+
+        if (res.success) {
+          setCreateModalOpen(false);
+        }
       } else {
         if (!tunnelToken.trim()) {
           toast.error('Please provide a Cloudflare Tunnel Token');
@@ -81,9 +132,9 @@ export const CreateTunnelDialog: React.FC = () => {
         }
 
         const res = await startNamedTunnel({
-          name: namedName.trim() || 'Named Tunnel',
+          name: manualName.trim() || 'Named Tunnel',
           tunnelToken: tunnelToken.trim(),
-          localPort: parseInt(namedPort, 10) || 80,
+          localPort: parseInt(manualPort, 10) || 80,
           customHostname: customHostname.trim() || undefined
         });
 
@@ -96,9 +147,12 @@ export const CreateTunnelDialog: React.FC = () => {
     }
   };
 
+  const selectedZone = zones.find((z) => z.id === selectedZoneId);
+  const previewHostname = autoSubdomain && selectedZone ? `${autoSubdomain}.${selectedZone.name}` : '';
+
   return (
     <Dialog open={createModalOpen} onOpenChange={setCreateModalOpen}>
-      <DialogContent className="bg-zinc-950 border-zinc-800 text-zinc-50 max-w-lg p-5 shadow-2xl">
+      <DialogContent className="bg-zinc-950 border-zinc-800 text-zinc-50 max-w-xl p-5 shadow-2xl">
         <DialogHeader className="pb-3 border-b border-zinc-800 space-y-1">
           <div className="flex items-center gap-2">
             <div className="p-2 rounded-lg bg-orange-500/10 border border-orange-500/20 text-orange-400">
@@ -115,41 +169,55 @@ export const CreateTunnelDialog: React.FC = () => {
           </div>
         </DialogHeader>
 
-        {/* Mode selector pills */}
-        <div className="grid grid-cols-2 gap-2 my-1 p-1 bg-zinc-900/80 rounded-lg border border-zinc-800">
+        {/* Mode selector pills (3 modes) */}
+        <div className="grid grid-cols-3 gap-1.5 my-1 p-1 bg-zinc-900/80 rounded-lg border border-zinc-800">
           <button
             type="button"
             onClick={() => setMode('quick')}
             className={cn(
-              'flex items-center justify-center gap-2 py-2 px-3 rounded-md text-xs font-semibold transition-all',
+              'flex items-center justify-center gap-1.5 py-1.5 px-2 rounded-md text-xs font-semibold transition-all',
               mode === 'quick'
                 ? 'bg-orange-600 text-white shadow-md'
                 : 'text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800/50'
             )}
           >
             <Sparkles className="w-3.5 h-3.5" />
-            Quick Tunnel (TryCloudflare)
+            Quick (TryCF)
           </button>
 
           <button
             type="button"
-            onClick={() => setMode('named')}
+            onClick={() => setMode('auto')}
             className={cn(
-              'flex items-center justify-center gap-2 py-2 px-3 rounded-md text-xs font-semibold transition-all',
-              mode === 'named'
+              'flex items-center justify-center gap-1.5 py-1.5 px-2 rounded-md text-xs font-semibold transition-all',
+              mode === 'auto'
+                ? 'bg-orange-600 text-white shadow-md'
+                : 'text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800/50'
+            )}
+          >
+            <Zap className="w-3.5 h-3.5 text-amber-300" />
+            1-Click API Named
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setMode('manual')}
+            className={cn(
+              'flex items-center justify-center gap-1.5 py-1.5 px-2 rounded-md text-xs font-semibold transition-all',
+              mode === 'manual'
                 ? 'bg-orange-600 text-white shadow-md'
                 : 'text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800/50'
             )}
           >
             <KeyRound className="w-3.5 h-3.5" />
-            Named Tunnel (Token)
+            Manual Token
           </button>
         </div>
 
         <form onSubmit={handleLaunch} className="space-y-4 pt-1">
-          {mode === 'quick' ? (
+          {mode === 'quick' && (
             <div className="space-y-3">
-              {/* Quick Port Presets from Active Services/Ports */}
+              {/* Quick Port Presets */}
               {(runningServices.length > 0 || ports.length > 0) && (
                 <div>
                   <Label className="text-[11px] uppercase tracking-wider text-zinc-400 mb-1.5 block">
@@ -241,17 +309,116 @@ export const CreateTunnelDialog: React.FC = () => {
               </div>
 
               <div className="p-3 bg-orange-950/20 border border-orange-800/30 rounded-lg text-[11px] text-orange-300/90 leading-relaxed">
-                🚀 <strong>Zero Setup Needed:</strong> Cloudflare will automatically provision a public HTTPS subdomain at <code>*.trycloudflare.com</code> and forward requests directly to <code>{protocol}://localhost:{port || '3000'}</code>.
+                🚀 <strong>Instant Quick Tunnel:</strong> Cloudflare provisions a temporary public HTTPS subdomain at <code>*.trycloudflare.com</code> without any account setup.
               </div>
             </div>
-          ) : (
+          )}
+
+          {mode === 'auto' && (
+            <div className="space-y-3">
+              {!config.apiToken || !config.accountId ? (
+                <div className="p-3 bg-amber-950/20 border border-amber-800/30 rounded-lg text-xs text-amber-300 space-y-2">
+                  <p>⚠️ Cloudflare API Token & Account ID must be configured to use 1-click automated provisioning.</p>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      setCreateModalOpen(false);
+                      useCloudflareStore.getState().saveConfig({});
+                    }}
+                    className="text-xs border-amber-600 text-amber-200 hover:bg-amber-900/30"
+                  >
+                    Configure in Settings
+                  </Button>
+                </div>
+              ) : (
+                <>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="space-y-1.5">
+                      <Label htmlFor="auto-name" className="text-xs text-zinc-300">
+                        Tunnel Name
+                      </Label>
+                      <Input
+                        id="auto-name"
+                        type="text"
+                        value={autoName}
+                        onChange={(e) => setAutoName(e.target.value)}
+                        placeholder="e.g. project-api-tunnel"
+                        required
+                        className="bg-zinc-900 border-zinc-800 text-xs text-zinc-100"
+                      />
+                    </div>
+
+                    <div className="space-y-1.5">
+                      <Label htmlFor="auto-port" className="text-xs text-zinc-300">
+                        Local Port
+                      </Label>
+                      <Input
+                        id="auto-port"
+                        type="number"
+                        value={autoPort}
+                        onChange={(e) => setAutoPort(e.target.value)}
+                        placeholder="3000"
+                        required
+                        className="bg-zinc-900 border-zinc-800 font-mono text-xs text-zinc-100"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Optional Custom Domain / DNS */}
+                  <div className="space-y-1.5 pt-1">
+                    <Label className="text-xs text-zinc-300 flex items-center justify-between">
+                      <span>Custom Domain Routing (Optional)</span>
+                      <span className="text-[10px] text-zinc-500 font-normal">Auto CNAME & Ingress</span>
+                    </Label>
+
+                    <div className="grid grid-cols-2 gap-2">
+                      <Input
+                        type="text"
+                        value={autoSubdomain}
+                        onChange={(e) => setAutoSubdomain(e.target.value)}
+                        placeholder="Subdomain (e.g. api, app)"
+                        className="bg-zinc-900 border-zinc-800 text-xs text-zinc-100"
+                      />
+
+                      <select
+                        value={selectedZoneId}
+                        onChange={(e) => setSelectedZoneId(e.target.value)}
+                        className="h-9 rounded-md bg-zinc-900 border border-zinc-800 px-3 text-xs text-zinc-100 focus:outline-none focus:ring-1 focus:ring-orange-500"
+                      >
+                        <option value="">No Custom Domain</option>
+                        {zones.map((z) => (
+                          <option key={z.id} value={z.id}>
+                            .{z.name}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+
+                    {previewHostname && (
+                      <p className="text-[10px] text-emerald-400 font-mono flex items-center gap-1 mt-1">
+                        <Globe className="w-3 h-3" /> Will route: <strong>https://{previewHostname}</strong> ➔ localhost:{autoPort}
+                      </p>
+                    )}
+                  </div>
+
+                  <div className="p-3 bg-emerald-950/20 border border-emerald-800/30 rounded-lg text-[11px] text-emerald-300/90 leading-relaxed">
+                    ✨ <strong>Automated Zero-Dashboard Flow:</strong> ProjectYB will create the named tunnel on your Cloudflare account, resolve the secure token, configure ingress rules, and start the daemon in 1 click.
+                  </div>
+                </>
+              )}
+            </div>
+          )}
+
+          {mode === 'manual' && (
             <div className="space-y-3">
               <div className="space-y-1.5">
-                <Label htmlFor="named-token" className="text-xs text-zinc-300">
+                <Label htmlFor="manual-token" className="text-xs text-zinc-300">
                   Cloudflare Tunnel Token
                 </Label>
                 <Input
-                  id="named-token"
+                  id="manual-token"
                   type="password"
                   value={tunnelToken}
                   onChange={(e) => setTunnelToken(e.target.value)}
@@ -260,17 +427,17 @@ export const CreateTunnelDialog: React.FC = () => {
                   className="bg-zinc-900 border-zinc-800 font-mono text-xs text-zinc-100"
                 />
                 <p className="text-[10px] text-zinc-500">
-                  Found under Zero Trust Dashboard &gt; Access &gt; Tunnels &gt; Install Connector.
+                  Paste the token generated in your Cloudflare Zero Trust Dashboard.
                 </p>
               </div>
 
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1.5">
-                  <Label htmlFor="named-hostname" className="text-xs text-zinc-300">
+                  <Label htmlFor="manual-hostname" className="text-xs text-zinc-300">
                     Custom Hostname (Optional)
                   </Label>
                   <Input
-                    id="named-hostname"
+                    id="manual-hostname"
                     type="text"
                     value={customHostname}
                     onChange={(e) => setCustomHostname(e.target.value)}
@@ -280,14 +447,14 @@ export const CreateTunnelDialog: React.FC = () => {
                 </div>
 
                 <div className="space-y-1.5">
-                  <Label htmlFor="named-port" className="text-xs text-zinc-300">
+                  <Label htmlFor="manual-port" className="text-xs text-zinc-300">
                     Local Target Port
                   </Label>
                   <Input
-                    id="named-port"
+                    id="manual-port"
                     type="number"
-                    value={namedPort}
-                    onChange={(e) => setNamedPort(e.target.value)}
+                    value={manualPort}
+                    onChange={(e) => setManualPort(e.target.value)}
                     placeholder="3000"
                     className="bg-zinc-900 border-zinc-800 font-mono text-xs text-zinc-100"
                   />
@@ -295,14 +462,14 @@ export const CreateTunnelDialog: React.FC = () => {
               </div>
 
               <div className="space-y-1.5">
-                <Label htmlFor="named-name" className="text-xs text-zinc-300">
+                <Label htmlFor="manual-name" className="text-xs text-zinc-300">
                   Tunnel Label
                 </Label>
                 <Input
-                  id="named-name"
+                  id="manual-name"
                   type="text"
-                  value={namedName}
-                  onChange={(e) => setNamedName(e.target.value)}
+                  value={manualName}
+                  onChange={(e) => setManualName(e.target.value)}
                   placeholder="e.g. Production Staging Connector"
                   className="bg-zinc-900 border-zinc-800 text-xs text-zinc-100"
                 />
@@ -334,7 +501,7 @@ export const CreateTunnelDialog: React.FC = () => {
                 'Downloading CLI...'
               ) : (
                 <>
-                  <span>Start Tunnel</span>
+                  <span>{mode === 'auto' ? 'Provision & Launch' : 'Start Tunnel'}</span>
                   <ArrowRight className="w-3.5 h-3.5" />
                 </>
               )}

@@ -1,11 +1,12 @@
 import React, { useState } from 'react';
-import { Settings, Github, Monitor, TerminalSquare, Bell, CloudLightning } from 'lucide-react';
+import { Settings, Github, Monitor, TerminalSquare, Bell, CloudLightning, Shield } from 'lucide-react';
 import { GeneralSettings } from '../components/settings/GeneralSettings';
 import { GitHubSettings } from '../components/settings/GitHubSettings';
 import { AppearanceSettings } from '../components/settings/AppearanceSettings';
 import { TerminalSettings } from '../components/settings/TerminalSettings';
 import { NotificationSettings } from '../components/settings/NotificationSettings';
 import { CloudflareSettings } from '../components/settings/CloudflareSettings';
+import { CloudSyncSettings } from '../components/settings/CloudSyncSettings';
 import { cn } from '@renderer/lib/utils';
 
 export const SettingsPage: React.FC = () => {
@@ -13,6 +14,7 @@ export const SettingsPage: React.FC = () => {
 
   const tabs = [
     { id: 'general', label: 'General', icon: Settings },
+    { id: 'sync', label: 'Cloud Vault & Sync', icon: Shield },
     { id: 'notifications', label: 'Notifications', icon: Bell },
     { id: 'cloudflare', label: 'Cloudflare', icon: CloudLightning },
     { id: 'github', label: 'GitHub', icon: Github },
@@ -49,6 +51,7 @@ export const SettingsPage: React.FC = () => {
       {/* ── Settings Content View ── */}
       <div className="flex-1 overflow-y-auto p-4 sm:p-6 md:p-8 bg-zinc-950/50">
         {activeTab === 'general' && <GeneralSettings />}
+        {activeTab === 'sync' && <CloudSyncSettings />}
         {activeTab === 'notifications' && <NotificationSettings />}
         {activeTab === 'cloudflare' && <CloudflareSettings />}
         {activeTab === 'github' && <GitHubSettings />}

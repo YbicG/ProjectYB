@@ -241,6 +241,36 @@ export interface IElectronAPI {
     onDownloadProgress(callback: (percent: number) => void): () => void
     onStatusUpdate(callback: (tunnel: any) => void): () => void
     onLogLine(callback: (data: { tunnelId: string; line: string }) => void): () => void
+    api: {
+      verify(config: { apiToken: string; accountId: string }): Promise<{ success: boolean; accountName?: string; error?: string }>
+      listZones(config: { apiToken: string; accountId: string }): Promise<{ success: boolean; zones: Array<{ id: string; name: string; status: string }>; error?: string }>
+      createNamedTunnel(name: string, config: { apiToken: string; accountId: string }): Promise<{ success: boolean; tunnelId?: string; name?: string; token?: string; error?: string }>
+      getTunnelToken(tunnelId: string, config: { apiToken: string; accountId: string }): Promise<{ success: boolean; token?: string; error?: string }>
+      configureIngress(tunnelId: string, hostname: string, localPort: number, config: { apiToken: string; accountId: string }): Promise<{ success: boolean; hostname?: string; error?: string }>
+      createDnsCname(zoneId: string, subdomain: string, tunnelId: string, config: { apiToken: string; accountId: string }): Promise<{ success: boolean; recordId?: string; hostname?: string; error?: string }>
+    }
+  }
+  proxy: {
+    start(httpPort?: number, httpsPort?: number): Promise<{ success: boolean; error?: string }>
+    stop(): Promise<{ success: boolean; error?: string }>
+    getStatus(): Promise<{
+      running: boolean
+      httpPort: number
+      httpsPort: number
+      routesCount: number
+      activeConnections: number
+    }>
+    setRoutes(routes: any[]): Promise<{ success: boolean }>
+    getRoutes(): Promise<any[]>
+  }
+  sync: {
+    exportData(): Promise<any>
+    encrypt(payload: any, password: string): Promise<{ success: boolean; bundle?: any; error?: string }>
+    decryptAndRestore(bundle: any, password: string): Promise<{ success: boolean; itemsRestored?: number; error?: string }>
+    githubGist(bundle: any, githubToken: string, gistId?: string): Promise<{ success: boolean; gistId?: string; htmlUrl?: string; error?: string }>
+    restoreFromGist(gistId: string, password: string, githubToken?: string): Promise<{ success: boolean; payload?: any; error?: string }>
+    exportToFile(bundle: any): Promise<{ success: boolean; canceled?: boolean; filePath?: string }>
+    importFromFile(): Promise<{ success: boolean; canceled?: boolean; bundle?: any; filePath?: string }>
   }
   database: {
     discoverConnections(projects: Array<{ id: string; name: string; path: string }>): Promise<any[]>

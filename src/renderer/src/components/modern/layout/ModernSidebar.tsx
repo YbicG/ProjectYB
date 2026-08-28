@@ -18,6 +18,7 @@ import {
   Activity,
   Layers,
   CloudLightning,
+  Globe,
   Database,
   Workflow,
   Bot
@@ -125,6 +126,7 @@ export const ModernSidebar: React.FC = () => {
           </span>
         ) : null
     },
+    { id: 'proxy', label: 'Local HTTPS Proxy', icon: Globe, category: 'dev' },
     { id: 'database', label: 'Database Studio', icon: Database, category: 'dev' },
     { id: 'pipelines', label: 'Workflows & CI', icon: Workflow, category: 'dev' },
     { id: 'mock-server', label: 'Mock & Webhooks', icon: Radio, category: 'dev' },

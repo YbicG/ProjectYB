@@ -15,6 +15,7 @@ import {
   Keyboard,
   Code2,
   CloudLightning,
+  Globe,
   Database,
   Workflow,
   Bot
@@ -43,6 +44,7 @@ const tabs = [
   { id: 'git', label: 'Git', icon: GitBranch },
   { id: 'services', label: 'Services', icon: Server },
   { id: 'tunnels', label: 'Tunnels', icon: CloudLightning },
+  { id: 'proxy', label: 'Local Proxy', icon: Globe },
   { id: 'database', label: 'Database', icon: Database },
   { id: 'pipelines', label: 'Workflows', icon: Workflow },
   { id: 'mock-server', label: 'Mock API', icon: Radio },
