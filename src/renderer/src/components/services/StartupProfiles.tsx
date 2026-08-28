@@ -33,7 +33,9 @@ export const StartupProfiles: React.FC = () => {
                 <div key={profile.id} className="group p-3 rounded-md bg-zinc-900 border border-zinc-800 hover:border-zinc-700 transition-colors">
                   <div className="flex items-center justify-between mb-2">
                     <span className="font-medium text-sm text-zinc-100">{profile.name}</span>
-                    <Badge variant="secondary" className="text-[10px]">{profile.serviceIds.length} services</Badge>
+                    <Badge variant="secondary" className="text-[10px]">
+                      {profile.serviceIds?.length ?? profile.serviceConfigs?.length ?? 0} services
+                    </Badge>
                   </div>
                   
                   <div className="flex gap-2 mt-3">

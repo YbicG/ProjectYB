@@ -1,5 +1,15 @@
 export type ServiceStatus = 'running' | 'stopped' | 'starting' | 'crashed' | 'restarting'
 
+export interface ServiceConfig {
+  id?: string
+  name: string
+  command: string
+  cwd?: string
+  port?: number
+  env?: Record<string, string>
+  autoRestart?: boolean
+}
+
 export interface RunningService {
   id: string
   name: string
@@ -21,4 +31,5 @@ export interface StartupProfile {
   name: string
   icon?: string
   serviceConfigs: { projectId: string; serviceId: string }[]
+  serviceIds?: string[]
 }

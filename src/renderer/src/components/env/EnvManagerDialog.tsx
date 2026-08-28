@@ -313,7 +313,9 @@ export const EnvManagerDialog: React.FC<EnvManagerDialogProps> = ({
                               {/* Key */}
                               <div className="col-span-4 flex items-center gap-1.5">
                                 {entry.isSecret && (
-                                  <Lock className="w-3 h-3 text-amber-400 shrink-0" title="Sensitive secret" />
+                                  <span title="Sensitive secret">
+                                    <Lock className="w-3 h-3 text-amber-400 shrink-0" />
+                                  </span>
                                 )}
                                 <input
                                   type="text"

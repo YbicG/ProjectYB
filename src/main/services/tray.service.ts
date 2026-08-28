@@ -1,4 +1,4 @@
-import { app, BrowserWindow, Menu, Tray, nativeImage, Notification } from 'electron';
+import { app, BrowserWindow, Menu, Tray, nativeImage, NativeImage, Notification } from 'electron';
 import * as path from 'path';
 import * as fs from 'fs';
 import { getStore } from '../ipc/store.ipc';
@@ -19,7 +19,7 @@ export class TrayService {
     this.isQuitting = quitting;
   }
 
-  getAppIcon(): nativeImage {
+  getAppIcon(): NativeImage {
     // Check file system first
     const possiblePaths = [
       path.join(__dirname, '../../resources/icon.png'),

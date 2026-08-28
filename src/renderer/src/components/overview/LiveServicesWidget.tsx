@@ -75,7 +75,7 @@ export const LiveServicesWidget: React.FC = () => {
                   </div>
 
                   <div className="flex items-center gap-3 text-[10px] font-mono text-zinc-400 mt-1">
-                    <span className="text-zinc-500">Uptime: <span className="text-zinc-300">{formatUptime(service.startTime)}</span></span>
+                    <span className="text-zinc-500">Uptime: <span className="text-zinc-300">{formatUptime(service.startedAt)}</span></span>
                     <span>CPU: <span className="text-zinc-200">{service.cpuUsage ?? 0}%</span></span>
                     <span>RAM: <span className="text-zinc-200">{service.memoryUsage ?? 0}MB</span></span>
                   </div>

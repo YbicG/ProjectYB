@@ -56,7 +56,7 @@ export const ServiceCard: React.FC<ServiceCardProps> = ({ service }) => {
         <CardContent className="p-4 flex flex-col gap-3">
           <div className="flex items-start justify-between gap-2">
             <div className="flex items-center gap-2.5 min-w-0">
-              <StatusDot status={service.status === 'crashed' ? 'error' : service.status} />
+              <StatusDot status={service.status === 'crashed' ? 'error' : service.status === 'restarting' ? 'starting' : service.status} />
               <div className="min-w-0">
                 <h4 className="font-semibold text-sm text-zinc-100 truncate">{service.name}</h4>
                 <p className="text-[11px] text-zinc-400 truncate">
@@ -126,7 +126,7 @@ export const ServiceCard: React.FC<ServiceCardProps> = ({ service }) => {
         <DialogContent className="bg-zinc-950 border-zinc-800 text-zinc-50 max-w-4xl h-[80vh] flex flex-col p-4">
           <DialogHeader className="flex flex-row items-center justify-between pb-2 border-b border-zinc-800 space-y-0">
             <div className="flex items-center gap-2">
-              <StatusDot status={service.status === 'crashed' ? 'error' : service.status} />
+              <StatusDot status={service.status === 'crashed' ? 'error' : service.status === 'restarting' ? 'starting' : service.status} />
               <DialogTitle className="text-sm font-semibold text-zinc-100 font-mono">
                 {service.projectName} &gt; {service.name}
               </DialogTitle>

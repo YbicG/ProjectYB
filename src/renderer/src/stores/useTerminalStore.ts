@@ -95,7 +95,7 @@ export const useTerminalStore = create<TerminalState>((set, get) => ({
       }
       
       set((state) => ({
-        terminals: state.terminals.map(t => t.id === id ? { ...t, status: 'running', pid } : t)
+        terminals: state.terminals.map(t => t.id === id ? { ...t, status: 'running' } : t)
       }))
     } catch (error) {
       console.error('Failed to create terminal:', error)
