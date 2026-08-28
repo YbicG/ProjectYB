@@ -22,7 +22,8 @@ import {
   RefreshCw,
   Copy,
   Check,
-  Plus
+  Plus,
+  EyeOff
 } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { useProjectStore } from '@renderer/stores/useProjectStore';
@@ -47,7 +48,7 @@ import type { ProjectInfo, SubProject } from '@renderer/types/project';
 import type { GitLogEntry } from '@renderer/types/git';
 
 export const ModernProjectWorkbench: React.FC = () => {
-  const { selectedProjectId, projects, selectProject } = useProjectStore();
+  const { selectedProjectId, projects, selectProject, ignoreProject } = useProjectStore();
   const { runningServices, startService, stopService } = useServiceStore();
   const { createTerminal } = useTerminalStore();
   const { configs: allConfigs, addConfig, updateConfig } = useRunConfigStore();
@@ -161,6 +162,22 @@ export const ModernProjectWorkbench: React.FC = () => {
     setEditingRunConfig(undefined);
   };
 
+  const handleIgnoreProject = async () => {
+    if (
+      window.confirm(
+        `Ignore project "${project.name}"?\n\nThis will hide it from your workspace and add it to your Ignored Projects list in Settings.`
+      )
+    ) {
+      try {
+        await ignoreProject(project.path);
+        toast.info(`Ignored "${project.name}".`);
+        setActiveTab('dashboard');
+      } catch {
+        toast.error(`Failed to ignore project`);
+      }
+    }
+  };
+
   return (
     <div className="h-full flex flex-col overflow-hidden bg-zinc-950 text-zinc-100 select-none">
       {/* ── Top Project Header Bar ── */}
@@ -265,6 +282,17 @@ export const ModernProjectWorkbench: React.FC = () => {
           >
             <Archive className="w-3.5 h-3.5 text-zinc-400" />
             Snapshot
+          </Button>
+
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleIgnoreProject}
+            className="h-7 text-xs border-rose-900/60 text-rose-400 hover:bg-rose-950/40 hover:text-rose-300 gap-1.5"
+            title="Ignore project from workspace"
+          >
+            <EyeOff className="w-3.5 h-3.5 text-rose-400" />
+            Ignore
           </Button>
         </div>
       </div>

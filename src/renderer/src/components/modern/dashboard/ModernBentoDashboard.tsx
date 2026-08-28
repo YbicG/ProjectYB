@@ -18,12 +18,24 @@ import {
   Layers,
   Search,
   CheckCircle2,
-  AlertCircle
+  AlertCircle,
+  MoreVertical,
+  EyeOff,
+  Settings,
+  Lock,
+  Archive
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Card, CardHeader, CardTitle, CardContent } from '../../ui/card';
 import { Badge } from '../../ui/badge';
 import { Button } from '../../ui/button';
+import {
+  DropdownMenu,
+  DropdownMenuTrigger,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator
+} from '../../ui/dropdown-menu';
 import { StatusDot } from '../../shared/StatusDot';
 import { useProjectStore } from '@renderer/stores/useProjectStore';
 import { useServiceStore } from '@renderer/stores/useServiceStore';
@@ -33,6 +45,7 @@ import { useAppStore } from '@renderer/stores/useAppStore';
 import { useTemplateStore } from '@renderer/stores/useTemplateStore';
 import { ProjectConfigDialog } from '../../dashboard/ProjectConfigDialog';
 import { EnvManagerDialog } from '../../env/EnvManagerDialog';
+import { ProjectSnapshotDialog } from '../../dashboard/ProjectSnapshotDialog';
 import { cn } from '@renderer/lib/utils';
 import { toast } from 'sonner';
 import type { ProjectInfo, ProjectType } from '@renderer/types/project';
@@ -54,6 +67,7 @@ export const ModernBentoDashboard: React.FC = () => {
     togglePinProject,
     selectProject,
     scanProjects,
+    ignoreProject,
     isScanning
   } = useProjectStore();
 
@@ -67,6 +81,22 @@ export const ModernBentoDashboard: React.FC = () => {
   const [selectedType, setSelectedType] = useState<ProjectType | 'all'>('all');
   const [configProject, setConfigProject] = useState<ProjectInfo | null>(null);
   const [envProject, setEnvProject] = useState<ProjectInfo | null>(null);
+  const [snapshotProject, setSnapshotProject] = useState<ProjectInfo | null>(null);
+
+  const handleIgnoreProject = async (project: ProjectInfo) => {
+    if (
+      window.confirm(
+        `Ignore project "${project.name}"?\n\nThis will hide it from your dashboard and add it to your Ignored Projects list.`
+      )
+    ) {
+      try {
+        await ignoreProject(project.path);
+        toast.info(`Ignored "${project.name}".`);
+      } catch {
+        toast.error(`Failed to ignore project`);
+      }
+    }
+  };
 
   const deferredSearch = useDeferredValue(searchQuery);
 
@@ -404,19 +434,60 @@ export const ModernBentoDashboard: React.FC = () => {
                         </div>
                       </div>
 
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          togglePinProject(project.id);
-                        }}
-                        className={cn(
-                          'p-1 rounded transition-colors',
-                          isPinned ? 'text-amber-400' : 'text-zinc-600 hover:text-zinc-300'
-                        )}
-                        title={isPinned ? 'Unpin' : 'Pin to favorites'}
-                      >
-                        <Pin className={cn('w-3.5 h-3.5', isPinned && 'fill-amber-400')} />
-                      </button>
+                      <div className="flex items-center gap-1 shrink-0">
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            togglePinProject(project.id);
+                          }}
+                          className={cn(
+                            'p-1 rounded transition-colors',
+                            isPinned ? 'text-amber-400' : 'text-zinc-600 hover:text-zinc-300'
+                          )}
+                          title={isPinned ? 'Unpin' : 'Pin to favorites'}
+                        >
+                          <Pin className={cn('w-3.5 h-3.5', isPinned && 'fill-amber-400')} />
+                        </button>
+
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
+                            <Button variant="ghost" size="icon" className="h-6 w-6 text-zinc-500 hover:text-zinc-200">
+                              <MoreVertical className="w-3.5 h-3.5" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end" className="bg-zinc-950 border-zinc-800 text-xs w-48 z-50">
+                            <DropdownMenuItem onClick={(e) => { e.stopPropagation(); setConfigProject(project); }}>
+                              <Settings className="w-3.5 h-3.5 mr-2 text-zinc-400" />
+                              Configure Project...
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={(e) => { e.stopPropagation(); setEnvProject(project); }}>
+                              <Lock className="w-3.5 h-3.5 mr-2 text-amber-400" />
+                              Manage Env (.env)
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={(e) => { e.stopPropagation(); setSnapshotProject(project); }}>
+                              <Archive className="w-3.5 h-3.5 mr-2 text-cyan-400" />
+                              Create Snapshot Backup...
+                            </DropdownMenuItem>
+                            <DropdownMenuSeparator className="bg-zinc-800" />
+                            <DropdownMenuItem onClick={(e) => { e.stopPropagation(); handleOpenVSCode(project.path); }}>
+                              <Code className="w-3.5 h-3.5 mr-2 text-blue-400" />
+                              Open in VS Code
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={(e) => { e.stopPropagation(); handleOpenFolder(project.path); }}>
+                              <FolderOpen className="w-3.5 h-3.5 mr-2 text-emerald-400" />
+                              Open in Explorer
+                            </DropdownMenuItem>
+                            <DropdownMenuSeparator className="bg-zinc-800" />
+                            <DropdownMenuItem
+                              onClick={(e) => { e.stopPropagation(); handleIgnoreProject(project); }}
+                              className="text-rose-400 focus:text-rose-300 focus:bg-rose-950/30"
+                            >
+                              <EyeOff className="w-3.5 h-3.5 mr-2" />
+                              Ignore Project
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </div>
                     </div>
 
                     {/* Tags & Badges */}
@@ -501,6 +572,13 @@ export const ModernBentoDashboard: React.FC = () => {
           projectName={envProject.name}
           open={Boolean(envProject)}
           onOpenChange={(open) => !open && setEnvProject(null)}
+        />
+      )}
+      {snapshotProject && (
+        <ProjectSnapshotDialog
+          project={snapshotProject}
+          open={Boolean(snapshotProject)}
+          onOpenChange={(open) => !open && setSnapshotProject(null)}
         />
       )}
     </div>

@@ -56,7 +56,7 @@ export const ProjectConfigDialog: React.FC<ProjectConfigDialogProps> = ({
   open,
   onOpenChange
 }) => {
-  const { saveProjectConfig, loadProjectConfig } = useProjectStore()
+  const { saveProjectConfig, loadProjectConfig, ignoreProject, unignoreProject } = useProjectStore()
 
   const [activeTab, setActiveTab] = useState<'visual' | 'json'>('visual')
   const [configPath, setConfigPath] = useState<string | null>(null)
@@ -323,6 +323,11 @@ export const ProjectConfigDialog: React.FC<ProjectConfigDialogProps> = ({
       }
 
       await saveProjectConfig(project.path, finalConfig, activeTab === 'json')
+      if (finalConfig.ignore) {
+        await ignoreProject(project.path)
+      } else {
+        await unignoreProject(project.path)
+      }
       toast.success(`Config saved to .ybicg/config.json for "${finalConfig.name || project.name}"`)
       onOpenChange(false)
     } catch (err: any) {

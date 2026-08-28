@@ -54,7 +54,7 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
 
       // Also get manual projects to append them
       const manualPaths = (await window.api.store.get('manualProjects')) as string[] | undefined
-      const allProjects = [...(scannedProjects || [])]
+      let allProjects = [...(scannedProjects || [])]
 
       if (manualPaths && manualPaths.length > 0) {
         for (const mPath of manualPaths) {
@@ -63,6 +63,14 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
             allProjects.push(mProj)
           }
         }
+      }
+
+      // Filter out ignored projects from store
+      const ignoredProjects = ((await window.api.store.get('ignoredProjects')) as string[] | undefined) || []
+      if (ignoredProjects && ignoredProjects.length > 0) {
+        allProjects = allProjects.filter(
+          (p) => !ignoredProjects.includes(p.path) && !ignoredProjects.includes(p.id)
+        )
       }
 
       // Load pinned project IDs
@@ -155,12 +163,20 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
     try {
       if (window.api?.projects) {
         await window.api.projects.ignore(folderPath)
-        set((state) => ({
-          projects: state.projects.filter((p) => p.path !== folderPath && p.id !== folderPath)
-        }))
       }
+      if (window.api?.store) {
+        const ignoredList =
+          ((await window.api.store.get('ignoredProjects')) as string[] | undefined) || []
+        if (!ignoredList.includes(folderPath)) {
+          await window.api.store.set('ignoredProjects', [...ignoredList, folderPath])
+        }
+      }
+      set((state) => ({
+        projects: state.projects.filter((p) => p.path !== folderPath && p.id !== folderPath)
+      }))
     } catch (error) {
       console.error('Failed to ignore project', error)
+      throw error
     }
   },
 
@@ -168,10 +184,17 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
     try {
       if (window.api?.projects) {
         await window.api.projects.unignore(folderPath)
-        await get().scanProjects()
       }
+      if (window.api?.store) {
+        const ignoredList =
+          ((await window.api.store.get('ignoredProjects')) as string[] | undefined) || []
+        const updated = ignoredList.filter((p) => p !== folderPath)
+        await window.api.store.set('ignoredProjects', updated)
+      }
+      await get().scanProjects()
     } catch (error) {
       console.error('Failed to unignore project', error)
+      throw error
     }
   },
 

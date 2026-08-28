@@ -10,18 +10,36 @@ export function setupProjectsIpc() {
     const savedPaths = store.get('scanPaths', ['D:\\Code']) as string[];
     const rootPaths = options?.rootPaths ?? savedPaths;
     const mode = options?.mode ?? (store.get('scanMode', 'git') as 'git' | 'all');
-    return projectScanner.scanDirectory(rootPaths, 4, mode);
+    const ignored = (store.get('ignoredProjects', []) as string[]);
+    const results = await projectScanner.scanDirectory(rootPaths, 4, mode);
+    if (ignored && ignored.length > 0) {
+      return results.filter(p => !ignored.includes(p.path) && !ignored.includes(p.id));
+    }
+    return results;
   });
 
   ipcMain.handle('projects:addManual', async (_, folderPath: string) => {
+    const store = await getStore();
+    const ignored = (store.get('ignoredProjects', []) as string[]);
+    if (ignored.includes(folderPath)) {
+      return null;
+    }
     return projectScanner.scanSingleFolder(folderPath);
   });
 
   ipcMain.handle('projects:ignore', async (_, folderPath: string) => {
+    const store = await getStore();
+    const ignored = (store.get('ignoredProjects', []) as string[]);
+    if (!ignored.includes(folderPath)) {
+      store.set('ignoredProjects', [...ignored, folderPath]);
+    }
     return projectScanner.setIgnored(folderPath, true);
   });
 
   ipcMain.handle('projects:unignore', async (_, folderPath: string) => {
+    const store = await getStore();
+    const ignored = (store.get('ignoredProjects', []) as string[]);
+    store.set('ignoredProjects', ignored.filter(p => p !== folderPath));
     return projectScanner.setIgnored(folderPath, false);
   });
 

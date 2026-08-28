@@ -103,17 +103,12 @@ export const ProjectCard: React.FC<ProjectCardProps> = ({ project }) => {
   const handleIgnoreProject = async () => {
     if (
       window.confirm(
-        `Ignore project "${project.name}"?\n\nThis will add "ignore": true to its .ybicg/config.json and hide it from your dashboard.`
+        `Ignore project "${project.name}"?\n\nThis will hide it from your dashboard and add it to your Ignored Projects list in Settings.`
       )
     ) {
       try {
         await ignoreProject(project.path)
-        const ignoredList =
-          ((await window.api?.store?.get('ignoredProjects')) as string[] | undefined) || []
-        if (!ignoredList.includes(project.path)) {
-          await window.api?.store?.set('ignoredProjects', [...ignoredList, project.path])
-        }
-        toast.info(`Ignored "${project.name}". Config updated in .ybicg/config.json.`)
+        toast.info(`Ignored "${project.name}".`)
       } catch (err) {
         toast.error(`Failed to ignore project`)
       }
