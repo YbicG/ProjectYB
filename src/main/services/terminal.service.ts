@@ -8,12 +8,39 @@ export interface TerminalInstance {
   pid: number;
   cwd: string;
   buffer: string;
+  name?: string;
+  projectId?: string;
+  projectName?: string;
+  serviceId?: string;
+  isService?: boolean;
+  command?: string;
+  port?: number;
+  startedAt: number;
+}
+
+export interface TerminalSpawnMeta {
+  name?: string;
+  projectId?: string;
+  projectName?: string;
+  serviceId?: string;
+  isService?: boolean;
+  command?: string;
+  port?: number;
 }
 
 class TerminalService {
   private terminals: Map<string, TerminalInstance> = new Map();
 
-  spawn(id: string, cwd: string, cols: number, rows: number, shell?: string, onData?: (data: string) => void, onExit?: (exitCode: number) => void) {
+  spawn(
+    id: string,
+    cwd: string,
+    cols: number,
+    rows: number,
+    shell?: string,
+    onData?: (data: string) => void,
+    onExit?: (exitCode: number) => void,
+    meta?: TerminalSpawnMeta
+  ) {
     const file = shell || (process.platform === 'win32' ? 'powershell.exe' : 'bash');
     const args = process.platform === 'win32' && !shell ? ['-NoLogo'] : [];
     try {
@@ -29,15 +56,23 @@ class TerminalService {
         id,
         pty: ptyProcess,
         pid: ptyProcess.pid,
-        cwd,
-        buffer: ''
+        cwd: cwd || process.cwd(),
+        buffer: '',
+        name: meta?.name || id,
+        projectId: meta?.projectId,
+        projectName: meta?.projectName,
+        serviceId: meta?.serviceId,
+        isService: meta?.isService ?? Boolean(meta?.serviceId),
+        command: meta?.command,
+        port: meta?.port,
+        startedAt: Date.now()
       };
 
       this.terminals.set(id, instance);
 
       let streamBuffer = '';
 
-      ptyProcess.onData(data => {
+      ptyProcess.onData((data) => {
         instance.buffer = (instance.buffer + data).slice(-300000);
         if (onData) onData(data);
 
@@ -57,8 +92,12 @@ class TerminalService {
               !clean.startsWith('[?') &&
               !clean.startsWith(']0;')
             ) {
-              const level = clean.toLowerCase().includes('error') ? 'error' : clean.toLowerCase().includes('warn') ? 'warn' : 'info';
-              logStreamService.log('terminal', level, `Terminal`, clean);
+              const level = clean.toLowerCase().includes('error')
+                ? 'error'
+                : clean.toLowerCase().includes('warn')
+                  ? 'warn'
+                  : 'info';
+              logStreamService.log('terminal', level, instance.name || `Terminal`, clean);
             }
           }
         }
@@ -127,7 +166,48 @@ class TerminalService {
   }
 
   getAllTerminals() {
-    return Array.from(this.terminals.values()).map(t => ({ id: t.id, pid: t.pid, cwd: t.cwd }));
+    return Array.from(this.terminals.values()).map((t) => ({
+      id: t.id,
+      pid: t.pid,
+      cwd: t.cwd,
+      name: t.name,
+      projectName: t.projectName,
+      isService: t.isService
+    }));
+  }
+
+  getAllRunningServices(): Array<{
+    id: string;
+    projectId: string;
+    projectName: string;
+    scriptName: string;
+    command: string;
+    cwd: string;
+    terminalId: string;
+    pid: number;
+    port?: number;
+    status: 'running';
+    startedAt: number;
+  }> {
+    return Array.from(this.terminals.values()).map((t) => {
+      const nameParts = (t.name || '').split(/[:•]/);
+      const projName = t.projectName || (nameParts.length > 1 ? nameParts[0].trim() : 'Project');
+      const scriptName = nameParts.length > 1 ? nameParts.slice(1).join(':').trim() : t.name || 'Terminal';
+
+      return {
+        id: t.serviceId || t.id,
+        projectId: t.projectId || 'custom',
+        projectName: projName,
+        scriptName: scriptName,
+        command: t.command || (t.isService ? 'npm run ' + scriptName : 'active process'),
+        cwd: t.cwd,
+        terminalId: t.id,
+        pid: t.pid,
+        port: t.port,
+        status: 'running' as const,
+        startedAt: t.startedAt || Date.now()
+      };
+    });
   }
 }
 

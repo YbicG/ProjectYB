@@ -2,8 +2,20 @@ import { contextBridge, ipcRenderer } from 'electron'
 
 const api = {
   terminal: {
-    spawn: (options: { id: string; cwd?: string; cols: number; rows: number }) =>
-      ipcRenderer.invoke('terminal:spawn', options),
+    spawn: (options: {
+      id: string;
+      cwd?: string;
+      cols: number;
+      rows: number;
+      shell?: string;
+      name?: string;
+      projectId?: string;
+      projectName?: string;
+      serviceId?: string;
+      isService?: boolean;
+      command?: string;
+      port?: number;
+    }) => ipcRenderer.invoke('terminal:spawn', options),
     write: (id: string, data: string) => ipcRenderer.send('terminal:write', id, data),
     resize: (id: string, cols: number, rows: number) =>
       ipcRenderer.send('terminal:resize', id, cols, rows),

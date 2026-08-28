@@ -300,7 +300,7 @@ export class MobileCompanionService extends EventEmitter {
       try {
         const [cpu, mem] = await Promise.all([si.currentLoad(), si.mem()]);
         const terminals = terminalService.getAllTerminals();
-        const activeServices = Array.from(this.runningServices.values()).filter((s) => s.status === 'running');
+        const activeServices = terminalService.getAllRunningServices();
 
         res.writeHead(200, { 'Content-Type': 'application/json' });
         res.end(
@@ -392,6 +392,15 @@ export class MobileCompanionService extends EventEmitter {
                 if (current) {
                   current.status = code === 0 ? 'stopped' : 'error';
                 }
+              },
+              {
+                name: ws.name + ' • ' + item.name,
+                projectId: item.projectId,
+                projectName: ws.name,
+                serviceId,
+                isService: true,
+                command: item.command,
+                port: item.waitPort
               }
             );
 
@@ -432,9 +441,38 @@ export class MobileCompanionService extends EventEmitter {
       return;
     }
 
-    // ── 4. Running Services & Process Management ──
+    // ── 4. Running Services & Process Management (Unified Desktop + Mobile Sync) ──
     if (pathname === '/api/services/running' && req.method === 'GET') {
-      const services = Array.from(this.runningServices.values());
+      const allActive = terminalService.getAllRunningServices();
+      const mergedMap = new Map<string, MobileRunningService>();
+
+      for (const s of allActive) {
+        const existing = this.runningServices.get(s.id) || this.runningServices.get(s.terminalId);
+        mergedMap.set(s.terminalId, {
+          id: s.id,
+          projectId: s.projectId,
+          projectName: s.projectName,
+          scriptName: s.scriptName,
+          command: s.command,
+          cwd: s.cwd,
+          terminalId: s.terminalId,
+          pid: s.pid,
+          port: s.port,
+          status: 'running',
+          startedAt: s.startedAt,
+          tunnelUrl: existing?.tunnelUrl
+        });
+      }
+
+      for (const [id, s] of this.runningServices.entries()) {
+        if (s.status === 'running' && !mergedMap.has(s.terminalId)) {
+          if (terminalService.getPid(s.terminalId)) {
+            mergedMap.set(s.terminalId, s);
+          }
+        }
+      }
+
+      const services = Array.from(mergedMap.values());
       res.writeHead(200, { 'Content-Type': 'application/json' });
       res.end(JSON.stringify({ success: true, services }));
       return;

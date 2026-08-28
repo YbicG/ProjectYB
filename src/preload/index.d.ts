@@ -18,7 +18,20 @@ export interface BranchSummary {
 
 export interface IElectronAPI {
   terminal: {
-    spawn(options: { id: string; cwd?: string; cols: number; rows: number; shell?: string }): Promise<boolean>
+    spawn(options: {
+      id: string;
+      cwd?: string;
+      cols: number;
+      rows: number;
+      shell?: string;
+      name?: string;
+      projectId?: string;
+      projectName?: string;
+      serviceId?: string;
+      isService?: boolean;
+      command?: string;
+      port?: number;
+    }): Promise<boolean>
     write(id: string, data: string): void
     resize(id: string, cols: number, rows: number): void
     kill(id: string): void

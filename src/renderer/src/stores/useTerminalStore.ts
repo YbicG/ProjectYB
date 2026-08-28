@@ -66,7 +66,13 @@ export const useTerminalStore = create<TerminalState>((set, get) => ({
         id,
         cwd,
         cols: 120,
-        rows: 30
+        rows: 30,
+        name: options.name,
+        projectId: options.projectId,
+        projectName: options.projectName,
+        serviceId: options.serviceId,
+        isService: options.isService,
+        command: options.command
       })
       
       // Register onExit handler
