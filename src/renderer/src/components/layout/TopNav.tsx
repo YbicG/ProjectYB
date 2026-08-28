@@ -20,7 +20,7 @@ import {
   Workflow,
   Bot
 } from 'lucide-react';
-import { useAppStore } from '@renderer/stores/useAppStore';
+import { useAppStore, TabType } from '@renderer/stores/useAppStore';
 import { cn } from '@renderer/lib/utils';
 import { SystemMonitor } from '../shared/SystemMonitor';
 import { NotificationCenter } from '../shared/NotificationCenter';
@@ -36,7 +36,7 @@ import { useThemeStore } from '@renderer/stores/useThemeStore';
 import { useSearchStore } from '@renderer/stores/useSearchStore';
 import { useSnippetStore } from '@renderer/stores/useSnippetStore';
 
-const tabs = [
+const tabs: Array<{ id: TabType; label: string; icon: React.ComponentType<{ className?: string }> }> = [
   { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
   { id: 'overview', label: 'Mission Control', icon: Radio },
   { id: 'api', label: 'API Tester', icon: Send },
@@ -100,7 +100,7 @@ export const TopNav: React.FC = () => {
           return (
             <button
               key={tab.id}
-              onClick={() => setActiveTab(tab.id as any)}
+              onClick={() => setActiveTab(tab.id)}
               className={cn(
                 "relative flex items-center gap-1.5 sm:gap-2 px-2.5 sm:px-3 h-full text-xs sm:text-sm font-medium transition-colors hover:text-zinc-50 shrink-0 whitespace-nowrap",
                 isActive ? "text-zinc-50" : "text-zinc-400"
