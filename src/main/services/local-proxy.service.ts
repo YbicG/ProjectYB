@@ -4,6 +4,7 @@ import * as tls from 'tls';
 import * as net from 'net';
 import * as crypto from 'crypto';
 import { logger } from '../utils/logger';
+import { rootCaService } from './root-ca.service';
 
 export interface ProxyRoute {
   id: string;
@@ -78,9 +79,17 @@ export class LocalProxyService {
       const tlsOptions: https.ServerOptions = {
         key: this.defaultCert?.key || '',
         cert: this.defaultCert?.cert || '',
-        SNICallback: (hostname, cb) => {
+        SNICallback: async (hostname, cb) => {
           try {
-            const certPair = this.generateSelfSignedCert(hostname);
+            const certPair = await rootCaService.getCertificateForDomain(hostname);
+            if ((certPair as any).pfx) {
+              const ctx = tls.createSecureContext({
+                pfx: (certPair as any).pfx,
+                passphrase: ''
+              });
+              cb(null, ctx);
+              return;
+            }
             const ctx = tls.createSecureContext({
               key: certPair.key,
               cert: certPair.cert

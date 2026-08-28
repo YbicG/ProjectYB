@@ -41,6 +41,9 @@ export const LocalProxyPage: React.FC = () => {
     routes,
     status,
     hostsStatus,
+    rootCaStatus,
+    installRootCa,
+    uninstallRootCa,
     isLoading,
     isSyncingHosts,
     isEditorOpen,
@@ -204,6 +207,70 @@ export const LocalProxyPage: React.FC = () => {
             <Plus className="w-3.5 h-3.5" />
             Add Domain Route
           </Button>
+        </div>
+      </div>
+
+      {/* ── Root CA & SSL Trust Status Banner ── */}
+      <div
+        className={cn(
+          'p-3.5 rounded-xl border flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-xs',
+          rootCaStatus?.installed
+            ? 'bg-emerald-950/15 border-emerald-800/30 text-emerald-300'
+            : 'bg-amber-950/20 border-amber-800/40 text-amber-300'
+        )}
+      >
+        <div className="flex items-center gap-2.5">
+          <div
+            className={cn(
+              'p-1.5 rounded-lg shrink-0',
+              rootCaStatus?.installed ? 'bg-emerald-500/10 text-emerald-400' : 'bg-amber-500/10 text-amber-400'
+            )}
+          >
+            <Lock className="w-4 h-4" />
+          </div>
+          <div>
+            <div className="font-semibold flex items-center gap-2 flex-wrap">
+              <span>{rootCaStatus?.installed ? 'Trusted Local Root CA Active' : 'Untrusted Self-Signed SSL'}</span>
+              <Badge
+                variant="outline"
+                className={cn(
+                  'text-[10px] font-mono',
+                  rootCaStatus?.installed
+                    ? 'border-emerald-500/40 text-emerald-400 bg-emerald-950/30'
+                    : 'border-amber-500/40 text-amber-400 bg-amber-950/30'
+                )}
+              >
+                {rootCaStatus?.installed ? '🔒 GREEN PADLOCK ACTIVE' : '⚠️ BROWSER WARNING SCREEN'}
+              </Badge>
+            </div>
+            <p className="text-[11px] text-zinc-400 mt-0.5">
+              {rootCaStatus?.installed
+                ? 'ProjectYB Root CA is installed and trusted in your Windows Certificate Store. All *.test and *.local domains display with genuine green padlock in Chrome, Edge, and Firefox.'
+                : 'Install the ProjectYB Root CA into your Windows Certificate Store (1-click) to remove all browser warning screens.'}
+            </p>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-2 shrink-0">
+          {rootCaStatus?.installed ? (
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => uninstallRootCa()}
+              className="h-8 text-xs border-zinc-800 text-zinc-400 hover:text-rose-400 hover:border-rose-800/50"
+            >
+              Remove Root CA
+            </Button>
+          ) : (
+            <Button
+              size="sm"
+              onClick={() => installRootCa()}
+              className="h-8 text-xs bg-amber-600 hover:bg-amber-500 text-zinc-950 font-semibold gap-1.5 shadow-md"
+            >
+              <Lock className="w-3.5 h-3.5" />
+              Install Trusted Root CA
+            </Button>
+          )}
         </div>
       </div>
 

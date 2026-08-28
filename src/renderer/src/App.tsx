@@ -8,6 +8,7 @@ import { OverviewPage } from './pages/OverviewPage';
 import { ApiTesterPage } from './pages/ApiTesterPage';
 import { OpenApiPage } from './pages/OpenApiPage';
 import { LogStreamPage } from './pages/LogStreamPage';
+import { CronPage } from './pages/CronPage';
 import { TerminalsPage } from './pages/TerminalsPage';
 import { GitPage } from './pages/GitPage';
 import { ServicesPage } from './pages/ServicesPage';
@@ -30,6 +31,7 @@ import { GlobalSearchModal } from './components/search/GlobalSearchModal';
 import { SnippetVaultModal } from './components/snippets/SnippetVaultModal';
 import { AiErrorDiagnosisDialog } from './components/ai/AiErrorDiagnosisDialog';
 import { AiChatModal } from './components/ai/AiChatModal';
+import { MobileRemoteModal } from './components/mobile/MobileRemoteModal';
 import { ErrorBoundary } from './components/shared/ErrorBoundary';
 import { useAppStore } from '@renderer/stores/useAppStore';
 import { useProjectStore } from '@renderer/stores/useProjectStore';
@@ -97,6 +99,8 @@ export const App: React.FC = () => {
         return <OpenApiPage />;
       case 'logstream':
         return <LogStreamPage />;
+      case 'cron':
+        return <CronPage />;
       case 'terminals':
         return <TerminalsPage />;
       case 'git':
@@ -142,6 +146,8 @@ export const App: React.FC = () => {
         return <OpenApiPage />;
       case 'logstream':
         return <LogStreamPage />;
+      case 'cron':
+        return <CronPage />;
       case 'terminals':
         return <TerminalsPage />;
       case 'git':
@@ -199,6 +205,7 @@ export const App: React.FC = () => {
       <SnippetVaultModal />
       <AiErrorDiagnosisDialog />
       <AiChatModal />
+      <MobileRemoteModal />
     </>
   );
 };

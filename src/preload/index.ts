@@ -379,6 +379,33 @@ const api = {
       ipcRenderer.invoke('ai:diagnoseError', errorLogs, command, config),
     generateCommitMessage: (diffText: string, config: any) =>
       ipcRenderer.invoke('ai:generateCommitMessage', diffText, config)
+  },
+  services: {
+    forceKill: (options: { pid?: number; port?: number; terminalId?: string }) =>
+      ipcRenderer.invoke('services:forceKill', options),
+    findPidsOnPort: (port: number) => ipcRenderer.invoke('services:findPidsOnPort', port)
+  },
+  rootCa: {
+    getStatus: () => ipcRenderer.invoke('rootCa:getStatus'),
+    install: () => ipcRenderer.invoke('rootCa:install'),
+    uninstall: () => ipcRenderer.invoke('rootCa:uninstall'),
+    getCertificate: (domain: string) => ipcRenderer.invoke('rootCa:getCertificate', domain)
+  },
+  cron: {
+    getJobs: () => ipcRenderer.invoke('cron:getJobs'),
+    saveJob: (job: any) => ipcRenderer.invoke('cron:saveJob', job),
+    deleteJob: (id: string) => ipcRenderer.invoke('cron:deleteJob', id),
+    runNow: (id: string) => ipcRenderer.invoke('cron:runNow', id),
+    toggleJob: (id: string, enabled: boolean) => ipcRenderer.invoke('cron:toggleJob', id, enabled),
+    getHistory: (jobId: string) => ipcRenderer.invoke('cron:getHistory', jobId)
+  },
+  mobile: {
+    start: (options: any) => ipcRenderer.invoke('mobile:start', options),
+    stop: () => ipcRenderer.invoke('mobile:stop'),
+    getStatus: () => ipcRenderer.invoke('mobile:getStatus'),
+    setCredentials: (username: string, rawPass: string) =>
+      ipcRenderer.invoke('mobile:setCredentials', username, rawPass),
+    getCredentials: () => ipcRenderer.invoke('mobile:getCredentials')
   }
 }
 

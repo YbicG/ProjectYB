@@ -18,7 +18,9 @@ import {
   Globe,
   Database,
   Workflow,
-  Bot
+  Bot,
+  Clock,
+  Smartphone
 } from 'lucide-react';
 import { useAppStore, TabType } from '@renderer/stores/useAppStore';
 import { cn } from '@renderer/lib/utils';
@@ -42,6 +44,7 @@ const tabs: Array<{ id: TabType; label: string; icon: React.ComponentType<{ clas
   { id: 'api', label: 'API Tester', icon: Send },
   { id: 'openapi', label: 'OpenAPI', icon: FileText },
   { id: 'logstream', label: 'LogStream', icon: Activity },
+  { id: 'cron', label: 'Cron', icon: Clock },
   { id: 'terminals', label: 'Terminals', icon: TerminalSquare },
   { id: 'git', label: 'Git', icon: GitBranch },
   { id: 'services', label: 'Services', icon: Server },
@@ -57,7 +60,7 @@ const tabs: Array<{ id: TabType; label: string; icon: React.ComponentType<{ clas
 ];
 
 export const TopNav: React.FC = () => {
-  const { activeTab, setActiveTab, setCommandPaletteOpen } = useAppStore();
+  const { activeTab, setActiveTab, setCommandPaletteOpen, setMobileModalOpen } = useAppStore();
   const { terminals } = useTerminalStore();
   const { services } = useServiceStore();
   const { statuses } = useGitStore();
@@ -128,6 +131,17 @@ export const TopNav: React.FC = () => {
         </div>
         <SystemMonitor />
         
+        {/* Mobile Remote Companion (PWA) */}
+        <Button
+          variant="ghost"
+          size="icon"
+          className="h-7 w-7 sm:h-8 sm:w-8 text-zinc-400 hover:text-violet-300"
+          onClick={() => setMobileModalOpen(true)}
+          title="ProjectYB Mobile Remote Companion (PWA & Tunnel)"
+        >
+          <Smartphone className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-violet-400" />
+        </Button>
+
         {/* Global Search (Ctrl+Shift+F) */}
         <Button
           variant="ghost"

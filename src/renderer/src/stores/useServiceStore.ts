@@ -16,6 +16,7 @@ interface ServiceState {
   profiles: StartupProfile[]
   startService: (projectId: string, projectName: string, config: ServiceConfig) => Promise<string>
   stopService: (id: string) => void
+  forceKillService: (id: string, port?: number) => Promise<void>
   restartService: (id: string) => Promise<void>
   updateServiceStats: (id: string, stats: ProcessStats) => void
   updateAllServiceStats: (statsMap: Record<string, { cpu: number; memory: number }>) => void
@@ -105,6 +106,36 @@ export const useServiceStore = create<ServiceState>((set, get) => ({
         actionTab: 'services'
       })
     }
+  },
+
+  forceKillService: async (id, port) => {
+    const { services } = get()
+    const service = services.find(s => s.id === id)
+    
+    if (window.api?.services) {
+      await window.api.services.forceKill({
+        pid: service?.pid,
+        port: port,
+        terminalId: service?.terminalId
+      })
+    }
+    
+    if (service?.terminalId) {
+      useTerminalStore.getState().killTerminal(service.terminalId)
+    }
+
+    set((state) => ({
+      services: state.services.filter(s => s.id !== id),
+      runningServices: state.services.filter(s => s.id !== id)
+    }))
+
+    useNotificationStore.getState().notify({
+      title: 'Service Force-Killed',
+      message: `Process tree for "${service?.name || id}" force-terminated and port released`,
+      type: 'warning',
+      category: 'services',
+      actionTab: 'services'
+    })
   },
   
   restartService: async (id) => {

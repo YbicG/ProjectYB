@@ -21,7 +21,9 @@ import {
   Globe,
   Database,
   Workflow,
-  Bot
+  Bot,
+  Clock,
+  Smartphone
 } from 'lucide-react';
 import logoUrl from '@renderer/assets/logo.png';
 
@@ -49,7 +51,7 @@ interface NavItem {
 }
 
 export const ModernSidebar: React.FC = () => {
-  const { activeTab, setActiveTab } = useAppStore();
+  const { activeTab, setActiveTab, setMobileModalOpen } = useAppStore();
   const {
     isSidebarCollapsed,
     toggleSidebar,
@@ -138,6 +140,7 @@ export const ModernSidebar: React.FC = () => {
     { id: 'pipelines', label: 'Workflows & CI', icon: Workflow, category: 'dev' },
     { id: 'mock-server', label: 'Mock & Webhooks', icon: Radio, category: 'dev' },
     { id: 'ai-hub', label: 'AI Copilot Hub', icon: Bot, category: 'dev' },
+    { id: 'cron', label: 'Cron Automation', icon: Clock, category: 'dev' },
     { id: 'dependencies', label: 'Dependencies', icon: Package, category: 'dev' },
     { id: 'optimizer', label: 'Disk Optimizer', icon: HardDrive, category: 'dev' },
     // System
@@ -363,6 +366,15 @@ export const ModernSidebar: React.FC = () => {
         {/* Quick Tools Row (Scratchpad, Snippets, Health) */}
         {!isSidebarCollapsed ? (
           <div className="flex items-center justify-between gap-1 pt-1">
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-7 w-7 text-zinc-400 hover:text-violet-300"
+              onClick={() => setMobileModalOpen(true)}
+              title="ProjectYB Mobile Remote Companion (PWA / Tunnel)"
+            >
+              <Smartphone className="w-3.5 h-3.5 text-violet-400" />
+            </Button>
             <Button
               variant="ghost"
               size="icon"

@@ -30,6 +30,7 @@ export const CloudflareSettings: React.FC = () => {
     isDownloadingBinary,
     downloadProgress,
     config,
+    loadConfig,
     saveConfig,
     testToken,
     isTestingToken,
@@ -42,27 +43,38 @@ export const CloudflareSettings: React.FC = () => {
   } = useCloudflareStore();
 
   const [tokenInput, setTokenInput] = useState(config.apiToken || '');
+  const [accountIdInput, setAccountIdInput] = useState(config.accountId || '');
   const [newTunnelName, setNewTunnelName] = useState('');
   const [isCreatingTunnel, setIsCreatingTunnel] = useState(false);
 
   useEffect(() => {
+    loadConfig();
     checkBinaryStatus();
+  }, []);
+
+  useEffect(() => {
     if (config.apiToken) {
       setTokenInput(config.apiToken);
     }
-  }, [config.apiToken]);
+    if (config.accountId) {
+      setAccountIdInput(config.accountId);
+    }
+  }, [config.apiToken, config.accountId]);
 
   const handleSaveAndTest = async () => {
     if (!tokenInput.trim()) {
       toast.error('Please enter a Cloudflare API Token');
       return;
     }
-    await saveConfig({ apiToken: tokenInput.trim() });
+    await saveConfig({
+      apiToken: tokenInput.trim(),
+      accountId: accountIdInput.trim() || undefined
+    });
     const ok = await testToken(tokenInput.trim());
     if (ok) {
       toast.success('Cloudflare API Token connected and verified!');
     } else {
-      toast.error('Invalid token or connection failed');
+      toast.error('Invalid token or connection failed. Please check token permissions (Cloudflare Tunnel: Edit / Read).');
     }
   };
 
@@ -245,13 +257,29 @@ export const CloudflareSettings: React.FC = () => {
             </div>
           </div>
 
+          <div className="space-y-1.5 pt-1">
+            <Label htmlFor="account-id" className="text-xs text-zinc-300 flex items-center justify-between">
+              <span>Cloudflare Account ID (32-character hex ID)</span>
+              <span className="text-[11px] text-zinc-500">Auto-detected on verify or copy from Cloudflare dashboard</span>
+            </Label>
+            <Input
+              id="account-id"
+              type="text"
+              value={accountIdInput}
+              onChange={(e) => setAccountIdInput(e.target.value)}
+              placeholder="e.g. 1a2b3c4d5e6f7a8b9c0d1e2f3a4b5c6d"
+              className="bg-zinc-900 border-zinc-800 font-mono text-xs text-zinc-100"
+            />
+          </div>
+
           {/* Account Selector (if verified) */}
           {accounts.length > 0 && (
             <div className="space-y-1.5 pt-2 border-t border-zinc-850">
-              <Label className="text-xs text-zinc-300">Selected Cloudflare Account</Label>
+              <Label className="text-xs text-zinc-300">Auto-Detected Cloudflare Accounts</Label>
               <select
                 value={config.accountId || ''}
                 onChange={(e) => {
+                  setAccountIdInput(e.target.value);
                   saveConfig({ accountId: e.target.value });
                   loadRemoteTunnels();
                 }}

@@ -29,12 +29,14 @@ export const CreateTunnelDialog: React.FC = () => {
     installBinary,
     isDownloadingBinary,
     config,
+    loadConfig,
     zones,
     fetchZones
   } = useCloudflareStore();
 
   const { ports } = usePortStore();
   const { runningServices } = useServiceStore();
+  const { openSettingsTab } = useAppStore();
 
   const [mode, setMode] = useState<'quick' | 'auto' | 'manual'>('quick');
 
@@ -55,6 +57,12 @@ export const CreateTunnelDialog: React.FC = () => {
   const [tunnelToken, setTunnelToken] = useState<string>('');
   const [customHostname, setCustomHostname] = useState<string>('');
   const [manualPort, setManualPort] = useState<string>('3000');
+
+  useEffect(() => {
+    if (createModalOpen) {
+      loadConfig();
+    }
+  }, [createModalOpen]);
 
   useEffect(() => {
     if (createModalOpen && config.apiToken && config.accountId) {
@@ -326,7 +334,7 @@ export const CreateTunnelDialog: React.FC = () => {
                     size="sm"
                     onClick={() => {
                       setCreateModalOpen(false);
-                      useAppStore.getState().setActiveTab('settings');
+                      openSettingsTab('cloudflare');
                     }}
                     className="text-xs border-amber-600 text-amber-200 hover:bg-amber-900/30"
                   >

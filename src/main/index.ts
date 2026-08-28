@@ -32,10 +32,15 @@ import { setupDatabaseIpc } from './ipc/database.ipc';
 import { setupPipelineIpc } from './ipc/pipeline.ipc';
 import { setupMockServerIpc } from './ipc/mock-server.ipc';
 import { setupAiIpc } from './ipc/ai.ipc';
+import { registerServiceKillerIpc } from './ipc/service-killer.ipc';
+import { registerRootCaIpc } from './ipc/root-ca.ipc';
+import { registerCronIpc } from './ipc/cron.ipc';
+import { registerMobileCompanionIpc } from './ipc/mobile-companion.ipc';
 import { terminalService } from './services/terminal.service';
 import { systemMonitor } from './services/system-monitor';
 import { trayService } from './services/tray.service';
 import { cloudflareService } from './services/cloudflare.service';
+import { cronService } from './services/cron.service';
 
 let mainWindow: BrowserWindow | null = null;
 
@@ -102,6 +107,16 @@ async function createWindow() {
   setupPipelineIpc(mainWindow);
   setupMockServerIpc(mainWindow);
   setupAiIpc(mainWindow);
+  registerServiceKillerIpc();
+  registerRootCaIpc();
+  registerCronIpc();
+  registerMobileCompanionIpc();
+
+  try {
+    await cronService.initialize();
+  } catch (err) {
+    console.error('Failed to initialize cron service:', err);
+  }
   
   try {
     await setupStoreIpc();

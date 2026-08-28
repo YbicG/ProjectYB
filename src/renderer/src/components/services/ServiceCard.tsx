@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Play, Square, RotateCw, TerminalSquare, ExternalLink, Maximize2, Terminal, CloudLightning } from 'lucide-react';
+import { Play, Square, RotateCw, TerminalSquare, ExternalLink, Maximize2, Terminal, CloudLightning, Flame } from 'lucide-react';
 import { Card, CardContent } from '../ui/card';
 import { Button } from '../ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../ui/dialog';
@@ -26,7 +26,7 @@ function formatUptime(startedAt?: number): string {
 }
 
 export const ServiceCard: React.FC<ServiceCardProps> = ({ service }) => {
-  const { stopService, restartService } = useServiceStore();
+  const { stopService, forceKillService, restartService } = useServiceStore();
   const { setActiveTerminal, setFilter } = useTerminalStore();
   const { startQuickTunnel } = useCloudflareStore();
   const { setActiveTab } = useAppStore();
@@ -41,6 +41,7 @@ export const ServiceCard: React.FC<ServiceCardProps> = ({ service }) => {
   }, [service.startedAt]);
 
   const handleStop = () => stopService(service.id);
+  const handleForceKill = () => forceKillService(service.id, service.port);
   const handleRestart = () => restartService(service.id);
   
   const handleStartTunnel = async () => {
@@ -143,6 +144,15 @@ export const ServiceCard: React.FC<ServiceCardProps> = ({ service }) => {
               title="Stop Service"
             >
               <Square className="w-3.5 h-3.5" />
+            </Button>
+            <Button
+              variant="destructive"
+              size="sm"
+              className="h-8 px-2 bg-rose-950/40 hover:bg-rose-600 text-rose-300 hover:text-white border border-rose-800/50 text-[11px] font-semibold"
+              onClick={handleForceKill}
+              title="Force Kill Process Tree & Free Port (taskkill /T /F)"
+            >
+              <Flame className="w-3.5 h-3.5" />
             </Button>
           </div>
         </CardContent>

@@ -6,6 +6,7 @@ interface ProxyState {
   routes: ProxyRoute[];
   status: ProxyStatus;
   hostsStatus: Record<string, boolean>;
+  rootCaStatus: { installed: boolean; subject: string; validUntil?: string; error?: string } | null;
   isLoading: boolean;
   isSyncingHosts: boolean;
   isEditorOpen: boolean;
@@ -14,6 +15,9 @@ interface ProxyState {
   // Actions
   fetchStatus: () => Promise<void>;
   checkHostsStatus: () => Promise<void>;
+  checkRootCaStatus: () => Promise<void>;
+  installRootCa: () => Promise<boolean>;
+  uninstallRootCa: () => Promise<boolean>;
   syncAllToHosts: () => Promise<boolean>;
   syncSingleToHosts: (domain: string) => Promise<boolean>;
   clearHosts: () => Promise<boolean>;
@@ -60,6 +64,7 @@ export const useProxyStore = create<ProxyState>((set, get) => ({
     activeConnections: 0
   },
   hostsStatus: {},
+  rootCaStatus: null,
   isLoading: false,
   isSyncingHosts: false,
   isEditorOpen: false,
@@ -73,8 +78,56 @@ export const useProxyStore = create<ProxyState>((set, get) => ({
         set({ status, routes });
       }
       await get().checkHostsStatus();
+      await get().checkRootCaStatus();
     } catch (err) {
       console.error('Failed to fetch proxy status', err);
+    }
+  },
+
+  checkRootCaStatus: async () => {
+    try {
+      if (window.api?.rootCa) {
+        const rootCaStatus = await window.api.rootCa.getStatus();
+        set({ rootCaStatus });
+      }
+    } catch (err) {
+      console.error('Failed to check Root CA status', err);
+    }
+  },
+
+  installRootCa: async () => {
+    try {
+      if (!window.api?.rootCa) throw new Error('Root CA API not available');
+      const res = await window.api.rootCa.install();
+      if (res.success) {
+        toast.success('ProjectYB Root CA installed and trusted in OS Store! Green Padlock active.');
+        await get().checkRootCaStatus();
+        return true;
+      } else {
+        toast.error(`Root CA install failed: ${res.error || res.message}`);
+        return false;
+      }
+    } catch (err: any) {
+      toast.error(`Root CA error: ${err.message}`);
+      return false;
+    }
+  },
+
+  uninstallRootCa: async () => {
+    try {
+      if (!window.api?.rootCa) throw new Error('Root CA API not available');
+      const res = await window.api.rootCa.uninstall();
+      if (res.success) {
+        toast.info('ProjectYB Root CA removed from OS Store');
+        await get().checkRootCaStatus();
+        return true;
+      } else {
+        toast.error(`Uninstall failed: ${res.error}`);
+        return false;
+      }
+    } catch (err: any) {
+      toast.error(`Error: ${err.message}`);
+      return false;
     }
   },
 

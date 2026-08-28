@@ -434,7 +434,20 @@ export class CloudflareService {
       if (data.success) {
         return { success: true, message: 'Cloudflare API Token verified successfully', user: data.result };
       }
-      return { success: false, message: data.errors?.[0]?.message || 'Invalid API Token' };
+
+      // Fallback: Test if token can access /accounts directly (common for account-scoped tunnel tokens)
+      const accRes = await fetch('https://api.cloudflare.com/client/v4/accounts', {
+        headers: {
+          Authorization: `Bearer ${apiToken}`,
+          'Content-Type': 'application/json'
+        }
+      });
+      const accData = await accRes.json() as any;
+      if (accData.success) {
+        return { success: true, message: 'Cloudflare API Token verified via Account access' };
+      }
+
+      return { success: false, message: data.errors?.[0]?.message || accData.errors?.[0]?.message || 'Invalid API Token' };
     } catch (err: any) {
       return { success: false, message: err.message || 'Verification request failed' };
     }

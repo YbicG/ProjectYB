@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { Settings, Github, Monitor, TerminalSquare, Bell, CloudLightning, Shield } from 'lucide-react';
 import { GeneralSettings } from '../components/settings/GeneralSettings';
 import { GitHubSettings } from '../components/settings/GitHubSettings';
@@ -7,10 +7,11 @@ import { TerminalSettings } from '../components/settings/TerminalSettings';
 import { NotificationSettings } from '../components/settings/NotificationSettings';
 import { CloudflareSettings } from '../components/settings/CloudflareSettings';
 import { CloudSyncSettings } from '../components/settings/CloudSyncSettings';
+import { useAppStore } from '@renderer/stores/useAppStore';
 import { cn } from '@renderer/lib/utils';
 
 export const SettingsPage: React.FC = () => {
-  const [activeTab, setActiveTab] = useState('general');
+  const { settingsSubTab, setSettingsSubTab } = useAppStore();
 
   const tabs = [
     { id: 'general', label: 'General', icon: Settings },
@@ -33,10 +34,10 @@ export const SettingsPage: React.FC = () => {
           {tabs.map(tab => (
             <button
               key={tab.id}
-              onClick={() => setActiveTab(tab.id)}
+              onClick={() => setSettingsSubTab(tab.id)}
               className={cn(
                 "flex items-center gap-2.5 px-3 py-2 rounded-md text-xs sm:text-sm font-medium transition-colors whitespace-nowrap",
-                activeTab === tab.id 
+                settingsSubTab === tab.id 
                   ? 'bg-zinc-800 text-zinc-50 font-semibold' 
                   : 'text-zinc-400 hover:bg-zinc-900 hover:text-zinc-200'
               )}
@@ -50,13 +51,13 @@ export const SettingsPage: React.FC = () => {
       
       {/* ── Settings Content View ── */}
       <div className="flex-1 overflow-y-auto p-4 sm:p-6 md:p-8 bg-zinc-950/50">
-        {activeTab === 'general' && <GeneralSettings />}
-        {activeTab === 'sync' && <CloudSyncSettings />}
-        {activeTab === 'notifications' && <NotificationSettings />}
-        {activeTab === 'cloudflare' && <CloudflareSettings />}
-        {activeTab === 'github' && <GitHubSettings />}
-        {activeTab === 'appearance' && <AppearanceSettings />}
-        {activeTab === 'terminal' && <TerminalSettings />}
+        {settingsSubTab === 'general' && <GeneralSettings />}
+        {settingsSubTab === 'sync' && <CloudSyncSettings />}
+        {settingsSubTab === 'notifications' && <NotificationSettings />}
+        {settingsSubTab === 'cloudflare' && <CloudflareSettings />}
+        {settingsSubTab === 'github' && <GitHubSettings />}
+        {settingsSubTab === 'appearance' && <AppearanceSettings />}
+        {settingsSubTab === 'terminal' && <TerminalSettings />}
       </div>
     </div>
   );

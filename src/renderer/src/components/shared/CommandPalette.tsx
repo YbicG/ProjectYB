@@ -25,7 +25,9 @@ import {
   Shield,
   Database,
   Workflow,
-  Bot
+  Bot,
+  Clock,
+  Smartphone
 } from 'lucide-react';
 import { CommandDialog, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '../ui/command';
 import { useAppStore } from '@renderer/stores/useAppStore';
@@ -50,7 +52,7 @@ import { useMockServerStore } from '@renderer/stores/useMockServerStore';
 import { toast } from 'sonner';
 
 export const CommandPalette: React.FC = () => {
-  const { setActiveTab, commandPaletteOpen, setCommandPaletteOpen } = useAppStore();
+  const { setActiveTab, commandPaletteOpen, setCommandPaletteOpen, setMobileModalOpen } = useAppStore();
   const { projects, selectProject } = useProjectStore();
   const { createTerminal } = useTerminalStore();
   const { profiles, startProfile } = useServiceStore();
@@ -136,6 +138,14 @@ export const CommandPalette: React.FC = () => {
           <CommandItem onSelect={() => runCommand(() => setActiveTab('logstream'))}>
             <Activity className="mr-2 h-4 w-4 text-violet-400" />
             Multi-Process LogStream Studio
+          </CommandItem>
+          <CommandItem onSelect={() => runCommand(() => setActiveTab('cron'))}>
+            <Clock className="mr-2 h-4 w-4 text-violet-400" />
+            Scheduled Tasks & Cron Automation
+          </CommandItem>
+          <CommandItem onSelect={() => runCommand(() => setMobileModalOpen(true))}>
+            <Smartphone className="mr-2 h-4 w-4 text-violet-400" />
+            Launch Mobile Remote Companion (PWA / Tunnel)
           </CommandItem>
           <CommandItem onSelect={() => runCommand(() => setActiveTab('terminals'))}>
             <TerminalSquare className="mr-2 h-4 w-4" />

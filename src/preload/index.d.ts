@@ -346,6 +346,36 @@ export interface IElectronAPI {
       config: any
     ): Promise<{ success: boolean; commitMessage: string; error?: string }>
   }
+  services: {
+    forceKill(options: { pid?: number; port?: number; terminalId?: string }): Promise<{ success: boolean; killedPids: number[]; freedPort?: number; error?: string }>
+    findPidsOnPort(port: number): Promise<number[]>
+  }
+  rootCa: {
+    getStatus(): Promise<{ installed: boolean; subject: string; validUntil?: string; caPath?: string; error?: string }>
+    install(): Promise<{ success: boolean; message: string; error?: string }>
+    uninstall(): Promise<{ success: boolean; error?: string }>
+    getCertificate(domain: string): Promise<{ key: string; cert: string }>
+  }
+  cron: {
+    getJobs(): Promise<any[]>
+    saveJob(job: any): Promise<any>
+    deleteJob(id: string): Promise<boolean>
+    runNow(id: string): Promise<any>
+    toggleJob(id: string, enabled: boolean): Promise<any>
+    getHistory(jobId: string): Promise<any[]>
+  }
+  mobile: {
+    start(options: {
+      tunnelType?: 'quick' | 'named'
+      namedToken?: string
+      customHostname?: string
+      port?: number
+    }): Promise<{ success: boolean; status: any; error?: string }>
+    stop(): Promise<boolean>
+    getStatus(): Promise<any>
+    setCredentials(username: string, rawPass: string): Promise<any>
+    getCredentials(): Promise<{ username: string; rawPasswordDisplay?: string }>
+  }
 }
 
 declare global {
