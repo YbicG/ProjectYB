@@ -42,6 +42,7 @@ export interface ProjectInfo {
   scripts?: Record<string, string>;
   dependencies?: Record<string, string>;
   subprojects?: SubProjectInfo[];
+  services?: any[];
   branch?: string;
   lastCommit?: string;
   isGitRepo?: boolean;
@@ -80,6 +81,54 @@ class ProjectScanner {
       if (fs.existsSync(dotPath)) return dotPath;
     } catch {}
     return null;
+  }
+
+  /**
+   * Reads service run configurations from <folderPath>/.ybicg/services.json
+   * or from <folderPath>/.ybicg/config.json ("services" or "runConfigs" field)
+   */
+  async readProjectServices(folderPath: string): Promise<any[]> {
+    if (!folderPath) return [];
+    try {
+      const servicesJson = path.join(folderPath, '.ybicg', 'services.json');
+      if (fs.existsSync(servicesJson)) {
+        const raw = await fs.promises.readFile(servicesJson, 'utf8');
+        const parsed = JSON.parse(raw);
+        if (Array.isArray(parsed)) return parsed;
+        if (Array.isArray(parsed.services)) return parsed.services;
+        if (Array.isArray(parsed.runConfigs)) return parsed.runConfigs;
+      }
+
+      // Check .ybicg/config.json fallback
+      const { config } = await this.readProjectConfig(folderPath);
+      if (config && Array.isArray(config.services)) return config.services;
+      if (config && Array.isArray(config.runConfigs)) return config.runConfigs;
+    } catch (err) {
+      logger.warn(`Failed reading project services from ${folderPath}:`, err);
+    }
+    return [];
+  }
+
+  /**
+   * Writes service run configurations directly to <folderPath>/.ybicg/services.json
+   */
+  async writeProjectServices(folderPath: string, services: any[]): Promise<string> {
+    if (!folderPath) throw new Error('Invalid project path');
+    const ybicgDir = path.join(folderPath, '.ybicg');
+    if (!fs.existsSync(ybicgDir)) {
+      await fs.promises.mkdir(ybicgDir, { recursive: true });
+    }
+
+    const servicesJson = path.join(ybicgDir, 'services.json');
+    const payload = {
+      version: '1.0',
+      updatedAt: new Date().toISOString(),
+      services: services || []
+    };
+
+    await fs.promises.writeFile(servicesJson, JSON.stringify(payload, null, 2), 'utf8');
+    logger.info(`[ProjectScanner] Saved ${services.length} services to ${servicesJson}`);
+    return servicesJson;
   }
 
   async readProjectConfig(folderPath: string): Promise<{ config: ProjectYBConfig | null; filePath: string | null }> {
@@ -573,6 +622,7 @@ When making modifications in this repository:
       const tags = config?.tags || [];
       const type = config?.type || (detectedSubprojects.length > 0 ? (detectedSubprojects[0].type || 'node') : selfInspect.type);
       const scripts = { ...selfInspect.scripts, ...mergedSubScripts, ...config?.scripts };
+      const projectServices = await this.readProjectServices(folderPath);
 
       return {
         id: folderPath,
@@ -585,6 +635,7 @@ When making modifications in this repository:
         scripts,
         dependencies: selfInspect.dependencies,
         subprojects: detectedSubprojects.length > 0 ? detectedSubprojects : undefined,
+        services: projectServices.length > 0 ? projectServices : undefined,
         runningServices: [],
         isGitRepo: selfInspect.isGit,
         ignored: false,

@@ -164,6 +164,13 @@ export const SavedConfigs: React.FC<SavedConfigsProps> = ({ projectId }) => {
                   </div>
 
                   <div className="flex items-center gap-1 shrink-0 flex-wrap justify-end">
+                    <Badge
+                      variant="outline"
+                      className="bg-emerald-950/40 text-emerald-400 border-emerald-800/50 text-[9px] px-1.5 py-0 font-mono"
+                      title="Stored in <project>/.ybicg/services.json"
+                    >
+                      .ybicg
+                    </Badge>
                     {isMulti && (
                       <Badge
                         variant="outline"
@@ -181,7 +188,7 @@ export const SavedConfigs: React.FC<SavedConfigsProps> = ({ projectId }) => {
                         ) : (
                           <>
                             <Terminal className="w-2.5 h-2.5 text-violet-400" />
-                            1 Tab
+                            {cmdList.length} Steps
                           </>
                         )}
                       </Badge>
@@ -189,7 +196,7 @@ export const SavedConfigs: React.FC<SavedConfigsProps> = ({ projectId }) => {
                     {config.autoRestart && (
                       <Badge
                         variant="outline"
-                        className="text-[9px] px-1 py-0 border-zinc-700 text-zinc-400 shrink-0"
+                        className="bg-amber-950/50 text-amber-300 border-amber-800/60 font-mono text-[9px] px-1.5 py-0"
                       >
                         auto-restart
                       </Badge>

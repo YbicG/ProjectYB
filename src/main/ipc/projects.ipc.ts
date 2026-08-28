@@ -51,6 +51,14 @@ export function setupProjectsIpc() {
     return projectScanner.writeProjectConfig(folderPath, config, overwrite);
   });
 
+  ipcMain.handle('projects:readServices', async (_, folderPath: string) => {
+    return projectScanner.readProjectServices(folderPath);
+  });
+
+  ipcMain.handle('projects:writeServices', async (_, folderPath: string, services: any[]) => {
+    return projectScanner.writeProjectServices(folderPath, services);
+  });
+
   ipcMain.handle('projects:generateAiContext', async (_, folderPath: string) => {
     return projectScanner.generateAiContext(folderPath);
   });
