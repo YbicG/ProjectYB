@@ -21,6 +21,10 @@ import { setupSearchIpc } from './ipc/search.ipc';
 import { setupHttpIpc } from './ipc/http.ipc';
 import { setupArchiveIpc } from './ipc/archive.ipc';
 import { setupCloudflareIpc } from './ipc/cloudflare.ipc';
+import { setupDatabaseIpc } from './ipc/database.ipc';
+import { setupPipelineIpc } from './ipc/pipeline.ipc';
+import { setupMockServerIpc } from './ipc/mock-server.ipc';
+import { setupAiIpc } from './ipc/ai.ipc';
 import { terminalService } from './services/terminal.service';
 import { systemMonitor } from './services/system-monitor';
 import { trayService } from './services/tray.service';
@@ -80,6 +84,10 @@ async function createWindow() {
   setupHttpIpc();
   setupArchiveIpc();
   setupCloudflareIpc(mainWindow);
+  setupDatabaseIpc(mainWindow);
+  setupPipelineIpc(mainWindow);
+  setupMockServerIpc(mainWindow);
+  setupAiIpc(mainWindow);
   
   try {
     await setupStoreIpc();

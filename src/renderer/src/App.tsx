@@ -13,6 +13,10 @@ import { SettingsPage } from './pages/SettingsPage';
 import { DependenciesPage } from './pages/DependenciesPage';
 import { OptimizerPage } from './pages/OptimizerPage';
 import { TunnelsPage } from './pages/TunnelsPage';
+import { DatabasePage } from './pages/DatabasePage';
+import { PipelinesPage } from './pages/PipelinesPage';
+import { MockServerPage } from './pages/MockServerPage';
+import { AiHubPage } from './pages/AiHubPage';
 import { ProjectDetailPage } from './pages/ProjectDetailPage';
 import { CommandPalette } from './components/shared/CommandPalette';
 import { CreateProjectDialog } from './components/templates/CreateProjectDialog';
@@ -21,6 +25,8 @@ import { ShortcutsCheatSheetModal } from './components/shared/ShortcutsCheatShee
 import { GlobalScratchpadModal } from './components/notes/GlobalScratchpadModal';
 import { GlobalSearchModal } from './components/search/GlobalSearchModal';
 import { SnippetVaultModal } from './components/snippets/SnippetVaultModal';
+import { AiErrorDiagnosisDialog } from './components/ai/AiErrorDiagnosisDialog';
+import { AiChatModal } from './components/ai/AiChatModal';
 import { ErrorBoundary } from './components/shared/ErrorBoundary';
 import { useAppStore } from '@renderer/stores/useAppStore';
 import { useProjectStore } from '@renderer/stores/useProjectStore';
@@ -92,6 +98,14 @@ export const App: React.FC = () => {
         return <ServicesPage />;
       case 'tunnels':
         return <TunnelsPage />;
+      case 'database':
+        return <DatabasePage />;
+      case 'pipelines':
+        return <PipelinesPage />;
+      case 'mock-server':
+        return <MockServerPage />;
+      case 'ai-hub':
+        return <AiHubPage />;
       case 'dependencies':
         return <DependenciesPage />;
       case 'optimizer':
@@ -123,6 +137,14 @@ export const App: React.FC = () => {
         return <ServicesPage />;
       case 'tunnels':
         return <TunnelsPage />;
+      case 'database':
+        return <DatabasePage />;
+      case 'pipelines':
+        return <PipelinesPage />;
+      case 'mock-server':
+        return <MockServerPage />;
+      case 'ai-hub':
+        return <AiHubPage />;
       case 'dependencies':
         return <DependenciesPage />;
       case 'optimizer':
@@ -160,6 +182,8 @@ export const App: React.FC = () => {
       <GlobalScratchpadModal />
       <GlobalSearchModal />
       <SnippetVaultModal />
+      <AiErrorDiagnosisDialog />
+      <AiChatModal />
     </>
   );
 };

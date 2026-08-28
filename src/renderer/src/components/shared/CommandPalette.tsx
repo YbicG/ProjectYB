@@ -20,7 +20,10 @@ import {
   Send,
   Code2,
   Maximize2,
-  CloudLightning
+  CloudLightning,
+  Database,
+  Workflow,
+  Bot
 } from 'lucide-react';
 import { CommandDialog, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '../ui/command';
 import { useAppStore } from '@renderer/stores/useAppStore';
@@ -36,6 +39,10 @@ import { useThemeStore } from '@renderer/stores/useThemeStore';
 import { useSearchStore } from '@renderer/stores/useSearchStore';
 import { useSnippetStore } from '@renderer/stores/useSnippetStore';
 import { useOverviewStore } from '@renderer/stores/useOverviewStore';
+import { useAiStore } from '@renderer/stores/useAiStore';
+import { useDatabaseStore } from '@renderer/stores/useDatabaseStore';
+import { usePipelineStore } from '@renderer/stores/usePipelineStore';
+import { useMockServerStore } from '@renderer/stores/useMockServerStore';
 import { toast } from 'sonner';
 
 export const CommandPalette: React.FC = () => {
@@ -52,6 +59,8 @@ export const CommandPalette: React.FC = () => {
   const { setModalOpen: setSnippetModalOpen } = useSnippetStore();
   const { toggleFullscreen } = useOverviewStore();
   const { setCreateModalOpen } = useCloudflareStore();
+  const { setChatModalOpen } = useAiStore();
+  const { openEditor: openPipelineEditor } = usePipelineStore();
 
   const runCommand = (command: () => void) => {
     setCommandPaletteOpen(false);
@@ -130,6 +139,22 @@ export const CommandPalette: React.FC = () => {
             <CloudLightning className="mr-2 h-4 w-4 text-orange-400" />
             Cloudflare Tunnels (TryCloudflare & Zero Trust)
           </CommandItem>
+          <CommandItem onSelect={() => runCommand(() => setActiveTab('database'))}>
+            <Database className="mr-2 h-4 w-4 text-blue-400" />
+            Database Studio (SQLite, Postgres, Redis, MySQL)
+          </CommandItem>
+          <CommandItem onSelect={() => runCommand(() => setActiveTab('pipelines'))}>
+            <Workflow className="mr-2 h-4 w-4 text-violet-400" />
+            Workflow Automation Pipelines & CI
+          </CommandItem>
+          <CommandItem onSelect={() => runCommand(() => setActiveTab('mock-server'))}>
+            <Radio className="mr-2 h-4 w-4 text-cyan-400" />
+            Mock REST API & Inbound Webhooks
+          </CommandItem>
+          <CommandItem onSelect={() => runCommand(() => setActiveTab('ai-hub'))}>
+            <Bot className="mr-2 h-4 w-4 text-emerald-400" />
+            AI Copilot Studio & Diagnostics
+          </CommandItem>
           <CommandItem onSelect={() => runCommand(() => setActiveTab('dependencies'))}>
             <Package className="mr-2 h-4 w-4 text-cyan-400" />
             Dependencies & Security Hub
@@ -154,6 +179,14 @@ export const CommandPalette: React.FC = () => {
         </CommandGroup>
 
         <CommandGroup heading="Actions">
+          <CommandItem onSelect={() => runCommand(() => setChatModalOpen(true))}>
+            <Bot className="mr-2 h-4 w-4 text-emerald-400" />
+            Open AI Copilot Chat (Ctrl+Space)
+          </CommandItem>
+          <CommandItem onSelect={() => runCommand(() => { setActiveTab('pipelines'); openPipelineEditor(); })}>
+            <Workflow className="mr-2 h-4 w-4 text-violet-400" />
+            Create Workflow Automation Pipeline...
+          </CommandItem>
           <CommandItem onSelect={() => runCommand(() => setSearchModalOpen(true))}>
             <Search className="mr-2 h-4 w-4 text-violet-400" />
             Global Cross-Project Search (Ctrl+Shift+F)

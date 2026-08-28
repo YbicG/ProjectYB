@@ -14,7 +14,10 @@ import {
   Activity,
   Keyboard,
   Code2,
-  CloudLightning
+  CloudLightning,
+  Database,
+  Workflow,
+  Bot
 } from 'lucide-react';
 import { useAppStore } from '@renderer/stores/useAppStore';
 import { cn } from '@renderer/lib/utils';
@@ -40,6 +43,10 @@ const tabs = [
   { id: 'git', label: 'Git', icon: GitBranch },
   { id: 'services', label: 'Services', icon: Server },
   { id: 'tunnels', label: 'Tunnels', icon: CloudLightning },
+  { id: 'database', label: 'Database', icon: Database },
+  { id: 'pipelines', label: 'Workflows', icon: Workflow },
+  { id: 'mock-server', label: 'Mock API', icon: Radio },
+  { id: 'ai-hub', label: 'AI Copilot', icon: Bot },
   { id: 'dependencies', label: 'Dependencies', icon: Package },
   { id: 'optimizer', label: 'Optimizer', icon: HardDrive },
   { id: 'settings', label: 'Settings', icon: Settings },

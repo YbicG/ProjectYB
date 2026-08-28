@@ -269,6 +269,56 @@ const api = {
         ipcRenderer.removeListener('cloudflare:log-line', handler);
       };
     }
+  },
+  database: {
+    discoverConnections: (projects: Array<{ id: string; name: string; path: string }>) =>
+      ipcRenderer.invoke('database:discoverConnections', projects),
+    testConnection: (conn: any) => ipcRenderer.invoke('database:testConnection', conn),
+    executeQuery: (conn: any, query: string) => ipcRenderer.invoke('database:executeQuery', conn, query),
+    getSchema: (conn: any) => ipcRenderer.invoke('database:getSchema', conn),
+    getRedisKeys: (conn: any, pattern?: string) => ipcRenderer.invoke('database:getRedisKeys', conn, pattern)
+  },
+  pipelines: {
+    run: (pipeline: any, cwd?: string) => ipcRenderer.invoke('pipeline:run', pipeline, cwd),
+    stop: (pipelineId: string) => ipcRenderer.invoke('pipeline:stop', pipelineId),
+    onStatusUpdate: (callback: (state: any) => void) => {
+      const handler = (_event: any, state: any) => callback(state);
+      ipcRenderer.on('pipeline:status-update', handler);
+      return () => {
+        ipcRenderer.removeListener('pipeline:status-update', handler);
+      };
+    },
+    onLogLine: (callback: (data: { pipelineId: string; stepId: string; line: string }) => void) => {
+      const handler = (_event: any, data: any) => callback(data);
+      ipcRenderer.on('pipeline:log-line', handler);
+      return () => {
+        ipcRenderer.removeListener('pipeline:log-line', handler);
+      };
+    }
+  },
+  mockServer: {
+    start: (port?: number) => ipcRenderer.invoke('mockServer:start', port),
+    stop: () => ipcRenderer.invoke('mockServer:stop'),
+    getStatus: () => ipcRenderer.invoke('mockServer:getStatus'),
+    saveRoutes: (routes: any[]) => ipcRenderer.invoke('mockServer:saveRoutes', routes),
+    getWebhookLogs: () => ipcRenderer.invoke('mockServer:getWebhookLogs'),
+    clearLogs: () => ipcRenderer.invoke('mockServer:clearLogs'),
+    onWebhookReceived: (callback: (event: any) => void) => {
+      const handler = (_event: any, data: any) => callback(data);
+      ipcRenderer.on('mock:webhook-received', handler);
+      return () => {
+        ipcRenderer.removeListener('mock:webhook-received', handler);
+      };
+    }
+  },
+  ai: {
+    checkOllamaStatus: (baseUrl?: string) => ipcRenderer.invoke('ai:checkOllamaStatus', baseUrl),
+    generateCompletion: (prompt: string, systemPrompt: string, config: any) =>
+      ipcRenderer.invoke('ai:generateCompletion', prompt, systemPrompt, config),
+    diagnoseError: (errorLogs: string, command: string, config: any) =>
+      ipcRenderer.invoke('ai:diagnoseError', errorLogs, command, config),
+    generateCommitMessage: (diffText: string, config: any) =>
+      ipcRenderer.invoke('ai:generateCommitMessage', diffText, config)
   }
 }
 

@@ -242,6 +242,56 @@ export interface IElectronAPI {
     onStatusUpdate(callback: (tunnel: any) => void): () => void
     onLogLine(callback: (data: { tunnelId: string; line: string }) => void): () => void
   }
+  database: {
+    discoverConnections(projects: Array<{ id: string; name: string; path: string }>): Promise<any[]>
+    testConnection(conn: any): Promise<{ success: boolean; message: string; pingMs?: number }>
+    executeQuery(conn: any, query: string): Promise<{
+      columns: string[]
+      rows: Record<string, any>[]
+      rowCount: number
+      durationMs: number
+      error?: string
+    }>
+    getSchema(conn: any): Promise<any[]>
+    getRedisKeys(conn: any, pattern?: string): Promise<any[]>
+  }
+  pipelines: {
+    run(pipeline: any, cwd?: string): Promise<any>
+    stop(pipelineId: string): Promise<boolean>
+    onStatusUpdate(callback: (state: any) => void): () => void
+    onLogLine(callback: (data: { pipelineId: string; stepId: string; line: string }) => void): () => void
+  }
+  mockServer: {
+    start(port?: number): Promise<{ success: boolean; port: number; error?: string }>
+    stop(): Promise<boolean>
+    getStatus(): Promise<{
+      running: boolean
+      port: number
+      routesCount: number
+      webhooksCount: number
+    }>
+    saveRoutes(routes: any[]): Promise<boolean>
+    getWebhookLogs(): Promise<any[]>
+    clearLogs(): Promise<boolean>
+    onWebhookReceived(callback: (event: any) => void): () => void
+  }
+  ai: {
+    checkOllamaStatus(baseUrl?: string): Promise<{ running: boolean; models: any[]; error?: string }>
+    generateCompletion(
+      prompt: string,
+      systemPrompt: string,
+      config: any
+    ): Promise<{ success: boolean; text: string; error?: string }>
+    diagnoseError(
+      errorLogs: string,
+      command: string,
+      config: any
+    ): Promise<{ success: boolean; explanation: string; suggestedFix: string; error?: string }>
+    generateCommitMessage(
+      diffText: string,
+      config: any
+    ): Promise<{ success: boolean; commitMessage: string; error?: string }>
+  }
 }
 
 declare global {

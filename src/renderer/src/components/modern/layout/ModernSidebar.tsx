@@ -17,7 +17,10 @@ import {
   FileText,
   Activity,
   Layers,
-  CloudLightning
+  CloudLightning,
+  Database,
+  Workflow,
+  Bot
 } from 'lucide-react';
 import logoUrl from '@renderer/assets/logo.png';
 
@@ -122,6 +125,10 @@ export const ModernSidebar: React.FC = () => {
           </span>
         ) : null
     },
+    { id: 'database', label: 'Database Studio', icon: Database, category: 'dev' },
+    { id: 'pipelines', label: 'Workflows & CI', icon: Workflow, category: 'dev' },
+    { id: 'mock-server', label: 'Mock & Webhooks', icon: Radio, category: 'dev' },
+    { id: 'ai-hub', label: 'AI Copilot Hub', icon: Bot, category: 'dev' },
     { id: 'dependencies', label: 'Dependencies', icon: Package, category: 'dev' },
     { id: 'optimizer', label: 'Disk Optimizer', icon: HardDrive, category: 'dev' },
     // System

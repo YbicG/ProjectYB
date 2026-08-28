@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react'
-import { Send, CheckCircle2, Loader2 } from 'lucide-react'
+import { Send, CheckCircle2, Loader2, Sparkles } from 'lucide-react'
 import { Button } from '../ui/button'
 import { useGitStore } from '@renderer/stores/useGitStore'
 import { useProjectStore } from '@renderer/stores/useProjectStore'
-
+import { useAiStore } from '@renderer/stores/useAiStore'
 import { toast } from 'sonner'
 
 export const GitCommit: React.FC = () => {
@@ -16,11 +16,31 @@ export const GitCommit: React.FC = () => {
     commitMessage,
     setCommitMessage
   } = useGitStore()
+  const { generateCommitMessage } = useAiStore()
+  const [isGeneratingAi, setIsGeneratingAi] = useState(false)
   const [stageAll, setStageAll] = useState(false)
   const { projects } = useProjectStore()
 
   const project = projects.find((p) => p.id === selectedProjectId)
   const status = selectedProjectId ? statuses.get(selectedProjectId) : undefined
+
+  const handleGenerateAiCommit = async () => {
+    if (!project) return
+    setIsGeneratingAi(true)
+    try {
+      const summary = [
+        ...(status?.staged || []).map((s) => `staged: ${s.path}`),
+        ...(status?.unstaged || []).map((u) => `modified: ${u.path}`),
+        ...(status?.untracked || []).map((t) => `added: ${typeof t === 'string' ? t : (t as any).path}`)
+      ].join('\n')
+
+      const msg = await generateCommitMessage(summary || `Updated project ${project.name}`)
+      setCommitMessage(msg)
+      toast.success('Generated commit message from diff!')
+    } finally {
+      setIsGeneratingAi(false)
+    }
+  }
 
   // If no staged changes exist, default stageAll to true; otherwise false
   useEffect(() => {
@@ -65,7 +85,21 @@ export const GitCommit: React.FC = () => {
     <div className="p-3 bg-zinc-950 border border-zinc-800 rounded-lg shadow-sm space-y-2.5">
       <div className="flex items-center justify-between">
         <h3 className="text-xs font-semibold text-zinc-300">Commit Message</h3>
-        <span className="text-[10px] text-zinc-500">Ctrl + Enter to commit</span>
+        <div className="flex items-center gap-2">
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={handleGenerateAiCommit}
+            disabled={isGeneratingAi || !selectedProjectId}
+            className="h-6 text-[10px] border-violet-500/40 bg-violet-950/20 text-violet-300 hover:bg-violet-900/40 gap-1 px-2"
+            title="Generate conventional commit message with AI"
+          >
+            {isGeneratingAi ? <Loader2 className="w-3 h-3 animate-spin text-violet-400" /> : <Sparkles className="w-3 h-3 text-violet-400" />}
+            <span>AI Generate</span>
+          </Button>
+          <span className="text-[10px] text-zinc-500">Ctrl + Enter to commit</span>
+        </div>
       </div>
 
       <textarea

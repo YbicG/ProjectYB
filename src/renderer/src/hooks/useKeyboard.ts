@@ -6,6 +6,7 @@ import { useThemeStore } from '../stores/useThemeStore'
 import { useSearchStore } from '../stores/useSearchStore'
 import { useSnippetStore } from '../stores/useSnippetStore'
 import { useOverviewStore } from '../stores/useOverviewStore'
+import { useAiStore } from '../stores/useAiStore'
 import type { TabType } from '../stores/useAppStore'
 
 export function useKeyboard() {
@@ -51,6 +52,14 @@ export function useKeyboard() {
       if ((e.ctrlKey || e.metaKey) && (e.key === 'k' || e.key === 'p')) {
         e.preventDefault()
         toggleCommandPalette()
+        return
+      }
+
+      // AI Copilot Chat: Ctrl+Space
+      if ((e.ctrlKey || e.metaKey) && e.code === 'Space') {
+        e.preventDefault()
+        const isOpen = useAiStore.getState().chatModalOpen
+        useAiStore.getState().setChatModalOpen(!isOpen)
         return
       }
 
