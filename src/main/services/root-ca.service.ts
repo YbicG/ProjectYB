@@ -35,14 +35,25 @@ export class RootCaService {
     }
   }
 
+  private async runPowerShell(script: string): Promise<{ stdout: string; stderr: string }> {
+    const scriptBuffer = Buffer.from(script, 'utf16le');
+    const encoded = scriptBuffer.toString('base64');
+    return execAsync(`powershell -NoProfile -NonInteractive -EncodedCommand ${encoded}`);
+  }
+
   /**
    * Check if ProjectYB Root CA is installed and trusted in OS Store
    */
   async checkStatus(): Promise<RootCaStatus> {
     if (process.platform === 'win32') {
       try {
-        const psScript = `Get-ChildItem Cert:\\CurrentUser\\Root | Where-Object { $_.Subject -like "*ProjectYB Local Development CA*" } | Select-Object -First 1 -Property Subject, NotAfter | ConvertTo-Json`;
-        const { stdout } = await execAsync(`powershell -NoProfile -NonInteractive -Command "${psScript}"`);
+        const psScript = `
+          Get-ChildItem Cert:\\CurrentUser\\Root | 
+            Where-Object { $_.Subject -like "*ProjectYB Local Development CA*" } | 
+            Select-Object -First 1 -Property Subject, NotAfter | 
+            ConvertTo-Json
+        `;
+        const { stdout } = await this.runPowerShell(psScript);
         if (stdout && stdout.trim()) {
           const data = JSON.parse(stdout.trim());
           if (data && data.Subject) {
@@ -71,6 +82,7 @@ export class RootCaService {
   async installRootCa(): Promise<{ success: boolean; message: string; error?: string }> {
     if (process.platform === 'win32') {
       try {
+        const outPath = this.caCertPath.replace(/\\/g, '\\\\');
         const psCommand = `
           $caName = "CN=ProjectYB Local Development CA, O=ProjectYB Dev, OU=Local Development";
           $existing = Get-ChildItem Cert:\\CurrentUser\\Root | Where-Object { $_.Subject -like "*ProjectYB Local Development CA*" };
@@ -82,17 +94,13 @@ export class RootCaService {
           
           # Export public cert to user directory
           $certBytes = $cert.Export([System.Security.Cryptography.X509Certificates.X509ContentType]::Cert);
-          $outPath = "${this.caCertPath.replace(/\\/g, '\\\\')}";
-          [System.IO.File]::WriteAllBytes($outPath, $certBytes);
+          [System.IO.File]::WriteAllBytes("${outPath}", $certBytes);
 
           # Import into CurrentUser Root Store
-          $rootStore = New-Object System.Security.Cryptography.X509Certificates.X509Store("Root", "CurrentUser");
-          $rootStore.Open([System.Security.Cryptography.X509Certificates.OpenFlags]::ReadWrite);
-          $rootStore.Add($cert);
-          $rootStore.Close();
+          Import-Certificate -FilePath "${outPath}" -CertStoreLocation Cert:\\CurrentUser\\Root;
         `;
 
-        await execAsync(`powershell -NoProfile -NonInteractive -Command "${psCommand.replace(/\n/g, ' ')}"`);
+        await this.runPowerShell(psCommand);
         logger.info('[RootCA] Successfully generated and installed ProjectYB Root CA into Windows Store');
         return {
           success: true,
@@ -121,7 +129,7 @@ export class RootCaService {
           Get-ChildItem Cert:\\CurrentUser\\Root | Where-Object { $_.Subject -like "*ProjectYB Local Development CA*" } | Remove-Item -Force -ErrorAction SilentlyContinue;
           Get-ChildItem Cert:\\CurrentUser\\My | Where-Object { $_.Subject -like "*ProjectYB Local Development CA*" } | Remove-Item -Force -ErrorAction SilentlyContinue;
         `;
-        await execAsync(`powershell -NoProfile -NonInteractive -Command "${psCommand.replace(/\n/g, ' ')}"`);
+        await this.runPowerShell(psCommand);
         this.certCache.clear();
         return { success: true };
       } catch (err: any) {
@@ -134,7 +142,7 @@ export class RootCaService {
   /**
    * Generate or retrieve a signed certificate pair for a domain signed by ProjectYB Root CA
    */
-  async getCertificateForDomain(domain: string): Promise<{ key: string; cert: string }> {
+  async getCertificateForDomain(domain: string): Promise<{ key: string; cert: string; pfx?: Buffer }> {
     if (this.certCache.has(domain)) {
       return this.certCache.get(domain)!;
     }
@@ -143,7 +151,6 @@ export class RootCaService {
       try {
         const domainPfxPath = path.join(this.caDir, `${domain}.pfx`).replace(/\\/g, '\\\\');
         const domainCerPath = path.join(this.caDir, `${domain}.crt`).replace(/\\/g, '\\\\');
-        const domainKeyPath = path.join(this.caDir, `${domain}.key`).replace(/\\/g, '\\\\');
 
         const psCommand = `
           $ca = Get-ChildItem Cert:\\CurrentUser\\My | Where-Object { $_.Subject -like "*ProjectYB Local Development CA*" } | Select-Object -First 1;
@@ -164,7 +171,7 @@ export class RootCaService {
           }
         `;
 
-        await execAsync(`powershell -NoProfile -NonInteractive -Command "${psCommand.replace(/\n/g, ' ')}"`);
+        await this.runPowerShell(psCommand);
 
         if (fs.existsSync(domainPfxPath)) {
           const pfxRaw = fs.readFileSync(domainPfxPath);
