@@ -1,6 +1,7 @@
 import { create } from 'zustand'
 import type { PortInfo } from '../types/port'
 import { toast } from 'sonner'
+import { useNotificationStore } from './useNotificationStore'
 
 interface PortState {
   ports: PortInfo[]
@@ -55,16 +56,33 @@ export const usePortStore = create<PortState>((set, get) => ({
       if (!window.api?.ports) return false
       const res = await window.api.ports.kill(pid)
       if (res.success) {
-        toast.success(`Terminated PID ${pid} (Port ${port})`)
+        useNotificationStore.getState().notify({
+          title: 'Port Process Terminated',
+          message: `Successfully terminated PID ${pid} running on Port ${port}`,
+          type: 'warning',
+          category: 'services',
+          actionTab: 'services'
+        })
         await get().fetchPorts()
         return true
       } else {
-        toast.error(res.error || `Failed to kill process on port ${port}`)
+        useNotificationStore.getState().notify({
+          title: 'Port Kill Failed',
+          message: res.error || `Failed to kill process on port ${port}`,
+          type: 'error',
+          category: 'services',
+          actionTab: 'services'
+        })
         return false
       }
     } catch (err: any) {
       console.error('Error killing port process:', err)
-      toast.error(`Could not kill PID ${pid}: ${err.message}`)
+      useNotificationStore.getState().notify({
+        title: 'Port Kill Error',
+        message: `Could not kill PID ${pid}: ${err.message}`,
+        type: 'error',
+        category: 'services'
+      })
       return false
     }
   },

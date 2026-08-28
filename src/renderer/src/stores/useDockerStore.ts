@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import type { DockerStatus, ComposeService, DatabaseProbeResult } from '../types/docker';
 import { toast } from 'sonner';
+import { useNotificationStore } from './useNotificationStore';
 
 interface DockerState {
   status: DockerStatus | null;
@@ -87,11 +88,21 @@ export const useDockerStore = create<DockerState>((set, get) => ({
     try {
       const res = await window.api.docker.up(projectPath, serviceName, build);
       if (res.success) {
-        toast.success(serviceName ? `Started ${serviceName}` : 'Started Docker Compose stack');
+        useNotificationStore.getState().notify({
+          title: 'Docker Stack Started',
+          message: serviceName ? `Container "${serviceName}" started` : 'Docker Compose stack is running',
+          type: 'success',
+          category: 'docker'
+        });
         get().loadProjectDocker(projectPath);
         return true;
       } else {
-        toast.error(`Failed to start: ${res.output}`);
+        useNotificationStore.getState().notify({
+          title: 'Docker Start Failed',
+          message: res.output || 'Failed to start containers',
+          type: 'error',
+          category: 'docker'
+        });
         return false;
       }
     } catch (e: any) {
@@ -108,11 +119,21 @@ export const useDockerStore = create<DockerState>((set, get) => ({
     try {
       const res = await window.api.docker.stop(projectPath, serviceName);
       if (res.success) {
-        toast.success(serviceName ? `Stopped ${serviceName}` : 'Stopped Docker Compose stack');
+        useNotificationStore.getState().notify({
+          title: 'Docker Stack Stopped',
+          message: serviceName ? `Container "${serviceName}" stopped` : 'Docker Compose stack stopped',
+          type: 'info',
+          category: 'docker'
+        });
         get().loadProjectDocker(projectPath);
         return true;
       } else {
-        toast.error(`Failed to stop: ${res.output}`);
+        useNotificationStore.getState().notify({
+          title: 'Docker Stop Failed',
+          message: res.output || 'Failed to stop containers',
+          type: 'error',
+          category: 'docker'
+        });
         return false;
       }
     } catch (e: any) {
@@ -128,11 +149,21 @@ export const useDockerStore = create<DockerState>((set, get) => ({
     try {
       const res = await window.api.docker.restart(projectPath, serviceName);
       if (res.success) {
-        toast.success(serviceName ? `Restarted ${serviceName}` : 'Restarted Docker Compose stack');
+        useNotificationStore.getState().notify({
+          title: 'Docker Stack Restarted',
+          message: serviceName ? `Container "${serviceName}" restarted` : 'Docker Compose stack restarted',
+          type: 'success',
+          category: 'docker'
+        });
         get().loadProjectDocker(projectPath);
         return true;
       } else {
-        toast.error(`Failed to restart: ${res.output}`);
+        useNotificationStore.getState().notify({
+          title: 'Docker Restart Failed',
+          message: res.output || 'Failed to restart containers',
+          type: 'error',
+          category: 'docker'
+        });
         return false;
       }
     } catch (e: any) {
@@ -146,11 +177,21 @@ export const useDockerStore = create<DockerState>((set, get) => ({
     try {
       const res = await window.api.docker.down(projectPath);
       if (res.success) {
-        toast.success('Removed Docker Compose stack');
+        useNotificationStore.getState().notify({
+          title: 'Docker Stack Removed',
+          message: 'Docker Compose containers and networks stopped and removed',
+          type: 'info',
+          category: 'docker'
+        });
         get().loadProjectDocker(projectPath);
         return true;
       } else {
-        toast.error(`Failed to down: ${res.output}`);
+        useNotificationStore.getState().notify({
+          title: 'Docker Down Failed',
+          message: res.output || 'Failed to down containers',
+          type: 'error',
+          category: 'docker'
+        });
         return false;
       }
     } catch (e: any) {

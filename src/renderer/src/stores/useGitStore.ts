@@ -116,10 +116,22 @@ export const useGitStore = create<GitState>((set, get) => ({
       await window.api.git.commit(path, message, stageAll)
       set({ commitMessage: '', isLoading: false })
       await get().fetchStatus(projectId, path)
-      useNotificationStore.getState().addNotification('Git', 'Commit successful')
+      useNotificationStore.getState().notify({
+        title: 'Git Commit Successful',
+        message: `Committed changes with message: "${message.substring(0, 50)}${message.length > 50 ? '...' : ''}"`,
+        type: 'success',
+        category: 'git',
+        actionTab: 'git'
+      })
     } catch (error: any) {
       console.error('Failed to commit:', error)
-      useNotificationStore.getState().addNotification('Git Error', `Commit failed: ${error.message}`)
+      useNotificationStore.getState().notify({
+        title: 'Git Commit Failed',
+        message: error.message || 'Unknown commit error',
+        type: 'error',
+        category: 'git',
+        actionTab: 'git'
+      })
       set({ isLoading: false })
       throw error
     }
@@ -131,10 +143,22 @@ export const useGitStore = create<GitState>((set, get) => ({
       await window.api.git.push(path)
       set({ isLoading: false })
       await get().fetchStatus(projectId, path)
-      useNotificationStore.getState().addNotification('Git', 'Push successful')
+      useNotificationStore.getState().notify({
+        title: 'Git Push Successful',
+        message: 'Successfully pushed commits to remote repository',
+        type: 'success',
+        category: 'git',
+        actionTab: 'git'
+      })
     } catch (error: any) {
       console.error('Failed to push:', error)
-      useNotificationStore.getState().addNotification('Git Error', `Push failed: ${error.message}`)
+      useNotificationStore.getState().notify({
+        title: 'Git Push Failed',
+        message: error.message || 'Push rejected by remote',
+        type: 'error',
+        category: 'git',
+        actionTab: 'git'
+      })
       set({ isLoading: false })
       throw error
     }
@@ -146,10 +170,22 @@ export const useGitStore = create<GitState>((set, get) => ({
       await window.api.git.pull(path)
       set({ isLoading: false })
       await get().fetchStatus(projectId, path)
-      useNotificationStore.getState().addNotification('Git', 'Pull successful')
+      useNotificationStore.getState().notify({
+        title: 'Git Pull Successful',
+        message: 'Successfully pulled latest changes from remote',
+        type: 'success',
+        category: 'git',
+        actionTab: 'git'
+      })
     } catch (error: any) {
       console.error('Failed to pull:', error)
-      useNotificationStore.getState().addNotification('Git Error', `Pull failed: ${error.message}`)
+      useNotificationStore.getState().notify({
+        title: 'Git Pull Failed',
+        message: error.message || 'Pull conflict or network error',
+        type: 'error',
+        category: 'git',
+        actionTab: 'git'
+      })
       set({ isLoading: false })
       throw error
     }
@@ -251,9 +287,22 @@ export const useGitStore = create<GitState>((set, get) => ({
       await window.api.git.stash(path, 'push', message)
       await get().loadStashes(path)
       await get().fetchStatus(projectId, path)
-      useNotificationStore.getState().addNotification('Git Stash', 'Changes stashed successfully')
+      useNotificationStore.getState().notify({
+        title: 'Git Stash Created',
+        message: message ? `Stashed changes with message: "${message}"` : 'Working directory changes stashed',
+        type: 'info',
+        category: 'git',
+        actionTab: 'git'
+      })
     } catch (error: any) {
       console.error('Failed to push stash:', error)
+      useNotificationStore.getState().notify({
+        title: 'Git Stash Failed',
+        message: error.message || 'Failed to create stash',
+        type: 'error',
+        category: 'git',
+        actionTab: 'git'
+      })
     }
   },
 
@@ -262,10 +311,22 @@ export const useGitStore = create<GitState>((set, get) => ({
       await window.api.git.stash(path, 'pop', undefined, index)
       await get().loadStashes(path)
       await get().fetchStatus(projectId, path)
-      useNotificationStore.getState().addNotification('Git Stash', 'Stash popped successfully')
+      useNotificationStore.getState().notify({
+        title: 'Git Stash Popped',
+        message: 'Restored and removed changes from stash stack',
+        type: 'success',
+        category: 'git',
+        actionTab: 'git'
+      })
     } catch (error: any) {
       console.error('Failed to pop stash:', error)
-      useNotificationStore.getState().addNotification('Git Error', `Pop stash failed: ${error.message}`)
+      useNotificationStore.getState().notify({
+        title: 'Git Stash Pop Failed',
+        message: error.message || 'Failed to pop stash',
+        type: 'error',
+        category: 'git',
+        actionTab: 'git'
+      })
     }
   },
 
@@ -273,10 +334,22 @@ export const useGitStore = create<GitState>((set, get) => ({
     try {
       await window.api.git.stash(path, 'apply', undefined, index)
       await get().fetchStatus(projectId, path)
-      useNotificationStore.getState().addNotification('Git Stash', 'Stash applied successfully')
+      useNotificationStore.getState().notify({
+        title: 'Git Stash Applied',
+        message: 'Applied stashed changes to working tree',
+        type: 'success',
+        category: 'git',
+        actionTab: 'git'
+      })
     } catch (error: any) {
       console.error('Failed to apply stash:', error)
-      useNotificationStore.getState().addNotification('Git Error', `Apply stash failed: ${error.message}`)
+      useNotificationStore.getState().notify({
+        title: 'Git Apply Stash Failed',
+        message: error.message || 'Failed to apply stash',
+        type: 'error',
+        category: 'git',
+        actionTab: 'git'
+      })
     }
   },
 
@@ -284,7 +357,13 @@ export const useGitStore = create<GitState>((set, get) => ({
     try {
       await window.api.git.stash(path, 'drop', undefined, index)
       await get().loadStashes(path)
-      useNotificationStore.getState().addNotification('Git Stash', 'Stash deleted')
+      useNotificationStore.getState().notify({
+        title: 'Git Stash Dropped',
+        message: 'Deleted stash entry',
+        type: 'info',
+        category: 'git',
+        actionTab: 'git'
+      })
     } catch (error: any) {
       console.error('Failed to drop stash:', error)
     }
@@ -305,13 +384,32 @@ export const useGitStore = create<GitState>((set, get) => ({
       const res = await window.api.git.mergeBranch(path, branchName)
       await get().fetchStatus(projectId, path)
       if (res.success) {
-        useNotificationStore.getState().addNotification('Git Merge', `Merged branch ${branchName} successfully`)
+        useNotificationStore.getState().notify({
+          title: 'Git Merge Succeeded',
+          message: `Successfully merged branch "${branchName}" into current branch`,
+          type: 'success',
+          category: 'git',
+          actionTab: 'git'
+        })
       } else {
-        useNotificationStore.getState().addNotification('Git Merge Conflict', `Conflicts merging ${branchName}`)
+        useNotificationStore.getState().notify({
+          title: 'Git Merge Conflicts',
+          message: `Merge conflict detected while merging branch "${branchName}". Review conflict files.`,
+          type: 'warning',
+          category: 'git',
+          actionTab: 'git'
+        })
       }
       return res
     } catch (error: any) {
       console.error('Failed to merge branch:', error)
+      useNotificationStore.getState().notify({
+        title: 'Git Merge Failed',
+        message: error.message || 'Failed to merge branch',
+        type: 'error',
+        category: 'git',
+        actionTab: 'git'
+      })
       return { success: false, error: error.message }
     }
   }

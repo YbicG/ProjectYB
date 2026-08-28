@@ -1,5 +1,6 @@
 import { create } from 'zustand'
 import type { ProjectInfo, ProjectType, ProjectStatus, ProjectConfig } from '../types/project'
+import { useNotificationStore } from './useNotificationStore'
 
 interface ProjectFilters {
   type?: ProjectType[]
@@ -136,6 +137,13 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
             return { projects: state.projects.map((p) => (p.id === project.id ? project : p)) }
           }
           return { projects: [...state.projects, project] }
+        })
+        useNotificationStore.getState().notify({
+          title: 'Project Added',
+          message: `Added "${project.name}" (${project.type}) to workspace`,
+          type: 'success',
+          category: 'projects',
+          actionTab: 'dashboard'
         })
       }
     } catch (error) {

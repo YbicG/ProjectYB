@@ -104,6 +104,8 @@ const api = {
   system: {
     getMetrics: () => ipcRenderer.invoke('system:getMetrics'),
     getProcessStats: (pids: number[]) => ipcRenderer.invoke('system:getProcessStats', pids),
+    showNotification: (title: string, body: string) =>
+      ipcRenderer.invoke('system:showNotification', { title, body }),
     onMetrics: (callback: (metrics: any) => void) => {
       const handler = (_event: any, metrics: any) => callback(metrics)
       ipcRenderer.on('system:metrics', handler)

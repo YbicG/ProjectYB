@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { HttpMethod, KeyValuePair, HttpRequestRecord, HttpResponseData, HttpHistoryItem } from '../types/http';
+import { useNotificationStore } from './useNotificationStore';
 
 interface HttpState {
   currentMethod: HttpMethod;
@@ -145,23 +146,43 @@ export const useHttpStore = create<HttpState>((set, get) => ({
         return { activeResponse: responseData, history: nextHistory, isLoading: false };
       });
 
+      if (responseData.status >= 400 || responseData.status === 0) {
+        useNotificationStore.getState().notify({
+          title: `HTTP ${responseData.status || 'Error'}: ${responseData.statusText || 'Failed'}`,
+          message: `${currentMethod} ${currentUrl.split('?')[0]} returned error`,
+          type: 'warning',
+          category: 'network',
+          actionTab: 'api'
+        });
+      }
+
       try {
         await window.api?.store?.set('http:history', get().history);
       } catch {}
     } catch (err: any) {
+      const errResponse: HttpResponseData = {
+        status: 0,
+        statusText: 'Network Error',
+        headers: {},
+        body: '',
+        isJson: false,
+        durationMs: 0,
+        sizeBytes: 0,
+        error: err.message || 'Request failed',
+        timestamp: Date.now()
+      };
+
       set({
         isLoading: false,
-        activeResponse: {
-          status: 0,
-          statusText: 'Client Error',
-          headers: {},
-          body: '',
-          isJson: false,
-          durationMs: 0,
-          sizeBytes: 0,
-          error: err.message || 'Request failed',
-          timestamp: Date.now()
-        }
+        activeResponse: errResponse
+      });
+
+      useNotificationStore.getState().notify({
+        title: 'HTTP Request Failed',
+        message: `${currentMethod} ${currentUrl.split('?')[0]}: ${err.message}`,
+        type: 'error',
+        category: 'network',
+        actionTab: 'api'
       });
     }
   },

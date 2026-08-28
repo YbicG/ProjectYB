@@ -3,6 +3,7 @@ import type { RunningService, StartupProfile, ServiceStatus, ServiceConfig } fro
 import { generateId } from '../lib/utils'
 import { useTerminalStore } from './useTerminalStore'
 import { useProjectStore } from './useProjectStore'
+import { useNotificationStore } from './useNotificationStore'
 
 interface ProcessStats {
   cpu: number
@@ -71,6 +72,14 @@ export const useServiceStore = create<ServiceState>((set, get) => ({
         runningServices: [...filtered, service]
       }
     })
+
+    useNotificationStore.getState().notify({
+      title: 'Service Started',
+      message: `Service "${config.name}" (${projectName}) is now running`,
+      type: 'success',
+      category: 'services',
+      actionTab: 'services'
+    })
     
     return id
   },
@@ -87,6 +96,14 @@ export const useServiceStore = create<ServiceState>((set, get) => ({
         services: state.services.filter(s => s.id !== id),
         runningServices: state.services.filter(s => s.id !== id)
       }))
+
+      useNotificationStore.getState().notify({
+        title: 'Service Stopped',
+        message: `Service "${service.name}" was stopped`,
+        type: 'info',
+        category: 'services',
+        actionTab: 'services'
+      })
     }
   },
   
@@ -104,6 +121,14 @@ export const useServiceStore = create<ServiceState>((set, get) => ({
         command: service.command,
         cwd: project?.path,
         autoRestart: service.autoRestart
+      })
+
+      useNotificationStore.getState().notify({
+        title: 'Service Restarted',
+        message: `Service "${service.name}" restarted successfully`,
+        type: 'success',
+        category: 'services',
+        actionTab: 'services'
       })
     }
   },

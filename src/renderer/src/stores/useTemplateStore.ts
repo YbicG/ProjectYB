@@ -1,6 +1,7 @@
 import { create } from 'zustand'
 import type { ProjectTemplate, ScaffoldOptions, ScaffoldResult } from '../types/template'
 import { toast } from 'sonner'
+import { useNotificationStore } from './useNotificationStore'
 
 interface TemplateState {
   templates: ProjectTemplate[]
@@ -59,9 +60,20 @@ export const useTemplateStore = create<TemplateState>((set, get) => ({
       set({ isScaffolding: false, lastResult: result })
 
       if (result.success) {
-        toast.success(`Project "${options.projectName}" created successfully!`)
+        useNotificationStore.getState().notify({
+          title: 'Project Scaffolding Complete',
+          message: `Created "${options.projectName}" at ${result.projectPath}`,
+          type: 'success',
+          category: 'projects',
+          actionTab: 'dashboard'
+        })
       } else {
-        toast.error(`Scaffolding failed: ${result.error}`)
+        useNotificationStore.getState().notify({
+          title: 'Scaffolding Failed',
+          message: result.error || 'Failed to scaffold project',
+          type: 'error',
+          category: 'projects'
+        })
       }
       return result
     } catch (err: any) {
@@ -73,7 +85,12 @@ export const useTemplateStore = create<TemplateState>((set, get) => ({
         logs: get().scaffoldLogs
       }
       set({ isScaffolding: false, lastResult: failRes })
-      toast.error(`Scaffolding failed: ${err.message}`)
+      useNotificationStore.getState().notify({
+        title: 'Scaffolding Error',
+        message: err.message || 'Scaffolding error',
+        type: 'error',
+        category: 'projects'
+      })
       return failRes
     }
   }

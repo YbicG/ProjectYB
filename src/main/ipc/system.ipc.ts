@@ -1,5 +1,6 @@
-import { ipcMain, BrowserWindow } from 'electron';
+import { ipcMain, BrowserWindow, Notification } from 'electron';
 import { systemMonitor } from '../services/system-monitor';
+import { trayService } from '../services/tray.service';
 
 export function setupSystemIpc(mainWindow: BrowserWindow) {
   systemMonitor.startMonitoring(mainWindow);
@@ -9,9 +10,36 @@ export function setupSystemIpc(mainWindow: BrowserWindow) {
   });
   
   ipcMain.handle('system:getMetrics', async () => {
-    // Return empty or current metrics if we had them saved
     return null;
   });
   
   ipcMain.handle('system:getProcessStats', (_, pids: number[]) => systemMonitor.getProcessStats(pids));
+
+  ipcMain.handle('system:showNotification', (_, { title, body }: { title: string; body: string }) => {
+    if (Notification.isSupported()) {
+      try {
+        const icon = trayService.getAppIcon();
+        const notification = new Notification({
+          title,
+          body,
+          icon
+        });
+
+        notification.on('click', () => {
+          if (!mainWindow.isDestroyed()) {
+            if (mainWindow.isMinimized()) mainWindow.restore();
+            mainWindow.show();
+            mainWindow.focus();
+          }
+        });
+
+        notification.show();
+        return true;
+      } catch (err) {
+        console.error('Failed to show system notification:', err);
+        return false;
+      }
+    }
+    return false;
+  });
 }

@@ -1,6 +1,7 @@
 import { create } from 'zustand'
 import type { EnvEntry, EnvFileInfo, EnvComparisonResult } from '../types/env'
 import { toast } from 'sonner'
+import { useNotificationStore } from './useNotificationStore'
 
 interface EnvState {
   envFiles: EnvFileInfo[]
@@ -93,14 +94,25 @@ export const useEnvStore = create<EnvState>((set, get) => ({
       if (!window.api?.env) return false
       await window.api.env.write(filePath, entries, rawContent)
       set({ isSaving: false })
-      toast.success(`Saved ${filePath.split(/[\\/]/).pop()}`)
+      const filename = filePath.split(/[\\/]/).pop() || '.env'
+      useNotificationStore.getState().notify({
+        title: 'Environment Saved',
+        message: `Successfully updated "${filename}" (${entries.length} variables)`,
+        type: 'success',
+        category: 'projects'
+      })
       // Reload active content
       await get().loadEnvFile(filePath)
       return true
     } catch (err: any) {
       console.error('Failed to save env file:', err)
       set({ isSaving: false })
-      toast.error(`Failed to save: ${err.message}`)
+      useNotificationStore.getState().notify({
+        title: 'Environment Save Failed',
+        message: err.message || 'Could not write .env file',
+        type: 'error',
+        category: 'projects'
+      })
       return false
     }
   },

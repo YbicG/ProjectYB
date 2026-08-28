@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import type { InstalledPackage, OutdatedPackage, AuditSummary, RegistryPackage } from '../types/dependency';
 import { toast } from 'sonner';
+import { useNotificationStore } from './useNotificationStore';
 
 interface DependencyState {
   selectedProjectId: string | null;
@@ -187,11 +188,23 @@ export const useDependencyStore = create<DependencyState>((set, get) => ({
     try {
       const res = await window.api.dependencies.install({ projectPath, packageName, isDev });
       if (res.success) {
-        toast.success(`Installed ${packageName}!`);
+        useNotificationStore.getState().notify({
+          title: 'Package Installed',
+          message: `Installed ${packageName}${isDev ? ' as devDependency' : ''}`,
+          type: 'success',
+          category: 'dependencies',
+          actionTab: 'dependencies'
+        });
         get().loadAllForProject(projectPath);
         return true;
       } else {
-        toast.error(`Failed to install ${packageName}: ${res.output}`);
+        useNotificationStore.getState().notify({
+          title: 'Package Install Failed',
+          message: res.output || `Failed to install ${packageName}`,
+          type: 'error',
+          category: 'dependencies',
+          actionTab: 'dependencies'
+        });
         return false;
       }
     } catch (e: any) {
@@ -205,11 +218,23 @@ export const useDependencyStore = create<DependencyState>((set, get) => ({
     try {
       const res = await window.api.dependencies.uninstall({ projectPath, packageName });
       if (res.success) {
-        toast.success(`Removed ${packageName}`);
+        useNotificationStore.getState().notify({
+          title: 'Package Removed',
+          message: `Successfully uninstalled ${packageName}`,
+          type: 'info',
+          category: 'dependencies',
+          actionTab: 'dependencies'
+        });
         get().loadAllForProject(projectPath);
         return true;
       } else {
-        toast.error(`Failed to remove ${packageName}: ${res.output}`);
+        useNotificationStore.getState().notify({
+          title: 'Package Uninstall Failed',
+          message: res.output || `Failed to remove ${packageName}`,
+          type: 'error',
+          category: 'dependencies',
+          actionTab: 'dependencies'
+        });
         return false;
       }
     } catch (e: any) {

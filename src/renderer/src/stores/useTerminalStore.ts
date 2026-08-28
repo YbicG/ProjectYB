@@ -2,6 +2,8 @@ import { create } from 'zustand'
 import type { TerminalInstance, TerminalLayout, TerminalStatus, TerminalFilter } from '../types/terminal'
 import { generateId } from '../lib/utils'
 
+import { useNotificationStore } from './useNotificationStore'
+
 interface TerminalOptions {
   name: string
   cwd: string
@@ -70,7 +72,17 @@ export const useTerminalStore = create<TerminalState>((set, get) => ({
       // Register onExit handler
       if (window.api?.terminal?.onExit) {
         const unsub = window.api.terminal.onExit(id, (exitCode: number) => {
+          const terminal = get().terminals.find(t => t.id === id)
           get().updateTerminalStatus(id, exitCode === 0 ? 'stopped' : 'error')
+          if (exitCode !== 0) {
+            useNotificationStore.getState().notify({
+              title: 'Terminal Process Failed',
+              message: `Terminal "${terminal?.name || options.name}" exited with error code ${exitCode}`,
+              type: 'error',
+              category: 'terminals',
+              actionTab: 'terminals'
+            })
+          }
         })
         exitListeners.set(id, unsub)
       }

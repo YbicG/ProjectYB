@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import type { GlobalDiskSummary, ProjectDiskUsage, CleanCategory } from '../types/disk';
 import { toast } from 'sonner';
+import { useNotificationStore } from './useNotificationStore';
 
 interface DiskState {
   summary: GlobalDiskSummary | null;
@@ -57,7 +58,14 @@ export const useDiskStore = create<DiskState>((set, get) => ({
       const res = await window.api.disk.cleanProject(projectPath, categories);
       if (res.success) {
         const mb = Math.round(res.freedBytes / (1024 * 1024));
-        toast.success(`Cleaned ${res.cleanedPaths.join(', ')} — Freed ~${mb > 1024 ? `${(mb / 1024).toFixed(1)} GB` : `${mb} MB`}`);
+        const formatted = mb > 1024 ? `${(mb / 1024).toFixed(1)} GB` : `${mb} MB`;
+        useNotificationStore.getState().notify({
+          title: 'Disk Space Reclaimed',
+          message: `Cleaned ${res.cleanedPaths.join(', ')} — Freed ~${formatted}`,
+          type: 'success',
+          category: 'system',
+          actionTab: 'optimizer'
+        });
 
         // Update local state summary
         const summary = get().summary;
@@ -110,27 +118,48 @@ export const useDiskStore = create<DiskState>((set, get) => ({
         }
       }
       const mb = Math.round(totalFreed / (1024 * 1024));
-      toast.success(`Batch clean complete! Freed ~${mb > 1024 ? `${(mb / 1024).toFixed(1)} GB` : `${mb} MB`}`);
+      const formatted = mb > 1024 ? `${(mb / 1024).toFixed(1)} GB` : `${mb} MB`;
+      useNotificationStore.getState().notify({
+        title: 'Batch Cleanup Complete',
+        message: `Reclaimed ~${formatted} of disk space across all projects`,
+        type: 'success',
+        category: 'system',
+        actionTab: 'optimizer'
+      });
 
       // Refresh disk analysis across projects
       await get().analyzeAllProjects(
         summary.projects.map((p) => ({ id: p.projectId, name: p.projectName, path: p.projectPath }))
       );
+    } catch (err: any) {
+      toast.error(`Batch clean error: ${err.message}`);
     } finally {
       set({ isCleaning: false });
     }
   },
 
-  cleanGlobalCache: async (type) => {
+  cleanGlobalCache: async (type: 'pnpm' | 'npm' | 'cargo' | 'pip') => {
     if (!window.api?.disk) return false;
     set({ isCleaning: true });
     try {
       const res = await window.api.disk.cleanGlobalCache(type);
       if (res.success) {
-        toast.success(`Cleaned ${type.toUpperCase()} package cache!`);
+        useNotificationStore.getState().notify({
+          title: 'Global Cache Cleaned',
+          message: `Successfully purged ${type.toUpperCase()} global package cache`,
+          type: 'success',
+          category: 'system',
+          actionTab: 'optimizer'
+        });
         return true;
       } else {
-        toast.error(`Failed to clean ${type} cache: ${res.output}`);
+        useNotificationStore.getState().notify({
+          title: 'Cache Purge Failed',
+          message: res.output || `Failed to clean ${type} cache`,
+          type: 'error',
+          category: 'system',
+          actionTab: 'optimizer'
+        });
         return false;
       }
     } catch (e: any) {

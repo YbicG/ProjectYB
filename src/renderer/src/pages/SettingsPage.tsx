@@ -1,9 +1,10 @@
 import React, { useState } from 'react';
-import { Settings, Github, Monitor, TerminalSquare } from 'lucide-react';
+import { Settings, Github, Monitor, TerminalSquare, Bell } from 'lucide-react';
 import { GeneralSettings } from '../components/settings/GeneralSettings';
 import { GitHubSettings } from '../components/settings/GitHubSettings';
 import { AppearanceSettings } from '../components/settings/AppearanceSettings';
 import { TerminalSettings } from '../components/settings/TerminalSettings';
+import { NotificationSettings } from '../components/settings/NotificationSettings';
 import { cn } from '@renderer/lib/utils';
 
 export const SettingsPage: React.FC = () => {
@@ -11,6 +12,7 @@ export const SettingsPage: React.FC = () => {
 
   const tabs = [
     { id: 'general', label: 'General', icon: Settings },
+    { id: 'notifications', label: 'Notifications', icon: Bell },
     { id: 'github', label: 'GitHub', icon: Github },
     { id: 'appearance', label: 'Appearance', icon: Monitor },
     { id: 'terminal', label: 'Terminal', icon: TerminalSquare },
@@ -45,6 +47,7 @@ export const SettingsPage: React.FC = () => {
       {/* ── Settings Content View ── */}
       <div className="flex-1 overflow-y-auto p-4 sm:p-6 md:p-8 bg-zinc-950/50">
         {activeTab === 'general' && <GeneralSettings />}
+        {activeTab === 'notifications' && <NotificationSettings />}
         {activeTab === 'github' && <GitHubSettings />}
         {activeTab === 'appearance' && <AppearanceSettings />}
         {activeTab === 'terminal' && <TerminalSettings />}

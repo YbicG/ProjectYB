@@ -29,6 +29,7 @@ import { useTemplateStore } from '@renderer/stores/useTemplateStore';
 import { useThemeStore } from '@renderer/stores/useThemeStore';
 import { useSnippetStore } from '@renderer/stores/useSnippetStore';
 import { useOverviewStore } from '@renderer/stores/useOverviewStore';
+import { useNotificationStore } from '@renderer/stores/useNotificationStore';
 import { useKeyboard } from './hooks/useKeyboard';
 
 export const App: React.FC = () => {
@@ -39,10 +40,12 @@ export const App: React.FC = () => {
   const { uiMode, loadPreferences } = useThemeStore();
   const { loadCustomSnippets } = useSnippetStore();
   const { loadConfig: loadOverviewConfig } = useOverviewStore();
+  const { loadSettings: loadNotificationSettings } = useNotificationStore();
   const { dialogOpen: templateDialogOpen, setDialogOpen: setTemplateDialogOpen } = useTemplateStore();
 
   useEffect(() => {
     // Initial load
+    loadNotificationSettings();
     scanProjects();
     startMonitoring();
     loadPreferences();
