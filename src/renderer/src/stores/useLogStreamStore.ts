@@ -2,6 +2,17 @@ import { create } from 'zustand';
 import type { LogStreamEntry, LogSource, LogLevel } from '../types/logstream';
 import { toast } from 'sonner';
 
+function cleanLogText(text: string): string {
+  if (!text) return '';
+  return text
+    .replace(/\x1b\][^\x07\x1b]*(\x07|\x1b\\)/g, '')
+    .replace(/\x1b\[[0-?]*[ -/]*[@-~]/g, '')
+    .replace(/\x1b[@-Z\\-_]/g, '')
+    .replace(/\[\?[0-9]+[a-zA-Z]/g, '')
+    .replace(/\]0;[^\r\n]*/g, '')
+    .trim();
+}
+
 interface LogStreamState {
   logs: LogStreamEntry[];
   isStreaming: boolean;
@@ -33,7 +44,10 @@ export const useLogStreamStore = create<LogStreamState>((set, get) => ({
     try {
       if (window.api?.logstream) {
         const recent = await window.api.logstream.getRecent(1000);
-        set({ logs: recent || [] });
+        const cleaned = (recent || [])
+          .map((e: LogStreamEntry) => ({ ...e, message: cleanLogText(e.message) }))
+          .filter((e: LogStreamEntry) => e.message && !e.message.startsWith('[?') && !e.message.startsWith(']0;'));
+        set({ logs: cleaned });
       }
     } catch (err) {
       console.error('Failed to load initial logstream logs', err);
@@ -42,8 +56,10 @@ export const useLogStreamStore = create<LogStreamState>((set, get) => ({
 
   addLog: (entry) => {
     if (get().isPaused) return;
+    const msg = cleanLogText(entry.message);
+    if (!msg || msg.startsWith('[?') || msg.startsWith(']0;')) return;
     set((state) => ({
-      logs: [...state.logs.slice(-2000), entry]
+      logs: [...state.logs.slice(-2000), { ...entry, message: msg }]
     }));
   },
 

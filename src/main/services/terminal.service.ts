@@ -1,6 +1,6 @@
 import * as pty from 'node-pty';
 import { logger } from '../utils/logger';
-import { logStreamService } from './logstream.service';
+import { logStreamService, cleanAnsiText } from './logstream.service';
 
 export interface TerminalInstance {
   id: string;
@@ -35,15 +35,32 @@ class TerminalService {
 
       this.terminals.set(id, instance);
 
+      let streamBuffer = '';
+
       ptyProcess.onData(data => {
         instance.buffer = (instance.buffer + data).slice(-300000);
         if (onData) onData(data);
 
         // Stream clean lines to LogStream Studio
-        const clean = data.trim();
-        if (clean && clean.length > 2 && !clean.includes('\r\n\r\n')) {
-          const level = clean.toLowerCase().includes('error') ? 'error' : clean.toLowerCase().includes('warn') ? 'warn' : 'info';
-          logStreamService.log('terminal', level, `Terminal`, clean);
+        streamBuffer += data;
+        if (streamBuffer.includes('\n') || streamBuffer.includes('\r')) {
+          const lines = streamBuffer.split(/\r?\n/);
+          streamBuffer = lines.pop() || '';
+
+          for (const line of lines) {
+            const clean = cleanAnsiText(line);
+            // Skip empty lines, pure shell prompts, and raw handshake remnants
+            if (
+              clean &&
+              clean.length > 1 &&
+              !clean.match(/^PS [A-Za-z]:\\[^>]*>\s*$/) &&
+              !clean.startsWith('[?') &&
+              !clean.startsWith(']0;')
+            ) {
+              const level = clean.toLowerCase().includes('error') ? 'error' : clean.toLowerCase().includes('warn') ? 'warn' : 'info';
+              logStreamService.log('terminal', level, `Terminal`, clean);
+            }
+          }
         }
       });
 
