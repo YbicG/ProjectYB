@@ -74,6 +74,10 @@ export class AiService {
       return this.generateGemini(prompt, systemPrompt, config);
     }
 
+    if (config.provider === 'anthropic') {
+      return this.generateAnthropic(prompt, systemPrompt, config);
+    }
+
     return {
       success: false,
       text: '',
@@ -223,6 +227,42 @@ export class AiService {
       }
 
       const text = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
+      return { success: true, text };
+    } catch (err: any) {
+      return { success: false, text: '', error: err.message };
+    }
+  }
+
+  private async generateAnthropic(
+    prompt: string,
+    systemPrompt: string,
+    config: AiProviderConfig
+  ): Promise<{ success: boolean; text: string; error?: string }> {
+    try {
+      if (!config.apiKey) return { success: false, text: '', error: 'Missing Anthropic API Key' };
+
+      const model = config.model || 'claude-3-5-sonnet-20241022';
+      const res = await fetch('https://api.anthropic.com/v1/messages', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-api-key': config.apiKey,
+          'anthropic-version': '2023-06-01'
+        },
+        body: JSON.stringify({
+          model: model,
+          max_tokens: 2048,
+          ...(systemPrompt ? { system: systemPrompt } : {}),
+          messages: [{ role: 'user', content: prompt }]
+        })
+      });
+
+      const data = (await res.json()) as any;
+      if (data.error) {
+        return { success: false, text: '', error: data.error.message };
+      }
+
+      const text = data.content?.[0]?.text || '';
       return { success: true, text };
     } catch (err: any) {
       return { success: false, text: '', error: err.message };

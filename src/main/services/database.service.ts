@@ -376,7 +376,14 @@ export class DatabaseService {
   }
 
   private async executeRedisCommand(conn: DatabaseConnection, query: string, start: number): Promise<QueryResult> {
-    const parts = query.trim().split(/\s+/);
+    // Robust argument tokenizer matching quoted strings or non-space words
+    const regex = /[^\s"']+|"([^"]*)"|'([^']*)'/g;
+    const parts: string[] = [];
+    let match: RegExpExecArray | null;
+    while ((match = regex.exec(query.trim())) !== null) {
+      parts.push(match[1] !== undefined ? match[1] : match[2] !== undefined ? match[2] : match[0]);
+    }
+
     if (parts.length === 0 || !parts[0]) {
       return { columns: ['error'], rows: [{ error: 'Empty Redis command' }], rowCount: 0, durationMs: 0 };
     }
