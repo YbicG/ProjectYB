@@ -204,6 +204,44 @@ export interface IElectronAPI {
       error?: string
     }>
   }
+  cloudflare: {
+    getBinaryStatus(): Promise<{
+      installed: boolean
+      version?: string
+      binaryPath?: string
+      source: 'system' | 'embedded' | 'missing'
+    }>
+    installBinary(): Promise<{ success: boolean; path?: string; error?: string }>
+    startQuickTunnel(options: {
+      id?: string
+      name?: string
+      localPort: number
+      localHost?: string
+      protocol?: 'http' | 'https' | 'tcp'
+    }): Promise<any>
+    startNamedTunnel(options: {
+      id?: string
+      name: string
+      tunnelToken: string
+      localPort?: number
+      customHostname?: string
+    }): Promise<any>
+    stopTunnel(tunnelId: string): Promise<boolean>
+    listActiveTunnels(): Promise<any[]>
+    getTunnelLogs(tunnelId: string): Promise<string[]>
+    testApiToken(apiToken: string): Promise<{ success: boolean; message: string; user?: any }>
+    listAccounts(apiToken: string): Promise<Array<{ id: string; name: string }>>
+    listRemoteTunnels(apiToken: string, accountId: string): Promise<any[]>
+    createRemoteTunnel(
+      apiToken: string,
+      accountId: string,
+      name: string
+    ): Promise<{ success: boolean; tunnel?: any; token?: string; error?: string }>
+    deleteRemoteTunnel(apiToken: string, accountId: string, tunnelId: string): Promise<boolean>
+    onDownloadProgress(callback: (percent: number) => void): () => void
+    onStatusUpdate(callback: (tunnel: any) => void): () => void
+    onLogLine(callback: (data: { tunnelId: string; line: string }) => void): () => void
+  }
 }
 
 declare global {

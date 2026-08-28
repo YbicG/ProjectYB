@@ -19,13 +19,15 @@ import {
   Keyboard,
   Send,
   Code2,
-  Maximize2
+  Maximize2,
+  CloudLightning
 } from 'lucide-react';
 import { CommandDialog, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '../ui/command';
 import { useAppStore } from '@renderer/stores/useAppStore';
 import { useProjectStore } from '@renderer/stores/useProjectStore';
 import { useTerminalStore } from '@renderer/stores/useTerminalStore';
 import { useServiceStore } from '@renderer/stores/useServiceStore';
+import { useCloudflareStore } from '@renderer/stores/useCloudflareStore';
 import { useTemplateStore } from '@renderer/stores/useTemplateStore';
 import { useWorkspaceStore } from '@renderer/stores/useWorkspaceStore';
 import { useNotesStore } from '@renderer/stores/useNotesStore';
@@ -49,6 +51,7 @@ export const CommandPalette: React.FC = () => {
   const { setModalOpen: setSearchModalOpen } = useSearchStore();
   const { setModalOpen: setSnippetModalOpen } = useSnippetStore();
   const { toggleFullscreen } = useOverviewStore();
+  const { setCreateModalOpen } = useCloudflareStore();
 
   const runCommand = (command: () => void) => {
     setCommandPaletteOpen(false);
@@ -121,11 +124,15 @@ export const CommandPalette: React.FC = () => {
           </CommandItem>
           <CommandItem onSelect={() => runCommand(() => setActiveTab('services'))}>
             <Server className="mr-2 h-4 w-4" />
-            Services & Ports
+            Background Services
+          </CommandItem>
+          <CommandItem onSelect={() => runCommand(() => setActiveTab('tunnels'))}>
+            <CloudLightning className="mr-2 h-4 w-4 text-orange-400" />
+            Cloudflare Tunnels (TryCloudflare & Zero Trust)
           </CommandItem>
           <CommandItem onSelect={() => runCommand(() => setActiveTab('dependencies'))}>
-            <Package className="mr-2 h-4 w-4 text-violet-400" />
-            Dependencies & Security
+            <Package className="mr-2 h-4 w-4 text-cyan-400" />
+            Dependencies & Security Hub
           </CommandItem>
           <CommandItem onSelect={() => runCommand(() => setActiveTab('optimizer'))}>
             <HardDrive className="mr-2 h-4 w-4 text-amber-400" />
@@ -158,6 +165,10 @@ export const CommandPalette: React.FC = () => {
           <CommandItem onSelect={() => runCommand(() => { setActiveTab('overview'); toggleFullscreen(); })}>
             <Maximize2 className="mr-2 h-4 w-4 text-cyan-400" />
             Toggle Mission Control Fullscreen (F11)
+          </CommandItem>
+          <CommandItem onSelect={() => runCommand(() => { setActiveTab('tunnels'); setCreateModalOpen(true); })}>
+            <CloudLightning className="mr-2 h-4 w-4 text-orange-400" />
+            Launch Cloudflare Public Tunnel...
           </CommandItem>
           <CommandItem onSelect={handleCreateFromTemplate}>
             <Sparkles className="mr-2 h-4 w-4 text-violet-400" />

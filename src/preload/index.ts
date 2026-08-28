@@ -231,6 +231,44 @@ const api = {
   },
   archive: {
     createSnapshot: (options: any) => ipcRenderer.invoke('archive:createSnapshot', options)
+  },
+  cloudflare: {
+    getBinaryStatus: () => ipcRenderer.invoke('cloudflare:getBinaryStatus'),
+    installBinary: () => ipcRenderer.invoke('cloudflare:installBinary'),
+    startQuickTunnel: (options: any) => ipcRenderer.invoke('cloudflare:startQuickTunnel', options),
+    startNamedTunnel: (options: any) => ipcRenderer.invoke('cloudflare:startNamedTunnel', options),
+    stopTunnel: (tunnelId: string) => ipcRenderer.invoke('cloudflare:stopTunnel', tunnelId),
+    listActiveTunnels: () => ipcRenderer.invoke('cloudflare:listActiveTunnels'),
+    getTunnelLogs: (tunnelId: string) => ipcRenderer.invoke('cloudflare:getTunnelLogs', tunnelId),
+    testApiToken: (apiToken: string) => ipcRenderer.invoke('cloudflare:testApiToken', apiToken),
+    listAccounts: (apiToken: string) => ipcRenderer.invoke('cloudflare:listAccounts', apiToken),
+    listRemoteTunnels: (apiToken: string, accountId: string) =>
+      ipcRenderer.invoke('cloudflare:listRemoteTunnels', apiToken, accountId),
+    createRemoteTunnel: (apiToken: string, accountId: string, name: string) =>
+      ipcRenderer.invoke('cloudflare:createRemoteTunnel', apiToken, accountId, name),
+    deleteRemoteTunnel: (apiToken: string, accountId: string, tunnelId: string) =>
+      ipcRenderer.invoke('cloudflare:deleteRemoteTunnel', apiToken, accountId, tunnelId),
+    onDownloadProgress: (callback: (percent: number) => void) => {
+      const handler = (_event: any, percent: number) => callback(percent);
+      ipcRenderer.on('cloudflare:download-progress', handler);
+      return () => {
+        ipcRenderer.removeListener('cloudflare:download-progress', handler);
+      };
+    },
+    onStatusUpdate: (callback: (tunnel: any) => void) => {
+      const handler = (_event: any, tunnel: any) => callback(tunnel);
+      ipcRenderer.on('cloudflare:status-update', handler);
+      return () => {
+        ipcRenderer.removeListener('cloudflare:status-update', handler);
+      };
+    },
+    onLogLine: (callback: (data: { tunnelId: string; line: string }) => void) => {
+      const handler = (_event: any, data: any) => callback(data);
+      ipcRenderer.on('cloudflare:log-line', handler);
+      return () => {
+        ipcRenderer.removeListener('cloudflare:log-line', handler);
+      };
+    }
   }
 }
 

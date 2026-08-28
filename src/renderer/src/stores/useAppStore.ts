@@ -1,6 +1,6 @@
 import { create } from 'zustand'
 
-export type TabType = 'dashboard' | 'overview' | 'api' | 'terminals' | 'git' | 'services' | 'dependencies' | 'optimizer' | 'settings' | 'project-detail'
+export type TabType = 'dashboard' | 'overview' | 'api' | 'terminals' | 'git' | 'services' | 'tunnels' | 'dependencies' | 'optimizer' | 'settings' | 'project-detail'
 
 interface AppState {
   activeTab: TabType

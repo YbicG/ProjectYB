@@ -16,7 +16,8 @@ import {
   Code2,
   FileText,
   Activity,
-  Layers
+  Layers,
+  CloudLightning
 } from 'lucide-react';
 import logoUrl from '@renderer/assets/logo.png';
 
@@ -26,6 +27,7 @@ import { useThemeStore } from '@renderer/stores/useThemeStore';
 import { useTerminalStore } from '@renderer/stores/useTerminalStore';
 import { useServiceStore } from '@renderer/stores/useServiceStore';
 import { useGitStore } from '@renderer/stores/useGitStore';
+import { useCloudflareStore } from '@renderer/stores/useCloudflareStore';
 import { useNotesStore } from '@renderer/stores/useNotesStore';
 import { useHealthStore } from '@renderer/stores/useHealthStore';
 import { useSnippetStore } from '@renderer/stores/useSnippetStore';
@@ -54,6 +56,7 @@ export const ModernSidebar: React.FC = () => {
   const { terminals } = useTerminalStore();
   const { runningServices } = useServiceStore();
   const { statuses } = useGitStore();
+  const { activeTunnels } = useCloudflareStore();
   const { setScratchpadModalOpen } = useNotesStore();
   const { setModalOpen: setHealthModalOpen } = useHealthStore();
   const { setModalOpen: setSnippetModalOpen } = useSnippetStore();
@@ -103,6 +106,19 @@ export const ModernSidebar: React.FC = () => {
           <span className="flex items-center gap-1 text-[10px] font-mono px-1.5 py-0.2 rounded-full bg-emerald-950/80 text-emerald-300 border border-emerald-800/60">
             <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
             {runningServices.length}
+          </span>
+        ) : null
+    },
+    {
+      id: 'tunnels',
+      label: 'Cloudflare Tunnels',
+      icon: CloudLightning,
+      category: 'dev',
+      badge: () =>
+        activeTunnels.length > 0 ? (
+          <span className="flex items-center gap-1 text-[10px] font-mono px-1.5 py-0.2 rounded-full bg-orange-950/80 text-orange-300 border border-orange-800/60">
+            <span className="w-1.5 h-1.5 rounded-full bg-orange-400 animate-pulse" />
+            {activeTunnels.length}
           </span>
         ) : null
     },

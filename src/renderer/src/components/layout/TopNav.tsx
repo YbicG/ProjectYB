@@ -13,7 +13,8 @@ import {
   FileText,
   Activity,
   Keyboard,
-  Code2
+  Code2,
+  CloudLightning
 } from 'lucide-react';
 import { useAppStore } from '@renderer/stores/useAppStore';
 import { cn } from '@renderer/lib/utils';
@@ -24,6 +25,7 @@ import { Button } from '../ui/button';
 import { useTerminalStore } from '@renderer/stores/useTerminalStore';
 import { useServiceStore } from '@renderer/stores/useServiceStore';
 import { useGitStore } from '@renderer/stores/useGitStore';
+import { useCloudflareStore } from '@renderer/stores/useCloudflareStore';
 import { useNotesStore } from '@renderer/stores/useNotesStore';
 import { useHealthStore } from '@renderer/stores/useHealthStore';
 import { useThemeStore } from '@renderer/stores/useThemeStore';
@@ -37,6 +39,7 @@ const tabs = [
   { id: 'terminals', label: 'Terminals', icon: TerminalSquare },
   { id: 'git', label: 'Git', icon: GitBranch },
   { id: 'services', label: 'Services', icon: Server },
+  { id: 'tunnels', label: 'Tunnels', icon: CloudLightning },
   { id: 'dependencies', label: 'Dependencies', icon: Package },
   { id: 'optimizer', label: 'Optimizer', icon: HardDrive },
   { id: 'settings', label: 'Settings', icon: Settings },
@@ -47,6 +50,7 @@ export const TopNav: React.FC = () => {
   const { terminals } = useTerminalStore();
   const { services } = useServiceStore();
   const { statuses } = useGitStore();
+  const { activeTunnels } = useCloudflareStore();
   const { setScratchpadModalOpen } = useNotesStore();
   const { setModalOpen: setHealthModalOpen } = useHealthStore();
   const { setShortcutsModalOpen } = useThemeStore();
@@ -55,6 +59,7 @@ export const TopNav: React.FC = () => {
 
   const activeTerminalsCount = terminals.filter(t => t.status === 'running').length;
   const runningServicesCount = services.filter(s => s.status === 'running').length;
+  const activeTunnelsCount = activeTunnels.length;
   
   let uncommittedProjectsCount = 0;
   statuses.forEach(status => {
@@ -66,6 +71,7 @@ export const TopNav: React.FC = () => {
     switch(id) {
       case 'terminals': return activeTerminalsCount;
       case 'services': return runningServicesCount;
+      case 'tunnels': return activeTunnelsCount;
       case 'git': return uncommittedProjectsCount;
       default: return 0;
     }

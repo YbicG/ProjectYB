@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Play, Square, RotateCw, TerminalSquare, ExternalLink, Maximize2, Terminal } from 'lucide-react';
+import { Play, Square, RotateCw, TerminalSquare, ExternalLink, Maximize2, Terminal, CloudLightning } from 'lucide-react';
 import { Card, CardContent } from '../ui/card';
 import { Button } from '../ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../ui/dialog';
@@ -7,6 +7,7 @@ import { StatusDot } from '../shared/StatusDot';
 import { TerminalView } from '../terminal/TerminalView';
 import { useServiceStore } from '@renderer/stores/useServiceStore';
 import { useTerminalStore } from '@renderer/stores/useTerminalStore';
+import { useCloudflareStore } from '@renderer/stores/useCloudflareStore';
 import { useAppStore } from '@renderer/stores/useAppStore';
 import type { RunningService } from '@renderer/types/service';
 
@@ -27,6 +28,7 @@ function formatUptime(startedAt?: number): string {
 export const ServiceCard: React.FC<ServiceCardProps> = ({ service }) => {
   const { stopService, restartService } = useServiceStore();
   const { setActiveTerminal, setFilter } = useTerminalStore();
+  const { startQuickTunnel } = useCloudflareStore();
   const { setActiveTab } = useAppStore();
   const [logsOpen, setLogsOpen] = useState(false);
   const [uptime, setUptime] = useState(formatUptime(service.startedAt));
@@ -41,6 +43,22 @@ export const ServiceCard: React.FC<ServiceCardProps> = ({ service }) => {
   const handleStop = () => stopService(service.id);
   const handleRestart = () => restartService(service.id);
   
+  const handleStartTunnel = async () => {
+    if (service.port) {
+      const res = await startQuickTunnel({
+        localPort: service.port,
+        name: `${service.projectName}: ${service.name}`,
+        serviceId: service.id,
+        projectName: service.projectName
+      });
+      if (res) {
+        setActiveTab('tunnels');
+      }
+    } else {
+      setActiveTab('tunnels');
+    }
+  };
+
   const handleGoToTerminal = () => {
     if (service.terminalId) {
       setFilter('service');
@@ -98,6 +116,15 @@ export const ServiceCard: React.FC<ServiceCardProps> = ({ service }) => {
             >
               <Terminal className="w-3.5 h-3.5 text-violet-400" />
               Logs
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              className="h-8 px-2.5 bg-zinc-950 border-zinc-800 hover:border-orange-500/50 text-orange-400 hover:text-orange-300 text-xs"
+              onClick={handleStartTunnel}
+              title="Expose via Cloudflare Tunnel"
+            >
+              <CloudLightning className="w-3.5 h-3.5" />
             </Button>
             <Button
               variant="secondary"

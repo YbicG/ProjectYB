@@ -12,6 +12,7 @@ import { ServicesPage } from './pages/ServicesPage';
 import { SettingsPage } from './pages/SettingsPage';
 import { DependenciesPage } from './pages/DependenciesPage';
 import { OptimizerPage } from './pages/OptimizerPage';
+import { TunnelsPage } from './pages/TunnelsPage';
 import { ProjectDetailPage } from './pages/ProjectDetailPage';
 import { CommandPalette } from './components/shared/CommandPalette';
 import { CreateProjectDialog } from './components/templates/CreateProjectDialog';
@@ -89,6 +90,8 @@ export const App: React.FC = () => {
         return <GitPage />;
       case 'services':
         return <ServicesPage />;
+      case 'tunnels':
+        return <TunnelsPage />;
       case 'dependencies':
         return <DependenciesPage />;
       case 'optimizer':
@@ -118,6 +121,8 @@ export const App: React.FC = () => {
         return <GitPage />;
       case 'services':
         return <ServicesPage />;
+      case 'tunnels':
+        return <TunnelsPage />;
       case 'dependencies':
         return <DependenciesPage />;
       case 'optimizer':

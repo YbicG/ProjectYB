@@ -20,9 +20,11 @@ import { setupHealthIpc } from './ipc/health.ipc';
 import { setupSearchIpc } from './ipc/search.ipc';
 import { setupHttpIpc } from './ipc/http.ipc';
 import { setupArchiveIpc } from './ipc/archive.ipc';
+import { setupCloudflareIpc } from './ipc/cloudflare.ipc';
 import { terminalService } from './services/terminal.service';
 import { systemMonitor } from './services/system-monitor';
 import { trayService } from './services/tray.service';
+import { cloudflareService } from './services/cloudflare.service';
 
 let mainWindow: BrowserWindow | null = null;
 
@@ -77,6 +79,7 @@ async function createWindow() {
   setupSearchIpc();
   setupHttpIpc();
   setupArchiveIpc();
+  setupCloudflareIpc(mainWindow);
   
   try {
     await setupStoreIpc();
@@ -114,6 +117,7 @@ app.on('before-quit', () => {
   trayService.setQuitting(true);
   trayService.destroy();
   terminalService.killAll();
+  cloudflareService.cleanupAll();
   systemMonitor.stopMonitoring();
 });
 

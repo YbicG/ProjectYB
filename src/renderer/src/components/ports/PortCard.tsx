@@ -12,11 +12,14 @@ import {
   Activity,
   AlertTriangle,
   Cpu,
-  Loader2
+  Loader2,
+  CloudLightning
 } from 'lucide-react'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '../ui/dialog'
 import { usePortStore, COMMON_DEV_PORTS } from '@renderer/stores/usePortStore'
 import { useServiceStore } from '@renderer/stores/useServiceStore'
+import { useCloudflareStore } from '@renderer/stores/useCloudflareStore'
+import { useAppStore } from '@renderer/stores/useAppStore'
 import { cn } from '@renderer/lib/utils'
 import { toast } from 'sonner'
 import type { PortInfo } from '@renderer/types/port'
@@ -28,9 +31,27 @@ interface PortCardProps {
 export const PortCard: React.FC<PortCardProps> = ({ portInfo }) => {
   const { killPort } = usePortStore()
   const { runningServices } = useServiceStore()
+  const { startQuickTunnel } = useCloudflareStore()
+  const { setActiveTab } = useAppStore()
   const [copied, setCopied] = useState(false)
   const [isKilling, setIsKilling] = useState(false)
+  const [isTunneling, setIsTunneling] = useState(false)
   const [confirmOpen, setConfirmOpen] = useState(false)
+
+  const handleStartTunnel = async () => {
+    setIsTunneling(true)
+    try {
+      const res = await startQuickTunnel({
+        localPort: portInfo.port,
+        name: `${portInfo.processName} (Port ${portInfo.port})`
+      })
+      if (res) {
+        setActiveTab('tunnels')
+      }
+    } finally {
+      setIsTunneling(false)
+    }
+  }
 
   const matchedService = runningServices.find(
     (s) => s.pid === portInfo.pid || (s as any).port === portInfo.port
@@ -146,7 +167,19 @@ export const PortCard: React.FC<PortCardProps> = ({ portInfo }) => {
               className="flex-1 h-8 text-xs border-zinc-700 hover:bg-zinc-900 text-zinc-200 gap-1.5"
             >
               <Globe className="w-3.5 h-3.5 text-blue-400" />
-              Open Browser
+              Browser
+            </Button>
+
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={handleStartTunnel}
+              disabled={isTunneling}
+              className="h-8 text-xs border-zinc-800 bg-zinc-900 hover:border-orange-500/50 text-orange-300 gap-1 px-2.5"
+              title="Expose port via Cloudflare Tunnel"
+            >
+              {isTunneling ? <Loader2 className="w-3.5 h-3.5 animate-spin text-orange-400" /> : <CloudLightning className="w-3.5 h-3.5 text-orange-400" />}
+              <span>Tunnel</span>
             </Button>
 
             <Button
