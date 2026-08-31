@@ -247,3 +247,43 @@ Recent architectural refinements elevating workspace isolation and mobile compan
 | **Phase 10: Hosts & OpenAPI** | `hosts.service.ts`, `logstream.service.ts`, `openapi.service.ts` | `hosts:*`, `logstream:*`, `openapi:*` | `useLogStreamStore`, `useOpenApiStore` | `LogStreamPage`, `OpenApiPage`, `GitConflictResolverModal` |
 | **Phase 11: Remote & Root CA** | `service-killer.service.ts`, `root-ca.service.ts`, `mobile-companion.service.ts` | `serviceKiller:*`, `rootCa:*`, `cron:*`, `mobile:*` | `useMobileStore`, `useCronStore` | `MobileRemoteModal`, `CronPage`, Standalone Mobile PWA |
 | **Workspace Scoping** | `workspace.service.ts`, `.ybicg/services.json` | `workspaces:*` | `useWorkspaceStore`, `useWorkspaceProjects` | Scoped Bento Grid, Scoped Git Studio, Scoped Services |
+| **Phase 12: Next-Gen Workbench** | `ai.service.ts`, `openapi.service.ts`, `git.service.ts`, `pipeline.service.ts` | `ai:*`, `git:*`, `openapi:*`, `pipeline:*` | `useAiStore`, `useGitStore`, `useOpenApiStore`, `usePipelineStore` | `ModernProjectWorkbench`, `ProjectDetailPage`, `ProjectCodePeekModal`, `GitBranchGraph`, `PipelinesPage`, `AiSettings`, `ApiTesterPage` |
+
+---
+
+## Phase 12: Next-Gen Developer Workbench, Visual Developer Recipes, Git Branch DAG & Ergonomic UI Suite
+
+Ergonomic project workspace reorganization, visual pipeline recipes, multi-provider AI copilot in settings, Git DAG visualization, and unified API Studio.
+
+### Key Capabilities
+- **Segmented Project Workbench & HUD Header**:
+  - Reorganized the cluttered project view into a structured top HUD Header (VS Code, File Explorer, Code Peek, ZIP Backup, Project Config) and 5 distinct segmented workspaces:
+    1. **Scripts & Services**: 1-tap script trigger cards with live running badges and multi-step execution profiles.
+    2. **Subprojects & Code**: Monorepo subproject scanner with nested app script execution.
+    3. **Git & Activity**: Recent commits feed with commit hash badges, author tags, and direct jump to Git Studio.
+    4. **Notes & Docs**: Full-height Markdown notes editor with checklist tracker and task management.
+    5. **Environment & Secrets**: Quick launcher for masked `.env` manager, variable comparisons, and template generation.
+- **In-App Quick Code Peek Modal**:
+  - Instant file inspector supporting auto-discovery of common project files (`package.json`, `.env`, `.env.example`, `README.md`, `tsconfig.json`, `vite.config.ts`, `Cargo.toml`, `requirements.txt`, `go.mod`, `Dockerfile`).
+  - Monospace code canvas with line-number gutters, live dirty state indicator ("Modified"), clipboard copy, and `Ctrl+S` hotkey file saving directly to disk.
+- **Visual Developer Recipes & Action Palette**:
+  - Completely revamped workflow automation pipelines into **Visual Developer Recipes**.
+  - 9 prebuilt visual action blocks (`install_deps`, `clean_artifacts`, `run_tests`, `typecheck_lint`, `docker_compose`, `project_script`, `git_pull`, `custom_command`, `delay`).
+  - Live execution flow with step-by-step progress cards, duration timers, real-time log stream console, and visual action block palette editor.
+- **Multi-Provider AI Settings & Git Commit Copilot**:
+  - Consolidated AI configuration into a dedicated **AI Assistant** tab in Settings supporting Ollama (local), Anthropic Claude, OpenAI, Google Gemini, and custom OpenAI-compatible endpoints.
+  - Features API key masking, base URL customization, model picker presets, temperature controls, and 1-click connectivity verification.
+  - Integrated AI Commit Copilot in Git Studio with active model badge, style dropdown (conventional, short, detailed), and 1-click diff analysis message generator.
+- **Visual Git Branch DAG Graph**:
+  - Interactive commit tree visualization displaying commit nodes, commit SHA badges, author indicators, branch chips, stashes quick shelf, and selected commit metadata inspector.
+- **Consolidated API Studio & Swagger Specs**:
+  - Merged OpenAPI/Swagger Explorer directly into API Studio with 3 organized sidebar views: **Saved Requests**, **History**, and **Specs**.
+  - Supports loading local project OpenAPI specs (`swagger.json`, `openapi.yaml`) and remote URLs with 1-click endpoint transfer into the HTTP request builder.
+- **4-Hub Logical Navigation & Clutter Elimination**:
+  - Reorganized activity rail into 4 logical groupings:
+    1. 🚀 **Core Workspace**: Dashboard, Mission Control, Terminals, Services & Ports
+    2. 🛠️ **Developer Studio**: Git Studio, API Studio & Specs, Database Studio, Developer Recipes, LogStream Studio
+    3. 🌐 **Network & Cloud**: Cloudflare Tunnels, Local HTTPS Proxy, Mock & Webhooks, Cron Tasks
+    4. ⚡ **System & Health**: Dependencies, Disk Optimizer, Settings
+  - Retired obsolete standalone pages (`AiHubPage`, `OpenApiPage`) to maintain clean, unified navigation.
+

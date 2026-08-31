@@ -32,21 +32,24 @@ export function useKeyboard() {
       // Mobile Remote Companion: Ctrl+Shift+M
       if ((e.ctrlKey || e.metaKey) && e.shiftKey && (e.key === 'M' || e.key === 'm')) {
         e.preventDefault()
-        setMobileModalOpen(!mobileModalOpen)
+        const mobileStore = useMobileStore.getState()
+        mobileStore.setModalOpen(!mobileStore.modalOpen)
         return
       }
 
       // Global Search: Ctrl+Shift+F
       if ((e.ctrlKey || e.metaKey) && e.shiftKey && (e.key === 'F' || e.key === 'f')) {
         e.preventDefault()
-        setSearchModalOpen(!searchModalOpen)
+        const searchStore = useSearchStore.getState()
+        searchStore.setModalOpen(!searchStore.isModalOpen)
         return
       }
 
       // Command Snippets Vault: Ctrl+Shift+S
       if ((e.ctrlKey || e.metaKey) && e.shiftKey && (e.key === 'S' || e.key === 's')) {
         e.preventDefault()
-        setSnippetModalOpen(!snippetModalOpen)
+        const snippetStore = useSnippetStore.getState()
+        snippetStore.setModalOpen(!snippetStore.isModalOpen)
         return
       }
 

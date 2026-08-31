@@ -17,6 +17,7 @@ import { GitCommit } from '../components/git/GitCommit'
 import { GitHistory } from '../components/git/GitHistory'
 import { GitBranches } from '../components/git/GitBranches'
 import { GitStash } from '../components/git/GitStash'
+import { GitBranchGraph } from '../components/git/GitBranchGraph'
 import { GitHubPanel } from '../components/git/GitHubPanel'
 import { GitConflictResolverModal } from '../components/git/GitConflictResolverModal'
 import { Button } from '../components/ui/button'
@@ -84,7 +85,7 @@ export const GitPage: React.FC = () => {
   }
 
   const handleInitRepo = async () => {
-    if (!project) return
+    if (!project || !window.api?.git?.init) return
     try {
       await window.api.git.init(project.path)
       await fetchStatus(project.id, project.path)
@@ -97,6 +98,7 @@ export const GitPage: React.FC = () => {
   const subTabs: Array<{ id: GitSubTab; label: string; icon: React.ComponentType<{ className?: string }> }> = [
     { id: 'changes', label: 'Changes & Diff', icon: FileEdit },
     { id: 'history', label: 'Commit History', icon: History },
+    { id: 'graph', label: 'Branch DAG Graph', icon: GitMerge },
     { id: 'branches', label: 'Branches & Stashes', icon: GitBranchIcon },
     { id: 'github', label: 'GitHub', icon: Github }
   ]
@@ -270,6 +272,12 @@ export const GitPage: React.FC = () => {
             {activeSubTab === 'history' && (
               <div className="h-full p-4 overflow-hidden">
                 <GitHistory />
+              </div>
+            )}
+
+            {activeSubTab === 'graph' && (
+              <div className="h-full p-4 overflow-hidden">
+                <GitBranchGraph />
               </div>
             )}
 

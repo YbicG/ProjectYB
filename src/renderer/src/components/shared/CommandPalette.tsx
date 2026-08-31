@@ -133,11 +133,7 @@ export const CommandPalette: React.FC = () => {
           </CommandItem>
           <CommandItem onSelect={() => runCommand(() => setActiveTab('api'))}>
             <Send className="mr-2 h-4 w-4" />
-            HTTP API Tester
-          </CommandItem>
-          <CommandItem onSelect={() => runCommand(() => setActiveTab('openapi'))}>
-            <FileText className="mr-2 h-4 w-4 text-blue-400" />
-            OpenAPI & Swagger Explorer
+            HTTP API Studio & Swagger Specs
           </CommandItem>
           <CommandItem onSelect={() => runCommand(() => setActiveTab('logstream'))}>
             <Activity className="mr-2 h-4 w-4 text-violet-400" />
@@ -161,7 +157,7 @@ export const CommandPalette: React.FC = () => {
           </CommandItem>
           <CommandItem onSelect={() => runCommand(() => setActiveTab('services'))}>
             <Server className="mr-2 h-4 w-4" />
-            Background Services
+            Background Services & Ports
           </CommandItem>
           <CommandItem onSelect={() => runCommand(() => setActiveTab('tunnels'))}>
             <CloudLightning className="mr-2 h-4 w-4 text-orange-400" />
@@ -177,15 +173,11 @@ export const CommandPalette: React.FC = () => {
           </CommandItem>
           <CommandItem onSelect={() => runCommand(() => setActiveTab('pipelines'))}>
             <Workflow className="mr-2 h-4 w-4 text-violet-400" />
-            Workflow Automation Pipelines & CI
+            Visual Developer Recipes & Automations
           </CommandItem>
           <CommandItem onSelect={() => runCommand(() => setActiveTab('mock-server'))}>
             <Radio className="mr-2 h-4 w-4 text-cyan-400" />
             Mock REST API & Inbound Webhooks
-          </CommandItem>
-          <CommandItem onSelect={() => runCommand(() => setActiveTab('ai-hub'))}>
-            <Bot className="mr-2 h-4 w-4 text-emerald-400" />
-            AI Copilot Studio & Diagnostics
           </CommandItem>
           <CommandItem onSelect={() => runCommand(() => setActiveTab('dependencies'))}>
             <Package className="mr-2 h-4 w-4 text-cyan-400" />

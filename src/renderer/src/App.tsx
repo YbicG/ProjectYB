@@ -6,7 +6,6 @@ import { ModernProjectWorkbench } from './components/modern/project/ModernProjec
 import { DashboardPage } from './pages/DashboardPage';
 import { OverviewPage } from './pages/OverviewPage';
 import { ApiTesterPage } from './pages/ApiTesterPage';
-import { OpenApiPage } from './pages/OpenApiPage';
 import { LogStreamPage } from './pages/LogStreamPage';
 import { CronPage } from './pages/CronPage';
 import { TerminalsPage } from './pages/TerminalsPage';
@@ -20,7 +19,6 @@ import { LocalProxyPage } from './pages/LocalProxyPage';
 import { DatabasePage } from './pages/DatabasePage';
 import { PipelinesPage } from './pages/PipelinesPage';
 import { MockServerPage } from './pages/MockServerPage';
-import { AiHubPage } from './pages/AiHubPage';
 import { ProjectDetailPage } from './pages/ProjectDetailPage';
 import { CommandPalette } from './components/shared/CommandPalette';
 import { CreateProjectDialog } from './components/templates/CreateProjectDialog';
@@ -95,8 +93,6 @@ export const App: React.FC = () => {
         return <OverviewPage />;
       case 'api':
         return <ApiTesterPage />;
-      case 'openapi':
-        return <OpenApiPage />;
       case 'logstream':
         return <LogStreamPage />;
       case 'cron':
@@ -117,8 +113,6 @@ export const App: React.FC = () => {
         return <PipelinesPage />;
       case 'mock-server':
         return <MockServerPage />;
-      case 'ai-hub':
-        return <AiHubPage />;
       case 'dependencies':
         return <DependenciesPage />;
       case 'optimizer':
@@ -142,8 +136,6 @@ export const App: React.FC = () => {
         return <OverviewPage />;
       case 'api':
         return <ApiTesterPage />;
-      case 'openapi':
-        return <OpenApiPage />;
       case 'logstream':
         return <LogStreamPage />;
       case 'cron':
@@ -164,8 +156,6 @@ export const App: React.FC = () => {
         return <PipelinesPage />;
       case 'mock-server':
         return <MockServerPage />;
-      case 'ai-hub':
-        return <AiHubPage />;
       case 'dependencies':
         return <DependenciesPage />;
       case 'optimizer':

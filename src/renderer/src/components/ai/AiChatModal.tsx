@@ -38,7 +38,7 @@ export const AiChatModal: React.FC = () => {
 
   const handleOpenFullPage = () => {
     setChatModalOpen(false);
-    setActiveTab('ai-hub');
+    setActiveTab('settings');
   };
 
   return (

@@ -1,8 +1,21 @@
+export type RecipeActionBlockType =
+  | 'install_deps'
+  | 'clean_artifacts'
+  | 'run_tests'
+  | 'typecheck_lint'
+  | 'docker_compose'
+  | 'project_script'
+  | 'git_pull'
+  | 'custom_command'
+  | 'delay';
+
 export interface PipelineStep {
   id: string;
   name: string;
   type: 'command' | 'script' | 'docker' | 'notify' | 'delay';
+  actionType?: RecipeActionBlockType;
   command?: string;
+  scriptName?: string;
   cwd?: string;
   delayMs?: number;
   continueOnError?: boolean;
@@ -12,6 +25,7 @@ export interface Pipeline {
   id: string;
   name: string;
   description?: string;
+  category?: 'qa' | 'build' | 'deploy' | 'maintenance' | 'custom';
   targetProjectId?: string;
   targetProjectName?: string;
   targetProjectPath?: string;

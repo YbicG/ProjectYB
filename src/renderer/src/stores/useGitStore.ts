@@ -2,7 +2,7 @@ import { create } from 'zustand'
 import type { GitStatus, GitLogEntry, GitStashEntry, FileDiffInfo } from '../types/git'
 import { useNotificationStore } from './useNotificationStore'
 
-export type GitSubTab = 'changes' | 'history' | 'branches' | 'github'
+export type GitSubTab = 'changes' | 'history' | 'branches' | 'graph' | 'github'
 
 interface GitState {
   statuses: Map<string, GitStatus>

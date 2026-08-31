@@ -1,9 +1,11 @@
 import React, { useState, useEffect } from 'react'
-import { Send, CheckCircle2, Loader2, Sparkles } from 'lucide-react'
+import { Send, CheckCircle2, Loader2, Sparkles, Settings, Bot } from 'lucide-react'
 import { Button } from '../ui/button'
+import { Badge } from '../ui/badge'
 import { useGitStore } from '@renderer/stores/useGitStore'
 import { useProjectStore } from '@renderer/stores/useProjectStore'
 import { useAiStore } from '@renderer/stores/useAiStore'
+import { useAppStore } from '@renderer/stores/useAppStore'
 import { toast } from 'sonner'
 
 export const GitCommit: React.FC = () => {
@@ -16,13 +18,19 @@ export const GitCommit: React.FC = () => {
     commitMessage,
     setCommitMessage
   } = useGitStore()
-  const { generateCommitMessage } = useAiStore()
+  const { generateCommitMessage, config, loadConfig } = useAiStore()
+  const { openSettingsTab } = useAppStore()
   const [isGeneratingAi, setIsGeneratingAi] = useState(false)
+  const [commitStyle, setCommitStyle] = useState<'conventional' | 'short' | 'detailed'>('conventional')
   const [stageAll, setStageAll] = useState(false)
   const { projects } = useProjectStore()
 
   const project = projects.find((p) => p.id === selectedProjectId)
   const status = selectedProjectId ? statuses.get(selectedProjectId) : undefined
+
+  useEffect(() => {
+    loadConfig()
+  }, [])
 
   const handleGenerateAiCommit = async () => {
     if (!project) return
@@ -34,9 +42,16 @@ export const GitCommit: React.FC = () => {
         ...(status?.untracked || []).map((t) => `added: ${typeof t === 'string' ? t : (t as any).path}`)
       ].join('\n')
 
-      const msg = await generateCommitMessage(summary || `Updated project ${project.name}`)
+      let styleInstruction = 'conventional commit format (e.g. feat(scope): message or fix(scope): message)'
+      if (commitStyle === 'short') styleInstruction = 'short and concise one-liner summary without prefix'
+      if (commitStyle === 'detailed') styleInstruction = 'conventional commit header followed by bullet points detailing key changes'
+
+      const promptText = `Project: ${project.name}\nStyle: ${styleInstruction}\nChanged Files:\n${summary || `Updated ${project.name}`}`
+      const msg = await generateCommitMessage(promptText)
       setCommitMessage(msg)
       toast.success('Generated commit message from diff!')
+    } catch (err: any) {
+      toast.error(`AI generation failed: ${err.message || 'Check AI settings'}`)
     } finally {
       setIsGeneratingAi(false)
     }
@@ -81,11 +96,40 @@ export const GitCommit: React.FC = () => {
     }
   }
 
+  const activeModelDisplay = config.model
+    ? `${config.provider === 'ollama' ? '🦙 ' : '⚡ '}${config.model}`
+    : `${config.provider.toUpperCase()}`
+
   return (
     <div className="p-3 bg-zinc-950 border border-zinc-800 rounded-lg shadow-sm space-y-2.5">
-      <div className="flex items-center justify-between">
-        <h3 className="text-xs font-semibold text-zinc-300">Commit Message</h3>
+      <div className="flex items-center justify-between flex-wrap gap-2">
         <div className="flex items-center gap-2">
+          <h3 className="text-xs font-semibold text-zinc-300">Commit Message</h3>
+          {/* Active AI model pill */}
+          <button
+            type="button"
+            onClick={() => openSettingsTab('ai')}
+            className="flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-mono bg-zinc-900 border border-zinc-800 text-zinc-400 hover:text-violet-300 hover:border-violet-700/60 transition-colors"
+            title="Configure AI model in Settings"
+          >
+            <Bot className="w-3 h-3 text-violet-400" />
+            <span className="truncate max-w-[120px]">{activeModelDisplay}</span>
+            <Settings className="w-2.5 h-2.5 opacity-60 ml-0.5" />
+          </button>
+        </div>
+
+        <div className="flex items-center gap-2">
+          {/* Style selector */}
+          <select
+            value={commitStyle}
+            onChange={(e) => setCommitStyle(e.target.value as any)}
+            className="bg-zinc-900 border border-zinc-800 rounded px-2 py-0.5 text-[10px] text-zinc-300 focus:outline-none focus:ring-1 focus:ring-violet-500"
+          >
+            <option value="conventional">Conventional</option>
+            <option value="short">Short</option>
+            <option value="detailed">Detailed</option>
+          </select>
+
           <Button
             type="button"
             variant="outline"
@@ -93,12 +137,12 @@ export const GitCommit: React.FC = () => {
             onClick={handleGenerateAiCommit}
             disabled={isGeneratingAi || !selectedProjectId}
             className="h-6 text-[10px] border-violet-500/40 bg-violet-950/20 text-violet-300 hover:bg-violet-900/40 gap-1 px-2"
-            title="Generate conventional commit message with AI"
+            title="Generate commit message from diff using AI"
           >
             {isGeneratingAi ? <Loader2 className="w-3 h-3 animate-spin text-violet-400" /> : <Sparkles className="w-3 h-3 text-violet-400" />}
             <span>AI Generate</span>
           </Button>
-          <span className="text-[10px] text-zinc-500">Ctrl + Enter to commit</span>
+          <span className="text-[10px] text-zinc-500 hidden sm:inline">Ctrl + Enter</span>
         </div>
       </div>
 

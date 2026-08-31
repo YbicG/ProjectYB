@@ -8,7 +8,6 @@ import {
   Square,
   RotateCw,
   GitBranch,
-  Bot,
   FileCode,
   Lock,
   Package,
@@ -19,13 +18,16 @@ import {
   ChevronRight,
   ExternalLink,
   CheckCircle2,
-  RefreshCw,
   Copy,
   Check,
   Plus,
-  EyeOff
+  EyeOff,
+  FileText,
+  Boxes,
+  Shield,
+  Activity
 } from 'lucide-react';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import { useProjectStore } from '@renderer/stores/useProjectStore';
 import { useWorkspaceProjects } from '@renderer/hooks/useWorkspaceProjects';
 import { useServiceStore } from '@renderer/stores/useServiceStore';
@@ -41,32 +43,33 @@ import { MarkdownNotesEditor } from '../../notes/MarkdownNotesEditor';
 import { ProjectConfigDialog } from '../../dashboard/ProjectConfigDialog';
 import { EnvManagerDialog } from '../../env/EnvManagerDialog';
 import { ProjectSnapshotDialog } from '../../dashboard/ProjectSnapshotDialog';
-import { AiContextDialog } from '../../dashboard/AiContextDialog';
+import { ProjectCodePeekModal } from '../../project/ProjectCodePeekModal';
 import { RunConfigDialog } from '../../services/RunConfigDialog';
 import { toast } from 'sonner';
-import { cn } from '@renderer/lib/utils';
+import { cn, generateId } from '@renderer/lib/utils';
 import type { ProjectInfo, SubProject } from '@renderer/types/project';
 import type { GitLogEntry } from '@renderer/types/git';
 
+type WorkbenchTab = 'scripts' | 'subprojects' | 'git' | 'notes' | 'env';
+
 export const ModernProjectWorkbench: React.FC = () => {
-  const { selectedProjectId, selectProject, ignoreProject } = useProjectStore();
-  const { projects, isWorkspaceScoped, activeWorkspace } = useWorkspaceProjects();
+  const { selectedProjectId, selectProject } = useProjectStore();
+  const { projects } = useWorkspaceProjects();
   const { runningServices, startService, stopService } = useServiceStore();
   const { createTerminal } = useTerminalStore();
   const { configs: allConfigs, addConfig, updateConfig } = useRunConfigStore();
   const { setActiveTab } = useAppStore();
 
+  const [activeTab, setActiveWorkbenchTab] = useState<WorkbenchTab>('scripts');
   const [commits, setCommits] = useState<GitLogEntry[]>([]);
   const [commitsLoading, setCommitsLoading] = useState(false);
-  const [activeInspectorTab, setActiveInspectorTab] = useState<'ai' | 'git' | 'env'>('ai');
-  const [aiContextContent, setAiContextContent] = useState<string>('');
-  const [copiedAi, setCopiedAi] = useState(false);
+  const [copiedPath, setCopiedPath] = useState(false);
 
   // Dialogs
   const [configDialogOpen, setConfigDialogOpen] = useState(false);
   const [envDialogOpen, setEnvDialogOpen] = useState(false);
   const [snapshotDialogOpen, setSnapshotDialogOpen] = useState(false);
-  const [aiContextDialogOpen, setAiContextDialogOpen] = useState(false);
+  const [codePeekOpen, setCodePeekOpen] = useState(false);
   const [runConfigDialogOpen, setRunConfigDialogOpen] = useState(false);
   const [editingRunConfig, setEditingRunConfig] = useState<RunConfig | undefined>();
 
@@ -74,617 +77,574 @@ export const ModernProjectWorkbench: React.FC = () => {
 
   useEffect(() => {
     if (!project) return;
-    if (project.isGitRepo) {
+    if (project.isGitRepo && window.api?.git?.log) {
       setCommitsLoading(true);
-      window.api?.git
-        ?.log?.(project.path, 8)
-        ?.then?.((entries: GitLogEntry[]) => setCommits(entries ?? []))
-        ?.catch?.(() => {})
-        ?.finally?.(() => setCommitsLoading(false));
+      window.api.git
+        .log(project.path, 12)
+        .then((entries: GitLogEntry[]) => setCommits(entries || []))
+        .catch(() => setCommits([]))
+        .finally(() => setCommitsLoading(false));
     } else {
-      setActiveInspectorTab('ai');
       setCommits([]);
-    }
-
-    // Load AI context preview
-    if (window.api?.projects?.generateAiContext) {
-      window.api.projects
-        .generateAiContext(project.path)
-        .then((res) => {
-          if (res?.success) setAiContextContent(res.content || '');
-        })
-        .catch(() => {});
     }
   }, [project?.id, project?.isGitRepo]);
 
   if (!project) {
     return (
-      <div className="h-full flex flex-col items-center justify-center text-zinc-500 space-y-3 p-6 text-center">
-        <FolderOpen className="w-10 h-10 opacity-30" />
-        <p className="text-sm font-semibold text-zinc-400">No project selected</p>
+      <div className="flex flex-col items-center justify-center h-full text-zinc-500 space-y-4">
+        <FolderOpen className="w-12 h-12 text-zinc-700" />
+        <div className="text-center">
+          <p className="text-sm font-medium text-zinc-400">No project selected</p>
+          <p className="text-xs text-zinc-600">Select a project from the dashboard to open the workbench.</p>
+        </div>
         <Button
+          variant="outline"
           size="sm"
           onClick={() => setActiveTab('dashboard')}
-          className="text-xs bg-violet-600 hover:bg-violet-700 text-white"
+          className="border-zinc-800 hover:bg-zinc-900 text-zinc-300 text-xs"
         >
-          Return to Dashboard
+          <ArrowLeft className="w-3.5 h-3.5 mr-1.5" /> Back to Dashboard
         </Button>
       </div>
     );
   }
 
-  const isRunning = runningServices.some((s) => s.projectId === project.id);
-  const scripts = project.scripts || {};
-  const projectConfigs = allConfigs.filter((c) => c.projectId === project.id);
+  const projectConfigs = allConfigs.filter(
+    (c) => c.projectId === project.id || c.projectPath === project.path
+  );
 
-  const handleOpenTerminal = async (sub?: SubProject) => {
-    const termName = sub ? `${project.name} (${sub.name})` : project.name;
-    const termCwd = sub ? sub.path : project.path;
-    await createTerminal({ name: termName, cwd: termCwd, projectId: project.id });
-    setActiveTab('terminals');
-  };
+  const scripts = Object.entries(project.scripts || {});
 
-  const handleRunScript = async (scriptName: string, command: string, cwd?: string) => {
-    const existing = runningServices.find(
-      (s) => s.projectId === project.id && s.name === scriptName
-    );
-    if (existing) {
-      stopService(existing.id);
-      toast.info(`Stopped service: ${scriptName}`);
-      return;
-    }
+  const handleLaunchScript = async (scriptName: string, command: string) => {
+    try {
+      const isDaemon =
+        scriptName.includes('dev') ||
+        scriptName.includes('start') ||
+        scriptName.includes('watch') ||
+        scriptName.includes('serve');
 
-    await startService(project.id, project.name, {
-      name: scriptName,
-      command,
-      cwd: cwd || project.path,
-      autoRestart: false,
-      env: {}
-    });
-    toast.success(`Started service: ${scriptName}`);
-  };
-
-  const handleCopyAiContext = () => {
-    if (aiContextContent) {
-      navigator.clipboard.writeText(aiContextContent);
-      setCopiedAi(true);
-      toast.success('Copied .ybicg/AI_CONTEXT.md to clipboard');
-      setTimeout(() => setCopiedAi(false), 2000);
-    }
-  };
-
-  const handleSaveRunConfig = async (data: Omit<RunConfig, 'id' | 'createdAt'>) => {
-    if (editingRunConfig) {
-      await updateConfig(editingRunConfig.id, data);
-      toast.success(`Updated ${data.name}`);
-    } else {
-      await addConfig(data);
-      toast.success(`Created ${data.name}`);
-    }
-    setEditingRunConfig(undefined);
-  };
-
-  const handleIgnoreProject = async () => {
-    if (
-      window.confirm(
-        `Ignore project "${project.name}"?\n\nThis will hide it from your workspace and add it to your Ignored Projects list in Settings.`
-      )
-    ) {
-      try {
-        await ignoreProject(project.path);
-        toast.info(`Ignored "${project.name}".`);
-        setActiveTab('dashboard');
-      } catch {
-        toast.error(`Failed to ignore project`);
+      if (isDaemon) {
+        await startService(project.id, project.name, {
+          id: generateId(),
+          name: scriptName,
+          command: command,
+          cwd: project.path,
+          autoRestart: false
+        });
+        toast.success('Started service: ' + scriptName);
+      } else {
+        await createTerminal({
+          name: project.name + ' [' + scriptName + ']',
+          cwd: project.path,
+          command: command,
+          projectId: project.id,
+          projectName: project.name
+        });
+        toast.success('Spawned terminal for ' + scriptName);
       }
+    } catch (err: any) {
+      toast.error('Failed to launch ' + scriptName + ': ' + err.message);
     }
   };
+
+  const handleRunSubprojectScript = async (sub: SubProject, scriptName: string, command: string) => {
+    try {
+      const isDaemon = scriptName.includes('dev') || scriptName.includes('start') || scriptName.includes('serve');
+      if (isDaemon) {
+        await startService(project.id, project.name, {
+          id: generateId(),
+          name: sub.name + ':' + scriptName,
+          command: command,
+          cwd: sub.path,
+          autoRestart: false
+        });
+        toast.success('Started subproject service: ' + sub.name + ' [' + scriptName + ']');
+      } else {
+        await createTerminal({
+          name: sub.name + ' [' + scriptName + ']',
+          cwd: sub.path,
+          command: command,
+          projectId: project.id,
+          projectName: project.name
+        });
+        toast.success('Running ' + scriptName + ' in ' + sub.name);
+      }
+    } catch (err: any) {
+      toast.error('Failed to run: ' + err.message);
+    }
+  };
+
+  const handleOpenIde = () => {
+    if (window.api?.projects?.openInVSCode) {
+      window.api.projects.openInVSCode(project.path);
+      toast.success('Opening in VS Code...');
+    }
+  };
+
+  const handleOpenExplorer = () => {
+    if (window.api?.projects?.openInExplorer) {
+      window.api.projects.openInExplorer(project.path);
+      toast.success('Opening in File Explorer...');
+    }
+  };
+
+  const handleCopyPath = () => {
+    navigator.clipboard.writeText(project.path);
+    setCopiedPath(true);
+    toast.success('Path copied to clipboard');
+    setTimeout(() => setCopiedPath(false), 2000);
+  };
+
+  const tabs = [
+    { id: 'scripts', label: 'Scripts & Services', icon: Play, count: scripts.length },
+    { id: 'subprojects', label: 'Subprojects & Code', icon: Boxes, count: project.subprojects?.length || 0 },
+    { id: 'git', label: 'Git & Activity', icon: GitBranch, count: commits.length },
+    { id: 'notes', label: 'Notes & Docs', icon: FileText },
+    { id: 'env', label: 'Environment & Secrets', icon: Lock }
+  ];
 
   return (
-    <div className="h-full flex flex-col overflow-hidden bg-zinc-950 text-zinc-100 select-none">
-      {/* ── Top Project Header Bar ── */}
-      <div className="h-14 px-4 sm:px-6 bg-zinc-950 border-b border-zinc-800/90 flex items-center justify-between gap-4 shrink-0 flex-wrap shadow-sm">
-        <div className="flex items-center gap-3 min-w-0">
+    <div className="flex flex-col h-full w-full bg-zinc-950 text-zinc-50 overflow-hidden">
+      {/* ── Top Header HUD ── */}
+      <div className="px-6 py-4 border-b border-zinc-800/80 bg-zinc-950/90 backdrop-blur-md flex items-center justify-between gap-4 flex-wrap shrink-0">
+        <div className="flex items-center gap-3">
           <Button
             variant="ghost"
             size="icon"
-            className="h-8 w-8 text-zinc-400 hover:text-zinc-100 hover:bg-zinc-900"
             onClick={() => setActiveTab('dashboard')}
-            title="Back to Dashboard"
+            className="h-8 w-8 text-zinc-400 hover:text-zinc-100 hover:bg-zinc-900"
           >
             <ArrowLeft className="w-4 h-4" />
           </Button>
 
-          <StatusDot status={isRunning ? 'running' : 'stopped'} size="md" />
-
-          <div className="min-w-0">
-            <div className="flex items-center gap-2">
-              <h1 className="font-bold text-sm sm:text-base text-zinc-100 truncate">{project.name}</h1>
-              <Badge
-                variant="outline"
-                className="text-[10px] font-mono border-violet-500/40 text-violet-300"
-              >
-                {project.type}
+          <div>
+            <div className="flex items-center gap-2 flex-wrap">
+              <h1 className="text-lg font-bold tracking-tight text-zinc-100">{project.name}</h1>
+              <Badge variant="outline" className="text-[10px] font-mono border-zinc-700 bg-zinc-900 text-zinc-300">
+                {project.type || 'node'}
               </Badge>
+              {project.isGitRepo && (
+                <Badge variant="outline" className="text-[10px] font-mono border-violet-500/40 text-violet-300 flex items-center gap-1">
+                  <GitBranch className="w-2.5 h-2.5" />
+                  {project.gitBranch || 'main'}
+                </Badge>
+              )}
             </div>
-            <p className="text-[10px] text-zinc-500 font-mono truncate" title={project.path}>
-              {project.path}
-            </p>
+
+            <button
+              onClick={handleCopyPath}
+              className="flex items-center gap-1 text-xs text-zinc-500 hover:text-zinc-300 transition-colors mt-0.5 font-mono group"
+            >
+              <span className="truncate max-w-md">{project.path}</span>
+              {copiedPath ? (
+                <Check className="w-3 h-3 text-emerald-400" />
+              ) : (
+                <Copy className="w-3 h-3 opacity-0 group-hover:opacity-100 transition-opacity" />
+              )}
+            </button>
           </div>
         </div>
 
-        {/* Action Buttons */}
-        <div className="flex items-center gap-1.5 flex-wrap">
+        {/* Action Toolbar */}
+        <div className="flex items-center gap-2">
           <Button
             variant="outline"
             size="sm"
-            onClick={() => setAiContextDialogOpen(true)}
-            className="h-7 text-xs border-violet-500/40 text-violet-300 hover:bg-violet-950/30 gap-1.5"
+            onClick={() => setCodePeekOpen(true)}
+            className="h-7 text-xs border-violet-500/40 bg-violet-950/20 text-violet-300 hover:bg-violet-900/40 gap-1.5"
+            title="Quick in-app code & file viewer"
           >
-            <Bot className="w-3.5 h-3.5 text-violet-400" />
-            AI Guide (.ybicg)
+            <FileCode className="w-3.5 h-3.5 text-violet-400" />
+            <span>Code Peek</span>
           </Button>
 
           <Button
             variant="outline"
             size="sm"
-            onClick={() => setConfigDialogOpen(true)}
-            className="h-7 text-xs border-zinc-800 text-zinc-300 hover:bg-zinc-900 gap-1.5"
+            onClick={handleOpenIde}
+            className="h-7 text-xs border-zinc-800 hover:bg-zinc-900 text-zinc-300 gap-1.5"
+            title="Open in VS Code"
           >
-            <FileCode className="w-3.5 h-3.5 text-zinc-400" />
-            Config
+            <Code className="w-3.5 h-3.5" />
+            <span>VS Code</span>
           </Button>
 
           <Button
             variant="outline"
             size="sm"
-            onClick={() => setEnvDialogOpen(true)}
-            className="h-7 text-xs border-amber-500/30 text-amber-300 hover:bg-amber-950/30 gap-1.5"
+            onClick={handleOpenExplorer}
+            className="h-7 text-xs border-zinc-800 hover:bg-zinc-900 text-zinc-300 gap-1.5"
+            title="Open in Explorer"
           >
-            <Lock className="w-3.5 h-3.5 text-amber-400" />
-            Env
-          </Button>
-
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => handleOpenTerminal()}
-            className="h-7 text-xs border-zinc-800 text-zinc-300 hover:bg-zinc-900 gap-1.5"
-          >
-            <Terminal className="w-3.5 h-3.5 text-zinc-400" />
-            Terminal
-          </Button>
-
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => window.api?.projects?.openInVSCode?.(project.path)}
-            className="h-7 text-xs border-zinc-800 text-zinc-300 hover:bg-zinc-900 gap-1.5"
-          >
-            <Code className="w-3.5 h-3.5 text-zinc-400" />
-            VS Code
-          </Button>
-
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => window.api?.projects?.openInExplorer?.(project.path)}
-            className="h-7 text-xs border-zinc-800 text-zinc-300 hover:bg-zinc-900 gap-1.5"
-          >
-            <FolderOpen className="w-3.5 h-3.5 text-zinc-400" />
-            Explorer
+            <FolderOpen className="w-3.5 h-3.5" />
+            <span>Explorer</span>
           </Button>
 
           <Button
             variant="outline"
             size="sm"
             onClick={() => setSnapshotDialogOpen(true)}
-            className="h-7 text-xs border-zinc-800 text-zinc-300 hover:bg-zinc-900 gap-1.5"
-            title="Export clean project .zip archive"
+            className="h-7 text-xs border-zinc-800 hover:bg-zinc-900 text-zinc-300 gap-1.5"
+            title="Create clean ZIP snapshot"
           >
-            <Archive className="w-3.5 h-3.5 text-zinc-400" />
-            Snapshot
+            <Archive className="w-3.5 h-3.5" />
+            <span>Backup</span>
           </Button>
 
           <Button
             variant="outline"
             size="sm"
-            onClick={handleIgnoreProject}
-            className="h-7 text-xs border-rose-900/60 text-rose-400 hover:bg-rose-950/40 hover:text-rose-300 gap-1.5"
-            title="Ignore project from workspace"
+            onClick={() => setConfigDialogOpen(true)}
+            className="h-7 text-xs border-zinc-800 hover:bg-zinc-900 text-zinc-300"
           >
-            <EyeOff className="w-3.5 h-3.5 text-rose-400" />
-            Ignore
+            Config
           </Button>
         </div>
       </div>
 
+      {/* ── Segmented Navigation Bar ── */}
+      <div className="flex items-center gap-1 px-6 border-b border-zinc-800/80 bg-zinc-950/80 shrink-0">
+        {tabs.map((tab) => {
+          const Icon = tab.icon;
+          const isActive = activeTab === tab.id;
+          return (
+            <button
+              key={tab.id}
+              onClick={() => setActiveWorkbenchTab(tab.id as WorkbenchTab)}
+              className={cn(
+                'relative flex items-center gap-2 px-3.5 py-2.5 text-xs font-medium transition-colors hover:text-zinc-200',
+                isActive ? 'text-violet-300 font-semibold' : 'text-zinc-400'
+              )}
+            >
+              <Icon className="w-3.5 h-3.5" />
+              {tab.label}
+              {tab.count !== undefined && tab.count > 0 && (
+                <span className="bg-zinc-900 text-zinc-400 border border-zinc-800 text-[10px] px-1.5 py-0.2 rounded-full font-mono">
+                  {tab.count}
+                </span>
+              )}
+              {isActive && (
+                <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-violet-500 rounded-t-md" />
+              )}
+            </button>
+          );
+        })}
+      </div>
 
-      {/* ── 3-Pane Workbench Body ── */}
-      <div className="flex-1 grid grid-cols-1 lg:grid-cols-12 min-h-0 overflow-hidden">
-        {/* ── Left Pane: Saved Configs & Scripts (3 cols) ── */}
-        <div className="lg:col-span-3 border-r border-zinc-800/80 bg-zinc-950/60 p-3 overflow-y-auto space-y-4">
-          {/* Saved Run Configurations (AT THE TOP) */}
-          <div className="space-y-2">
-            <div className="flex items-center justify-between">
-              <span className="text-[10px] uppercase font-semibold text-zinc-400 tracking-wider flex items-center gap-1.5">
-                <Layers className="w-3 h-3 text-violet-400" />
-                Saved Configs ({projectConfigs.length})
-              </span>
-              <div className="flex items-center gap-1">
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="h-5 px-1.5 text-[10px] text-violet-400 hover:text-violet-300 hover:bg-violet-950/40"
-                  onClick={() => {
-                    setEditingRunConfig(undefined);
-                    setRunConfigDialogOpen(true);
-                  }}
-                >
-                  <Plus className="w-2.5 h-2.5 mr-0.5" /> New
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="h-5 px-1 text-[10px] text-zinc-500 hover:text-zinc-300"
-                  onClick={() => setActiveTab('services')}
-                >
-                  Manage
-                </Button>
-              </div>
-            </div>
+      {/* ── Segmented Tab Views ── */}
+      <div className="flex-1 overflow-y-auto p-6 bg-zinc-950/60">
+        {/* Tab 1: Scripts & Services */}
+        {activeTab === 'scripts' && (
+          <div className="space-y-6 max-w-6xl">
+            {/* Multi-step Run Configurations */}
+            {projectConfigs.length > 0 && (
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-xs font-semibold text-zinc-400 uppercase tracking-wider flex items-center gap-1.5">
+                    <Layers className="w-3.5 h-3.5 text-violet-400" /> Multi-Step Configurations
+                  </h3>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => {
+                      setEditingRunConfig(undefined);
+                      setRunConfigDialogOpen(true);
+                    }}
+                    className="h-6 text-[11px] text-violet-400 hover:text-violet-300"
+                  >
+                    <Plus className="w-3 h-3 mr-1" /> Add Config
+                  </Button>
+                </div>
 
-            {projectConfigs.length === 0 ? (
-              <div
-                onClick={() => {
-                  setEditingRunConfig(undefined);
-                  setRunConfigDialogOpen(true);
-                }}
-                className="p-3 rounded-lg border border-dashed border-zinc-800/80 hover:border-violet-500/40 hover:bg-zinc-900/40 cursor-pointer text-center space-y-1 transition-colors"
-              >
-                <p className="text-[11px] font-medium text-zinc-400">+ Add Run Configuration</p>
-                <p className="text-[9px] text-zinc-600">Save multi-command or parallel tasks</p>
-              </div>
-            ) : (
-              <div className="space-y-1.5">
-                {projectConfigs.map((cfg) => {
-                  const isParallel =
-                    cfg.executionMode === 'parallel' && (cfg.commands?.length || 0) > 1;
-                  const cmds = cfg.commands?.length
-                    ? cfg.commands.filter((c) => c.command.trim())
-                    : cfg.command
-                      ? [{ id: '1', name: '', command: cfg.command }]
-                      : [];
-
-                  return (
-                    <div
-                      key={cfg.id}
-                      className="p-2 rounded-lg bg-zinc-900/80 border border-zinc-800 flex items-center justify-between gap-2 hover:border-zinc-700 transition-colors"
-                    >
-                      <div className="min-w-0 flex-1">
-                        <div className="flex items-center gap-1.5">
-                          <span className="font-bold font-mono text-xs text-zinc-200 truncate">
-                            {cfg.name}
-                          </span>
-                          {isParallel ? (
-                            <Badge
-                              variant="outline"
-                              className="text-[8px] bg-cyan-950/40 border-cyan-800 text-cyan-300 px-1 py-0"
-                            >
-                              {cmds.length} tabs
-                            </Badge>
-                          ) : (
-                            <Badge
-                              variant="outline"
-                              className="text-[8px] bg-violet-950/40 border-violet-800 text-violet-300 px-1 py-0"
-                            >
-                              1 tab
-                            </Badge>
-                          )}
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                  {projectConfigs.map((cfg) => (
+                    <Card key={cfg.id} className="bg-zinc-900/60 border-zinc-800/80 hover:border-zinc-700 transition-all p-3.5">
+                      <div className="flex items-start justify-between gap-2">
+                        <div>
+                          <span className="text-xs font-bold text-zinc-200 block">{cfg.name}</span>
+                          <span className="text-[11px] text-zinc-500">{cfg.commands.length} steps ({cfg.executionMode || 'sequential'})</span>
                         </div>
-                        <span
-                          className="text-[10px] text-zinc-500 font-mono truncate block mt-0.5"
-                          title={cmds.map((c) => c.command).join(' && ')}
-                        >
-                          {cmds.map((c) => c.command).join(' && ') || 'No command'}
-                        </span>
-                      </div>
-
-                      <div className="flex items-center gap-0.5 shrink-0">
                         <Button
-                          size="icon"
-                          variant="ghost"
-                          className="h-6 w-6 text-zinc-400 hover:text-emerald-400"
-                          onClick={async () => {
-                            if (!cmds.length) return;
-                            const effectiveCwd = cfg.cwd || project.path;
-                            if (isParallel) {
-                              for (let i = 0; i < cmds.length; i++) {
-                                const cmd = cmds[i];
-                                const termName = cmd.name
-                                  ? `${cfg.name} (${cmd.name})`
-                                  : `${cfg.name} #${i + 1}`;
-                                await startService(project.id, project.name, {
-                                  id: `${cfg.id}-${cmd.id || i}`,
-                                  name: termName,
-                                  command: cmd.command,
-                                  cwd: effectiveCwd,
-                                  autoRestart: cfg.autoRestart
-                                });
-                              }
-                              toast.success(`Launched ${cmds.length} commands for ${cfg.name}`);
-                            } else {
-                              const combined = cmds
-                                .map((c) => c.command.trim())
-                                .filter(Boolean)
-                                .join(' && ');
-                              await startService(project.id, project.name, {
-                                id: cfg.id,
-                                name: cfg.name,
-                                command: combined,
-                                cwd: effectiveCwd,
-                                autoRestart: cfg.autoRestart
+                          size="sm"
+                          onClick={() => {
+                            cfg.commands.forEach((cmd) => {
+                              createTerminal({
+                                name: cfg.name + ': ' + cmd.name,
+                                cwd: project.path,
+                                command: cmd.command,
+                                projectId: project.id,
+                                projectName: project.name
                               });
-                              toast.success(`Launched ${cfg.name}`);
-                            }
+                            });
+                            toast.success('Triggered config: ' + cfg.name);
                           }}
-                          title="Launch Configuration"
+                          className="h-7 text-xs bg-violet-600 hover:bg-violet-700 gap-1 px-2.5"
                         >
-                          <Play className="w-3 h-3 fill-current" />
+                          <Play className="w-3 h-3" /> Run
                         </Button>
                       </div>
-                    </div>
-                  );
-                })}
+                    </Card>
+                  ))}
+                </div>
               </div>
             )}
-          </div>
 
-          {/* Runnable Scripts (BELOW SAVED CONFIGS) */}
-          <div className="space-y-2 pt-2 border-t border-zinc-800/80">
-            <span className="text-[10px] uppercase font-semibold text-zinc-400 tracking-wider flex items-center gap-1.5">
-              <Terminal className="w-3 h-3 text-cyan-400" />
-              Runnable Scripts ({Object.keys(scripts).length})
-            </span>
+            {/* Individual Scripts */}
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <h3 className="text-xs font-semibold text-zinc-400 uppercase tracking-wider flex items-center gap-1.5">
+                  <Play className="w-3.5 h-3.5 text-emerald-400" /> Project Scripts ({scripts.length})
+                </h3>
+              </div>
 
-            {Object.keys(scripts).length === 0 ? (
-              <p className="text-xs text-zinc-600 italic">No scripts found in package.json</p>
-            ) : (
-              <div className="space-y-1.5">
-                {Object.entries(scripts).map(([sName, sCmd]) => {
-                  const isScriptRunning = runningServices.some(
-                    (s) => s.projectId === project.id && s.name === sName
-                  );
-                  return (
-                    <div
-                      key={sName}
-                      className="p-2 rounded-lg bg-zinc-900/80 border border-zinc-800 flex items-center justify-between gap-2 hover:border-zinc-700 transition-colors"
-                    >
-                      <div className="min-w-0">
-                        <div className="flex items-center gap-1.5">
-                          <StatusDot status={isScriptRunning ? 'running' : 'stopped'} size="sm" />
-                          <span className="font-bold font-mono text-xs text-zinc-200 truncate">
-                            {sName}
+              {scripts.length === 0 ? (
+                <div className="text-center py-12 text-zinc-600 text-xs bg-zinc-900/20 rounded-xl border border-zinc-800/60">
+                  No scripts detected in package.json or project manifests.
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                  {scripts.map(([name, cmd]) => {
+                    const activeService = runningServices.find(
+                      (s) => s.projectId === project.id && s.name === name
+                    );
+                    const isRunning = !!activeService;
+
+                    return (
+                      <Card
+                        key={name}
+                        className={cn(
+                          'border transition-all p-3.5 flex flex-col justify-between gap-2',
+                          isRunning
+                            ? 'bg-emerald-950/15 border-emerald-800/60 shadow-lg shadow-emerald-950/20'
+                            : 'bg-zinc-900/50 border-zinc-800/80 hover:border-zinc-700 hover:bg-zinc-900'
+                        )}
+                      >
+                        <div>
+                          <div className="flex items-center justify-between gap-2">
+                            <span className="font-mono text-xs font-bold text-zinc-200">{name}</span>
+                            {isRunning && (
+                              <Badge className="text-[9px] h-4 bg-emerald-950 text-emerald-300 border-emerald-700/60 font-mono flex items-center gap-1">
+                                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                                Running
+                              </Badge>
+                            )}
+                          </div>
+                          <span className="font-mono text-[11px] text-zinc-500 truncate block mt-1" title={cmd}>
+                            {cmd}
                           </span>
                         </div>
-                        <span
-                          className="text-[10px] text-zinc-500 font-mono truncate block mt-0.5"
-                          title={sCmd}
-                        >
-                          {sCmd}
-                        </span>
+
+                        <div className="flex items-center justify-end gap-1.5 pt-2 border-t border-zinc-800/60">
+                          {isRunning ? (
+                            <Button
+                              size="sm"
+                              variant="destructive"
+                              onClick={() => stopService(activeService.id)}
+                              className="h-7 text-xs gap-1 px-2.5"
+                            >
+                              <Square className="w-3 h-3" /> Stop
+                            </Button>
+                          ) : (
+                            <Button
+                              size="sm"
+                              onClick={() => handleLaunchScript(name, cmd)}
+                              className="h-7 text-xs bg-violet-600 hover:bg-violet-700 gap-1 px-2.5"
+                            >
+                              <Play className="w-3 h-3" /> Start
+                            </Button>
+                          )}
+                        </div>
+                      </Card>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* Tab 2: Subprojects & Code */}
+        {activeTab === 'subprojects' && (
+          <div className="space-y-4 max-w-6xl">
+            {(!project.subprojects || project.subprojects.length === 0) ? (
+              <div className="text-center py-16 text-zinc-600 text-xs bg-zinc-900/20 rounded-xl border border-zinc-800/60 space-y-2">
+                <Boxes className="w-8 h-8 text-zinc-700 mx-auto" />
+                <p>No monorepo subprojects or nested apps found in this repository.</p>
+                <p className="text-[11px] text-zinc-600">Standard standalone repository structure detected.</p>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {project.subprojects.map((sub: SubProject) => {
+                  const subScripts = Object.entries(sub.scripts || {});
+                  return (
+                    <Card key={sub.path} className="bg-zinc-900/60 border-zinc-800/80 p-4 space-y-3">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <span className="text-sm font-bold text-zinc-200 block">{sub.name}</span>
+                          <span className="text-[11px] font-mono text-zinc-500 truncate block">{sub.path}</span>
+                        </div>
+                        <Badge variant="outline" className="text-[10px] font-mono border-zinc-700">
+                          {sub.type}
+                        </Badge>
                       </div>
 
-                      <Button
-                        size="icon"
-                        variant={isScriptRunning ? 'destructive' : 'ghost'}
-                        className={cn(
-                          'h-6 w-6 shrink-0',
-                          isScriptRunning
-                            ? 'bg-rose-600 text-white'
-                            : 'text-zinc-400 hover:text-emerald-400'
-                        )}
-                        onClick={() => handleRunScript(sName, sCmd)}
-                        title={isScriptRunning ? 'Stop Script' : 'Run Script'}
-                      >
-                        {isScriptRunning ? (
-                          <Square className="w-3 h-3" />
-                        ) : (
-                          <Play className="w-3 h-3 fill-current" />
-                        )}
-                      </Button>
-                    </div>
+                      <div className="space-y-1.5 pt-2 border-t border-zinc-800/60">
+                        <span className="text-[10px] font-semibold text-zinc-400 uppercase tracking-wider">Subproject Scripts</span>
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          {subScripts.map(([sName, sCmd]) => (
+                            <Button
+                              key={sName}
+                              variant="outline"
+                              size="sm"
+                              onClick={() => handleRunSubprojectScript(sub, sName, String(sCmd))}
+                              className="h-6 text-[10px] font-mono border-zinc-800 bg-zinc-950 hover:bg-zinc-900 text-zinc-300 gap-1 px-2"
+                            >
+                              <Play className="w-2.5 h-2.5 text-emerald-400" /> {sName}
+                            </Button>
+                          ))}
+                        </div>
+                      </div>
+                    </Card>
                   );
                 })}
               </div>
             )}
           </div>
-        </div>
+        )}
 
-        {/* ── Center Pane: Subprojects + Notes/Scratchpad (5 cols) ── */}
-        <div className="lg:col-span-5 border-r border-zinc-800/80 bg-zinc-950 p-3 flex flex-col min-h-0 overflow-hidden gap-3">
-          {/* Subprojects (above scratchpad) */}
-          {project.subprojects && project.subprojects.length > 0 && (
-            <div className="shrink-0 space-y-2">
-              <div className="flex items-center gap-1.5">
-                <Layers className="w-3 h-3 text-violet-400" />
-                <span className="text-[10px] uppercase font-semibold text-zinc-400 tracking-wider">
-                  Monorepo Subprojects ({project.subprojects.length})
-                </span>
+        {/* Tab 3: Git & Activity */}
+        {activeTab === 'git' && (
+          <div className="space-y-4 max-w-5xl">
+            <div className="flex items-center justify-between">
+              <h3 className="text-xs font-semibold text-zinc-300 flex items-center gap-2">
+                <GitBranch className="w-4 h-4 text-violet-400" /> Commit History & Activity Radar
+              </h3>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setActiveTab('git')}
+                className="h-6 text-xs border-zinc-800 hover:bg-zinc-900 text-zinc-400"
+              >
+                Open Full Git Studio <ChevronRight className="w-3 h-3 ml-1" />
+              </Button>
+            </div>
+
+            {commitsLoading ? (
+              <div className="text-center py-12 text-zinc-500 text-xs font-mono">
+                Loading commits...
               </div>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
-                {project.subprojects.map((sub) => (
+            ) : commits.length === 0 ? (
+              <div className="text-center py-12 text-zinc-600 text-xs bg-zinc-900/20 rounded-xl border border-zinc-800/60">
+                No git history found for this project.
+              </div>
+            ) : (
+              <div className="space-y-2">
+                {commits.map((c, i) => (
                   <div
-                    key={sub.name}
-                    className="flex items-center gap-2 px-2.5 py-1.5 rounded-lg bg-zinc-900/80 border border-zinc-800 hover:border-zinc-700 transition-colors text-xs group"
+                    key={c.hash || i}
+                    className="flex items-start justify-between p-3 rounded-lg border border-zinc-800/80 bg-zinc-900/40 text-xs gap-3"
                   >
-                    <FolderOpen className="w-3.5 h-3.5 text-cyan-400 shrink-0" />
                     <div className="min-w-0 flex-1">
-                      <span className="font-semibold text-zinc-200 font-mono truncate block">{sub.name}</span>
-                      <span className="text-[10px] text-zinc-500 font-mono truncate block">{sub.relativePath}</span>
+                      <p className="font-medium text-zinc-200 truncate">{c.message}</p>
+                      <div className="flex items-center gap-2 text-[11px] text-zinc-500 mt-0.5">
+                        <span>{c.author}</span>
+                        <span>·</span>
+                        <span>{c.date}</span>
+                      </div>
                     </div>
-                    <div className="flex items-center gap-0.5 shrink-0 opacity-60 group-hover:opacity-100 transition-opacity">
-                      <button
-                        onClick={() => handleOpenTerminal(sub)}
-                        className="p-1 rounded text-zinc-400 hover:text-cyan-300 hover:bg-zinc-800 transition-colors"
-                        title="Open Terminal"
-                      >
-                        <Terminal className="w-3 h-3" />
-                      </button>
-                      <button
-                        onClick={() => window.api?.projects?.openInVSCode?.(sub.path)}
-                        className="p-1 rounded text-zinc-400 hover:text-violet-300 hover:bg-zinc-800 transition-colors"
-                        title="Open in VS Code"
-                      >
-                        <Code className="w-3 h-3" />
-                      </button>
-                      <button
-                        onClick={() => window.api?.projects?.openInExplorer?.(sub.path)}
-                        className="p-1 rounded text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800 transition-colors"
-                        title="Open in Explorer"
-                      >
-                        <FolderOpen className="w-3 h-3" />
-                      </button>
-                    </div>
+                    <span className="font-mono text-[11px] font-semibold text-violet-400 bg-violet-950/40 px-1.5 py-0.5 rounded border border-violet-800/40">
+                      {c.hashShort || c.hash?.slice(0, 7)}
+                    </span>
                   </div>
                 ))}
               </div>
-            </div>
-          )}
+            )}
+          </div>
+        )}
 
-          {/* Notes / Scratchpad */}
-          <div className="flex-1 overflow-hidden">
+        {/* Tab 4: Notes & Docs */}
+        {activeTab === 'notes' && (
+          <div className="h-[70vh]">
             <MarkdownNotesEditor projectPath={project.path} projectName={project.name} />
           </div>
-        </div>
+        )}
 
-        {/* ── Right Pane: AI Context & Git Commits Inspector (4 cols) ── */}
-        <div className="lg:col-span-4 bg-zinc-950/80 flex flex-col min-h-0 overflow-hidden p-3 space-y-3">
-          {/* Sub-tabs for Right Inspector */}
-          <div className="flex items-center justify-between border-b border-zinc-800 pb-2">
-            <div className="flex items-center gap-2">
-              <button
-                onClick={() => setActiveInspectorTab('ai')}
-                className={cn(
-                  'text-xs font-semibold px-2.5 py-1 rounded transition-colors flex items-center gap-1.5',
-                  activeInspectorTab === 'ai'
-                    ? 'bg-violet-950/60 text-violet-300 border border-violet-800/60'
-                    : 'text-zinc-500 hover:text-zinc-300'
-                )}
+        {/* Tab 5: Environment & Secrets */}
+        {activeTab === 'env' && (
+          <div className="space-y-4 max-w-4xl">
+            <div className="flex items-center justify-between">
+              <div>
+                <h3 className="text-xs font-semibold text-zinc-300 flex items-center gap-2">
+                  <Lock className="w-4 h-4 text-amber-400" /> Environment Variables & Secrets
+                </h3>
+                <p className="text-[11px] text-zinc-500 mt-0.5">Manage .env files, credentials, and comparison diffs</p>
+              </div>
+              <Button
+                size="sm"
+                onClick={() => setEnvDialogOpen(true)}
+                className="bg-violet-600 hover:bg-violet-700 text-xs h-7 gap-1.5"
               >
-                <Bot className="w-3 h-3 text-violet-400" />
-                AI Context
-              </button>
-
-              {project.isGitRepo && (
-                <button
-                  onClick={() => setActiveInspectorTab('git')}
-                  className={cn(
-                    'text-xs font-semibold px-2.5 py-1 rounded transition-colors flex items-center gap-1.5',
-                    activeInspectorTab === 'git'
-                      ? 'bg-violet-950/60 text-violet-300 border border-violet-800/60'
-                      : 'text-zinc-500 hover:text-zinc-300'
-                  )}
-                >
-                  <Clock className="w-3 h-3 text-cyan-400" />
-                  Recent Commits
-                </button>
-              )}
+                <Lock className="w-3 h-3" /> Open Env Manager
+              </Button>
             </div>
 
-            {activeInspectorTab === 'ai' && (
+            <Card className="bg-zinc-900/50 border-zinc-800/80 p-6 text-center text-xs text-zinc-400 space-y-3">
+              <Lock className="w-8 h-8 text-zinc-700 mx-auto" />
+              <p>Secure environment variables and secret files are managed in the Environment Manager dialog.</p>
               <Button
-                variant="ghost"
+                variant="outline"
                 size="sm"
-                className="h-6 text-[11px] text-zinc-400 hover:text-zinc-100 gap-1 px-1.5"
-                onClick={handleCopyAiContext}
+                onClick={() => setEnvDialogOpen(true)}
+                className="border-zinc-800 hover:bg-zinc-900 text-zinc-300 text-xs"
               >
-                {copiedAi ? <Check className="w-3 h-3 text-emerald-400" /> : <Copy className="w-3 h-3" />}
-                {copiedAi ? 'Copied' : 'Copy'}
+                Launch Env Manager
               </Button>
-            )}
+            </Card>
           </div>
-
-          {/* Right Tab Content */}
-          <div className="flex-1 min-h-0 overflow-hidden">
-            {activeInspectorTab === 'ai' ? (
-              <ScrollArea className="h-full rounded-lg border border-zinc-800 bg-zinc-900/60 p-3">
-                <pre className="text-[11px] font-mono text-zinc-300 whitespace-pre-wrap leading-relaxed select-text">
-                  {aiContextContent || 'Generating .ybicg/AI_CONTEXT.md...'}
-                </pre>
-              </ScrollArea>
-            ) : (
-              <ScrollArea className="h-full rounded-lg border border-zinc-800 bg-zinc-900/60 p-2">
-                {commitsLoading ? (
-                  <p className="text-xs text-zinc-500 p-2">Loading commits...</p>
-                ) : commits.length === 0 ? (
-                  <p className="text-xs text-zinc-500 p-2 italic">No commits recorded yet</p>
-                ) : (
-                  <div className="space-y-2">
-                    {commits.map((c) => (
-                      <div
-                        key={c.hash}
-                        className="p-2 rounded bg-zinc-950/60 border border-zinc-850 hover:border-zinc-700 transition-colors"
-                      >
-                        <div className="flex items-center justify-between text-[10px] font-mono text-violet-400 mb-0.5">
-                          <span>{c.hash.substring(0, 7)}</span>
-                          <span className="text-zinc-500">{c.date}</span>
-                        </div>
-                        <p className="text-xs text-zinc-200 font-medium truncate">{c.message}</p>
-                        <span className="text-[10px] text-zinc-500 font-mono block mt-0.5">
-                          {c.author}
-                        </span>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </ScrollArea>
-            )}
-          </div>
-        </div>
+        )}
       </div>
 
-      {/* ── Dialogs ── */}
-      {configDialogOpen && (
-        <ProjectConfigDialog
-          project={project}
-          open={configDialogOpen}
-          onOpenChange={setConfigDialogOpen}
-        />
-      )}
-      {envDialogOpen && (
-        <EnvManagerDialog
-          projectPath={project.path}
-          projectName={project.name}
-          open={envDialogOpen}
-          onOpenChange={setEnvDialogOpen}
-        />
-      )}
-      {snapshotDialogOpen && (
-        <ProjectSnapshotDialog
-          project={project}
-          open={snapshotDialogOpen}
-          onOpenChange={setSnapshotDialogOpen}
-        />
-      )}
-      {aiContextDialogOpen && (
-        <AiContextDialog
-          project={project}
-          open={aiContextDialogOpen}
-          onOpenChange={setAiContextDialogOpen}
-        />
-      )}
-      {runConfigDialogOpen && (
-        <RunConfigDialog
-          open={runConfigDialogOpen}
-          onOpenChange={setRunConfigDialogOpen}
-          projectId={project.id}
-          projectName={project.name}
-          projectPath={project.path}
-          existing={editingRunConfig}
-          onSave={handleSaveRunConfig}
-        />
-      )}
+      {/* ── Dialog Modals ── */}
+      <ProjectConfigDialog
+        open={configDialogOpen}
+        onOpenChange={setConfigDialogOpen}
+        project={project}
+      />
+
+      <EnvManagerDialog
+        open={envDialogOpen}
+        onOpenChange={setEnvDialogOpen}
+        projectPath={project.path}
+        projectName={project.name}
+      />
+
+      <ProjectSnapshotDialog
+        open={snapshotDialogOpen}
+        onOpenChange={setSnapshotDialogOpen}
+        project={project}
+      />
+
+      <ProjectCodePeekModal
+        open={codePeekOpen}
+        onOpenChange={setCodePeekOpen}
+        project={project}
+      />
+
+      <RunConfigDialog
+        open={runConfigDialogOpen}
+        onOpenChange={setRunConfigDialogOpen}
+        projectId={project.id}
+        projectName={project.name}
+        projectPath={project.path}
+        existing={editingRunConfig}
+        onSave={async (cfg) => {
+          if (editingRunConfig) {
+            await updateConfig(editingRunConfig.id, cfg);
+          } else {
+            await addConfig({ ...cfg, projectId: project.id, projectPath: project.path });
+          }
+        }}
+      />
     </div>
   );
 };

@@ -5,35 +5,38 @@ import { toast } from 'sonner';
 
 const DEFAULT_RECIPES: Pipeline[] = [
   {
-    id: 'recipe_rebuild',
-    name: 'Full Clean Rebuild',
-    description: 'Clean node_modules cache, install dependencies, and build bundle',
+    id: 'recipe_qa_check',
+    name: 'Pre-Commit Health Check',
+    description: 'Runs typecheck, linter, and unit test suite before committing code',
+    category: 'qa',
     steps: [
-      { id: 's1', name: 'Clean Cache', type: 'command', command: 'git clean -dfX -e !.env' },
-      { id: 's2', name: 'Install Dependencies', type: 'command', command: 'pnpm install || npm install' },
-      { id: 's3', name: 'Build Project', type: 'command', command: 'npm run build' }
+      { id: 's1', name: 'Linting & Syntax Check', type: 'command', actionType: 'typecheck_lint', command: 'npm run lint || npx eslint . || echo "No linter configured"' },
+      { id: 's2', name: 'TypeScript Strict Typecheck', type: 'command', actionType: 'typecheck_lint', command: 'npm run typecheck || npx tsc --noEmit' },
+      { id: 's3', name: 'Execute Test Suite', type: 'command', actionType: 'run_tests', command: 'npm test || npm run test:unit' }
     ],
     createdAt: 1700000000000
   },
   {
-    id: 'recipe_ci',
-    name: 'Local CI Test Suite',
-    description: 'Run linters, type checks, and unit tests',
+    id: 'recipe_rebuild',
+    name: 'Clean Full-Stack Reset',
+    description: 'Purges build artifacts and lock caches, installs dependencies, and compiles packages',
+    category: 'maintenance',
     steps: [
-      { id: 's1', name: 'Lint Check', type: 'command', command: 'npm run lint || echo "No lint configured"' },
-      { id: 's2', name: 'TypeScript Typecheck', type: 'command', command: 'npx tsc --noEmit' },
-      { id: 's3', name: 'Run Unit Tests', type: 'command', command: 'npm test' }
+      { id: 's1', name: 'Purge Build Artifacts', type: 'command', actionType: 'clean_artifacts', command: 'rimraf dist build .turbo node_modules/.cache || rm -rf dist build .cache' },
+      { id: 's2', name: 'Fresh Dependency Install', type: 'command', actionType: 'install_deps', command: 'pnpm install || npm install || yarn install' },
+      { id: 's3', name: 'Compile Production Bundles', type: 'command', actionType: 'custom_command', command: 'npm run build' }
     ],
     createdAt: 1700000000001
   },
   {
     id: 'recipe_git_sync',
-    name: 'Git Master Pull & Stash',
-    description: 'Stash local work, pull origin main, and re-apply stashes',
+    name: 'Git Master Pull & Sync',
+    description: 'Safely stashes working tree changes, pulls upstream main, and re-applies stash',
+    category: 'custom',
     steps: [
-      { id: 's1', name: 'Stash Work', type: 'command', command: 'git stash' },
-      { id: 's2', name: 'Pull Main', type: 'command', command: 'git pull origin main' },
-      { id: 's3', name: 'Pop Stash', type: 'command', command: 'git stash pop || echo "No stash to pop"' }
+      { id: 's1', name: 'Stash Working Tree', type: 'command', actionType: 'git_pull', command: 'git stash' },
+      { id: 's2', name: 'Pull Upstream Main', type: 'command', actionType: 'git_pull', command: 'git pull origin main' },
+      { id: 's3', name: 'Re-Apply Stashed Changes', type: 'command', actionType: 'git_pull', command: 'git stash pop || echo "No stash to apply"' }
     ],
     createdAt: 1700000000002
   }
