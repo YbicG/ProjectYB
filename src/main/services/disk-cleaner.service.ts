@@ -38,9 +38,10 @@ export interface GlobalDiskSummary {
   projects: ProjectDiskUsage[];
 }
 
-const DEPENDENCY_DIRS = ['node_modules', '.venv', 'venv', 'vendor', 'Pods'];
-const BUILD_DIRS = ['dist', 'build', 'out', 'target', '.next', '.nuxt', '.output', '.astro', '.svelte-kit', 'bin', 'obj'];
-const CACHE_DIRS = ['.turbo', '.vite', '.cache', '__pycache__', '.parcel-cache', '.eslintcache', '.pytest_cache', '.swc', '.rpt2_cache'];
+const DEPENDENCY_DIRS = ['node_modules', '.venv', 'venv', 'vendor', 'Pods', 'env'];
+const BUILD_DIRS = ['dist', 'build', 'out', 'target', '.next', '.nuxt', '.output', '.astro', '.svelte-kit', 'bin', 'obj', 'pkg', 'coverage'];
+const CACHE_DIRS = ['.turbo', '.vite', '.cache', '__pycache__', '.parcel-cache', '.eslintcache', '.pytest_cache', '.swc', '.rpt2_cache', '.temp', '.tmp'];
+const SUB_CONTAINER_DIRS = ['packages', 'apps', 'services', 'modules', 'client', 'server', 'frontend', 'backend', 'core'];
 
 class DiskCleanerService {
   private isCancelled = false;
@@ -53,7 +54,7 @@ class DiskCleanerService {
   /**
    * Ultra-fast directory size calculator with mtime caching and breadth-first worker queue
    */
-  async getDirectorySize(dirPath: string, maxDepth: number = 6): Promise<number> {
+  async getDirectorySize(dirPath: string, maxDepth: number = 16): Promise<number> {
     if (this.isCancelled) return 0;
 
     try {
@@ -127,10 +128,10 @@ class DiskCleanerService {
                 else if (BUILD_DIRS.includes(name)) cat = 'build';
                 else if (CACHE_DIRS.includes(name)) cat = 'caches';
 
-                if (cat) {
-                  const dirSize = await this.getDirectorySize(fullPath);
-                  totalBytes += dirSize;
+                const dirSize = await this.getDirectorySize(fullPath);
+                totalBytes += dirSize;
 
+                if (cat) {
                   if (cat === 'dependencies') dependenciesBytes += dirSize;
                   else if (cat === 'build') buildBytes += dirSize;
                   else if (cat === 'caches') cachesBytes += dirSize;
@@ -142,6 +143,37 @@ class DiskCleanerService {
                     category: cat,
                     bytes: dirSize
                   });
+                } else if (SUB_CONTAINER_DIRS.includes(name.toLowerCase())) {
+                  // Check 1 level down inside monorepo container folders for nested reclaimable targets
+                  try {
+                    const subEntries = await fs.promises.readdir(fullPath, { withFileTypes: true });
+                    for (const sub of subEntries) {
+                      if (sub.isDirectory()) {
+                        const subName = sub.name;
+                        const subFullPath = path.join(fullPath, subName);
+                        let subCat: CleanCategory | null = null;
+
+                        if (DEPENDENCY_DIRS.includes(subName)) subCat = 'dependencies';
+                        else if (BUILD_DIRS.includes(subName)) subCat = 'build';
+                        else if (CACHE_DIRS.includes(subName)) subCat = 'caches';
+
+                        if (subCat) {
+                          const subSize = await this.getDirectorySize(subFullPath);
+                          if (subCat === 'dependencies') dependenciesBytes += subSize;
+                          else if (subCat === 'build') buildBytes += subSize;
+                          else if (subCat === 'caches') cachesBytes += subSize;
+
+                          items.push({
+                            name: name + '/' + subName,
+                            relativePath: name + '/' + subName,
+                            fullPath: subFullPath,
+                            category: subCat,
+                            bytes: subSize
+                          });
+                        }
+                      }
+                    }
+                  } catch {}
                 }
               } else if (entry.isFile()) {
                 const stat = await fs.promises.stat(fullPath);
@@ -152,7 +184,7 @@ class DiskCleanerService {
         );
       }
     } catch (err) {
-      logger.error(`Failed to analyze disk usage for ${projectPath}`, err);
+      logger.error('Failed to analyze disk usage for ' + projectPath, err);
     }
 
     const reclaimableBytes = dependenciesBytes + buildBytes + cachesBytes;
@@ -223,59 +255,61 @@ class DiskCleanerService {
   }
 
   /**
-   * Safely purge selected items in a project
+   * Clean specific categories from a project
    */
-  async cleanProject(projectPath: string, categories: CleanCategory[]): Promise<{ success: boolean; freedBytes: number; cleanedPaths: string[] }> {
-    let freedBytes = 0;
+  async cleanProject(projectPath: string, categories: CleanCategory[]): Promise<{ freedBytes: number; cleanedPaths: string[] }> {
     const cleanedPaths: string[] = [];
+    let freedBytes = 0;
 
     try {
-      const topEntries = await fs.promises.readdir(projectPath, { withFileTypes: true });
+      const usage = await this.analyzeProject('tmp', 'tmp', projectPath);
+      const targets = usage.items.filter((item) => categories.includes(item.category));
 
-      for (const entry of topEntries) {
-        if (!entry.isDirectory()) continue;
-        const name = entry.name;
-        let matchCat: CleanCategory | null = null;
-
-        if (DEPENDENCY_DIRS.includes(name) && categories.includes('dependencies')) matchCat = 'dependencies';
-        else if (BUILD_DIRS.includes(name) && categories.includes('build')) matchCat = 'build';
-        else if (CACHE_DIRS.includes(name) && categories.includes('caches')) matchCat = 'caches';
-
-        if (matchCat) {
-          const targetPath = path.join(projectPath, name);
-          try {
-            const size = await this.getDirectorySize(targetPath);
-            await fs.promises.rm(targetPath, { recursive: true, force: true });
-            this.dirCache.delete(targetPath);
-            freedBytes += size;
-            cleanedPaths.push(name);
-          } catch (delErr) {
-            logger.error(`Failed to remove ${targetPath}`, delErr);
+      for (const target of targets) {
+        try {
+          if (fs.existsSync(target.fullPath)) {
+            await fs.promises.rm(target.fullPath, { recursive: true, force: true });
+            cleanedPaths.push(target.fullPath);
+            freedBytes += target.bytes;
+            this.dirCache.delete(target.fullPath);
           }
+        } catch (err) {
+          logger.error('Failed to remove ' + target.fullPath, err);
         }
       }
-
-      return { success: true, freedBytes, cleanedPaths };
-    } catch (err: any) {
-      return { success: false, freedBytes, cleanedPaths };
+      this.dirCache.delete(projectPath);
+    } catch (err) {
+      logger.error('Failed to clean project at ' + projectPath, err);
     }
+
+    return { freedBytes, cleanedPaths };
   }
 
   /**
-   * Clean global package manager cache
+   * Clean global package manager caches
    */
-  async cleanGlobalCache(type: 'pnpm' | 'npm' | 'cargo' | 'pip'): Promise<{ success: boolean; output: string }> {
-    let cmd = '';
-    if (type === 'pnpm') cmd = 'pnpm store prune';
-    else if (type === 'npm') cmd = 'npm cache clean --force';
-    else if (type === 'cargo') cmd = 'cargo cache --autoclean';
-    else if (type === 'pip') cmd = 'pip cache purge';
-
+  async cleanGlobalCache(type: 'pnpm' | 'npm' | 'cargo' | 'pip'): Promise<{ success: boolean; message: string }> {
     try {
-      const { stdout, stderr } = await execAsync(cmd, { timeout: 60000 });
-      return { success: true, output: stdout || stderr || `${type} cache cleaned successfully` };
+      let cmd = '';
+      switch (type) {
+        case 'pnpm':
+          cmd = 'pnpm store prune';
+          break;
+        case 'npm':
+          cmd = 'npm cache clean --force';
+          break;
+        case 'cargo':
+          cmd = 'cargo cache --autoclean';
+          break;
+        case 'pip':
+          cmd = 'pip cache purge';
+          break;
+      }
+
+      await execAsync(cmd);
+      return { success: true, message: 'Successfully cleaned ' + type + ' cache' };
     } catch (err: any) {
-      return { success: false, output: err.message || err.stderr || `Failed to clean ${type} cache` };
+      return { success: false, message: err.message || 'Failed to clean global cache' };
     }
   }
 }

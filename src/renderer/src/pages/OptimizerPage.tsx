@@ -9,7 +9,7 @@ import { ProjectDiskCard } from '../components/disk/ProjectDiskCard';
 import { GlobalCacheCleaner } from '../components/disk/GlobalCacheCleaner';
 import { useDiskStore } from '@renderer/stores/useDiskStore';
 import { useProjectStore } from '@renderer/stores/useProjectStore';
-import { cn } from '@renderer/lib/utils';
+import { cn, formatDiskSize } from '@renderer/lib/utils';
 
 export const OptimizerPage: React.FC = () => {
   const { projects } = useProjectStore();
@@ -31,12 +31,7 @@ export const OptimizerPage: React.FC = () => {
     }
   }, [projects.length]);
 
-  const formatSize = (bytes: number) => {
-    if (bytes === 0) return '0 MB';
-    const mb = bytes / (1024 * 1024);
-    if (mb > 1024) return `${(mb / 1024).toFixed(1)} GB`;
-    return `${Math.round(mb)} MB`;
-  };
+  const formatSize = (bytes: number) => formatDiskSize(bytes);
 
   const filteredProjects = (summary?.projects || []).filter((p) => {
     if (activeFilter === 'large' && p.totalBytes < 1024 * 1024 * 500) return false;

@@ -5,6 +5,7 @@ import { Button } from '../ui/button';
 import { Badge } from '../ui/badge';
 import type { ProjectDiskUsage, CleanCategory } from '@renderer/types/disk';
 import { useDiskStore } from '@renderer/stores/useDiskStore';
+import { formatDiskSize } from '@renderer/lib/utils';
 
 interface ProjectDiskCardProps {
   usage: ProjectDiskUsage;
@@ -13,12 +14,7 @@ interface ProjectDiskCardProps {
 export const ProjectDiskCard: React.FC<ProjectDiskCardProps> = ({ usage }) => {
   const { cleanProject, isCleaning } = useDiskStore();
 
-  const formatSize = (bytes: number) => {
-    if (bytes === 0) return '0 MB';
-    const mb = bytes / (1024 * 1024);
-    if (mb > 1024) return `${(mb / 1024).toFixed(1)} GB`;
-    return `${Math.round(mb)} MB`;
-  };
+  const formatSize = (bytes: number) => formatDiskSize(bytes);
 
   const depPct = usage.totalBytes > 0 ? (usage.dependenciesBytes / usage.totalBytes) * 100 : 0;
   const buildPct = usage.totalBytes > 0 ? (usage.buildBytes / usage.totalBytes) * 100 : 0;
