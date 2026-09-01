@@ -1,93 +1,69 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
   <defs>
-    <!-- Background Dark OLED Canvas -->
-    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="#090a12" />
-      <stop offset="50%" stop-color="#0f1120" />
-      <stop offset="100%" stop-color="#06070a" />
+    <!-- True OLED Black Canvas -->
+    <linearGradient id="oledBlack" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#070709" />
+      <stop offset="50%" stop-color="#000000" />
+      <stop offset="100%" stop-color="#040405" />
     </linearGradient>
 
-    <!-- Subtle Edge Glass Border -->
-    <linearGradient id="border" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="#8B5CF6" stop-opacity="0.5" />
-      <stop offset="50%" stop-color="#06B6D4" stop-opacity="0.35" />
-      <stop offset="100%" stop-color="#3B82F6" stop-opacity="0.15" />
+    <!-- Subtle Titanium Rim -->
+    <linearGradient id="titaniumRim" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#FFFFFF" stop-opacity="0.25" />
+      <stop offset="50%" stop-color="#FFFFFF" stop-opacity="0.05" />
+      <stop offset="100%" stop-color="#FFFFFF" stop-opacity="0.15" />
     </linearGradient>
 
-    <!-- Top Facet: Electric Violet to Rose Lavender -->
-    <linearGradient id="topFacet" x1="0%" y1="100%" x2="100%" y2="0%">
-      <stop offset="0%" stop-color="#6D28D9" />
-      <stop offset="50%" stop-color="#8B5CF6" />
-      <stop offset="100%" stop-color="#C084FC" />
+    <!-- Pure Platinum Monogram Gradient -->
+    <linearGradient id="platinumGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#FFFFFF" />
+      <stop offset="60%" stop-color="#F4F4F5" />
+      <stop offset="100%" stop-color="#E4E4E7" />
     </linearGradient>
 
-    <!-- Left Facet: Neon Cyan to Electric Sky -->
-    <linearGradient id="leftFacet" x1="100%" y1="0%" x2="0%" y2="100%">
-      <stop offset="0%" stop-color="#38BDF8" />
-      <stop offset="50%" stop-color="#06B6D4" />
-      <stop offset="100%" stop-color="#0284C7" />
+    <!-- Sleek Stealth Accent Gradient -->
+    <linearGradient id="stealthGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#A1A1AA" />
+      <stop offset="100%" stop-color="#52525B" />
     </linearGradient>
-
-    <!-- Right Facet: Vivid Indigo to Royal Blue -->
-    <linearGradient id="rightFacet" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="#818CF8" />
-      <stop offset="50%" stop-color="#4F46E5" />
-      <stop offset="100%" stop-color="#3730A3" />
-    </linearGradient>
-
-    <!-- Ambient Glow Filter -->
-    <filter id="ambientGlow" x="-30%" y="-30%" width="160%" height="160%">
-      <feGaussianBlur stdDeviation="32" result="blur" />
-      <feComposite in="SourceGraphic" in2="blur" operator="over" />
-    </filter>
 
     <!-- Precision Drop Shadow -->
-    <filter id="cubeDropShadow" x="-30%" y="-30%" width="160%" height="160%">
-      <feDropShadow dx="0" dy="18" stdDeviation="24" flood-color="#000000" flood-opacity="0.7" />
+    <filter id="crispShadow" x="-30%" y="-30%" width="160%" height="160%">
+      <feDropShadow dx="0" dy="16" stdDeviation="20" flood-color="#000000" flood-opacity="0.95" />
     </filter>
   </defs>
 
-  <!-- Squircle App Badge Frame (iOS/macOS/Windows standard) -->
-  <rect x="24" y="24" width="464" height="464" rx="116" fill="url(#bg)" stroke="url(#border)" stroke-width="2.5" />
+  <!-- OLED Black Squircle Canvas -->
+  <rect x="20" y="20" width="472" height="472" rx="118" fill="url(#oledBlack)" stroke="url(#titaniumRim)" stroke-width="2" />
 
-  <!-- Dynamic Ambient Backlight Glow -->
-  <circle cx="256" cy="220" r="140" fill="#8B5CF6" opacity="0.18" filter="url(#ambientGlow)" />
-  <circle cx="256" cy="310" r="130" fill="#06B6D4" opacity="0.14" filter="url(#ambientGlow)" />
-
-  <!-- Iconic Prism Nexus (Pure Mathematical Geometry) -->
-  <g filter="url(#cubeDropShadow)">
-    <!-- 1. TOP ISOMETRIC DIAMOND -->
+  <!-- Minimalist Geometric Apex Monogram (Precision Architectural 'Y' Nexus) -->
+  <g filter="url(#crispShadow)">
+    <!-- Top-Left Angled Blade -->
     <path
-      d="M 256 120 L 376 189 L 256 258 L 136 189 Z"
-      fill="url(#topFacet)"
+      d="M 148 140 L 216 140 L 256 228 L 222 258 L 132 168 C 122 154 132 140 148 140 Z"
+      fill="url(#platinumGrad)"
     />
 
-    <!-- 2. LEFT ISOMETRIC FACET -->
+    <!-- Top-Right Angled Blade -->
     <path
-      d="M 136 189 L 256 258 L 256 396 L 136 327 Z"
-      fill="url(#leftFacet)"
+      d="M 364 140 L 296 140 L 256 228 L 290 258 L 380 168 C 390 154 380 140 364 140 Z"
+      fill="url(#platinumGrad)"
     />
 
-    <!-- 3. RIGHT ISOMETRIC FACET -->
+    <!-- Center Keystone Diamond Pivot -->
+    <polygon points="256,204 286,248 256,292 226,248" fill="#FFFFFF" />
+
+    <!-- Sleek Vertical Foundation Pillar -->
     <path
-      d="M 256 258 L 376 189 L 376 327 L 256 396 Z"
-      fill="url(#rightFacet)"
+      d="M 238 272 L 274 272 L 274 380 C 274 394 266 402 256 402 C 246 402 238 394 238 380 Z"
+      fill="url(#platinumGrad)"
     />
 
-    <!-- 4. INNER SEAM HIGHLIGHTS (Subtle Razor-Sharp Edges) -->
-    <!-- Center Vertical Seam -->
-    <line x1="256" y1="258" x2="256" y2="394" stroke="#FFFFFF" stroke-width="2" stroke-opacity="0.4" />
-    <!-- Center-to-Top-Left Seam -->
-    <line x1="256" y1="258" x2="138" y2="190" stroke="#FFFFFF" stroke-width="2" stroke-opacity="0.3" />
-    <!-- Center-to-Top-Right Seam -->
-    <line x1="256" y1="258" x2="374" y2="190" stroke="#FFFFFF" stroke-width="2" stroke-opacity="0.3" />
-
-    <!-- 5. RADIANT ENERGY CORE (Center Nexus Spark) -->
-    <polygon
-      points="256,236 274,258 256,280 238,258"
-      fill="#FFFFFF"
-      opacity="0.95"
+    <!-- Subtle Right Stealth Carbon Accent Arc (Minimalist 'B' Counterpart) -->
+    <path
+      d="M 274 282 C 322 282 352 308 352 344 C 352 380 320 402 274 402 L 274 372 C 304 372 322 360 322 344 C 322 326 304 312 274 312 Z"
+      fill="url(#stealthGrad)"
+      opacity="0.75"
     />
-    <circle cx="256" cy="258" r="4" fill="#FFFFFF" />
   </g>
 </svg>
