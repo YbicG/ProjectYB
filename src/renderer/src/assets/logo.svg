@@ -1,79 +1,93 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
   <defs>
-    <!-- Background Gradient -->
-    <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="#0b0d17" />
-      <stop offset="50%" stop-color="#111425" />
-      <stop offset="100%" stop-color="#07080f" />
+    <!-- Background Dark OLED Canvas -->
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#090a12" />
+      <stop offset="50%" stop-color="#0f1120" />
+      <stop offset="100%" stop-color="#06070a" />
     </linearGradient>
 
-    <!-- Border Glow Gradient -->
-    <linearGradient id="borderGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="#8B5CF6" stop-opacity="0.8" />
-      <stop offset="50%" stop-color="#06B6D4" stop-opacity="0.6" />
-      <stop offset="100%" stop-color="#3B82F6" stop-opacity="0.3" />
+    <!-- Subtle Edge Glass Border -->
+    <linearGradient id="border" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#8B5CF6" stop-opacity="0.5" />
+      <stop offset="50%" stop-color="#06B6D4" stop-opacity="0.35" />
+      <stop offset="100%" stop-color="#3B82F6" stop-opacity="0.15" />
     </linearGradient>
 
-    <!-- Primary Violet Glyph Gradient -->
-    <linearGradient id="violetBlade" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="#C084FC" />
+    <!-- Top Facet: Electric Violet to Rose Lavender -->
+    <linearGradient id="topFacet" x1="0%" y1="100%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#6D28D9" />
       <stop offset="50%" stop-color="#8B5CF6" />
-      <stop offset="100%" stop-color="#6D28D9" />
+      <stop offset="100%" stop-color="#C084FC" />
     </linearGradient>
 
-    <!-- Cyan Radiant Glyph Gradient -->
-    <linearGradient id="cyanBlade" x1="0%" y1="0%" x2="100%" y2="100%">
+    <!-- Left Facet: Neon Cyan to Electric Sky -->
+    <linearGradient id="leftFacet" x1="100%" y1="0%" x2="0%" y2="100%">
       <stop offset="0%" stop-color="#38BDF8" />
       <stop offset="50%" stop-color="#06B6D4" />
       <stop offset="100%" stop-color="#0284C7" />
     </linearGradient>
 
-    <!-- Emerald / Teal Accent Gradient -->
-    <linearGradient id="emeraldLoop" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="#34D399" />
-      <stop offset="50%" stop-color="#10B981" />
-      <stop offset="100%" stop-color="#059669" />
+    <!-- Right Facet: Vivid Indigo to Royal Blue -->
+    <linearGradient id="rightFacet" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#818CF8" />
+      <stop offset="50%" stop-color="#4F46E5" />
+      <stop offset="100%" stop-color="#3730A3" />
     </linearGradient>
 
-    <!-- Amber Core Accent -->
-    <linearGradient id="amberCore" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="#FDE047" />
-      <stop offset="50%" stop-color="#F59E0B" />
-      <stop offset="100%" stop-color="#D97706" />
-    </linearGradient>
+    <!-- Ambient Glow Filter -->
+    <filter id="ambientGlow" x="-30%" y="-30%" width="160%" height="160%">
+      <feGaussianBlur stdDeviation="32" result="blur" />
+      <feComposite in="SourceGraphic" in2="blur" operator="over" />
+    </filter>
 
-    <!-- Drop Shadow Filter -->
-    <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">
-      <feDropShadow dx="0" dy="8" stdDeviation="12" flood-color="#000000" flood-opacity="0.5" />
+    <!-- Precision Drop Shadow -->
+    <filter id="cubeDropShadow" x="-30%" y="-30%" width="160%" height="160%">
+      <feDropShadow dx="0" dy="18" stdDeviation="24" flood-color="#000000" flood-opacity="0.7" />
     </filter>
   </defs>
 
-  <!-- Squircle Base Canvas -->
-  <rect x="20" y="20" width="472" height="472" rx="100" fill="url(#bgGrad)" stroke="url(#borderGrad)" stroke-width="3.5" filter="url(#shadow)" />
+  <!-- Squircle App Badge Frame (iOS/macOS/Windows standard) -->
+  <rect x="24" y="24" width="464" height="464" rx="116" fill="url(#bg)" stroke="url(#border)" stroke-width="2.5" />
 
-  <!-- Ambient Glow -->
-  <circle cx="256" cy="180" r="130" fill="#8B5CF6" opacity="0.12" />
-  <circle cx="256" cy="330" r="120" fill="#06B6D4" opacity="0.10" />
+  <!-- Dynamic Ambient Backlight Glow -->
+  <circle cx="256" cy="220" r="140" fill="#8B5CF6" opacity="0.18" filter="url(#ambientGlow)" />
+  <circle cx="256" cy="310" r="130" fill="#06B6D4" opacity="0.14" filter="url(#ambientGlow)" />
 
-  <!-- Geometric Hexagonal / Diamond Monogram ("YB") -->
-  <g filter="url(#shadow)">
-    <!-- Top Left Arm ("Y" Left Blade) -->
-    <path d="M 148 132 L 216 132 L 256 216 L 212 264 L 140 168 Z" fill="url(#violetBlade)" />
+  <!-- Iconic Prism Nexus (Pure Mathematical Geometry) -->
+  <g filter="url(#cubeDropShadow)">
+    <!-- 1. TOP ISOMETRIC DIAMOND -->
+    <path
+      d="M 256 120 L 376 189 L 256 258 L 136 189 Z"
+      fill="url(#topFacet)"
+    />
 
-    <!-- Top Right Arm ("Y" Right Blade) -->
-    <path d="M 364 132 L 296 132 L 256 216 L 300 264 L 372 168 Z" fill="url(#cyanBlade)" />
+    <!-- 2. LEFT ISOMETRIC FACET -->
+    <path
+      d="M 136 189 L 256 258 L 256 396 L 136 327 Z"
+      fill="url(#leftFacet)"
+    />
 
-    <!-- Central Diamond Apex -->
-    <polygon points="256,196 280,238 256,276 232,238" fill="#FFFFFF" opacity="0.95" />
+    <!-- 3. RIGHT ISOMETRIC FACET -->
+    <path
+      d="M 256 258 L 376 189 L 376 327 L 256 396 Z"
+      fill="url(#rightFacet)"
+    />
 
-    <!-- 'B' Top Loop -->
-    <path d="M 232 256 L 284 256 C 330 256 356 276 356 310 C 356 342 328 362 284 362 L 232 362 Z" fill="url(#cyanBlade)" />
+    <!-- 4. INNER SEAM HIGHLIGHTS (Subtle Razor-Sharp Edges) -->
+    <!-- Center Vertical Seam -->
+    <line x1="256" y1="258" x2="256" y2="394" stroke="#FFFFFF" stroke-width="2" stroke-opacity="0.4" />
+    <!-- Center-to-Top-Left Seam -->
+    <line x1="256" y1="258" x2="138" y2="190" stroke="#FFFFFF" stroke-width="2" stroke-opacity="0.3" />
+    <!-- Center-to-Top-Right Seam -->
+    <line x1="256" y1="258" x2="374" y2="190" stroke="#FFFFFF" stroke-width="2" stroke-opacity="0.3" />
 
-    <!-- 'B' Main Spine & Bottom Loop -->
-    <path d="M 232 350 L 290 350 C 340 350 370 374 370 410 C 370 448 334 468 284 468 L 160 468 C 146 468 136 456 136 442 L 136 168 L 192 168 L 192 414 L 280 414 C 304 414 316 404 316 392 C 316 378 304 370 280 370 L 232 370 Z" fill="url(#violetBlade)" />
-
-    <!-- 'B' Inner Geometric Cutouts -->
-    <path d="M 244 294 L 280 294 C 298 294 308 302 308 312 C 308 322 298 330 280 330 L 244 330 Z" fill="#111425" />
-    <path d="M 244 390 L 284 390 C 304 390 316 398 316 408 C 316 418 304 426 284 426 L 244 426 Z" fill="#111425" />
+    <!-- 5. RADIANT ENERGY CORE (Center Nexus Spark) -->
+    <polygon
+      points="256,236 274,258 256,280 238,258"
+      fill="#FFFFFF"
+      opacity="0.95"
+    />
+    <circle cx="256" cy="258" r="4" fill="#FFFFFF" />
   </g>
 </svg>
