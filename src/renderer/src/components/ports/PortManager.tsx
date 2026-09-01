@@ -14,6 +14,8 @@ import { Button } from '../ui/button'
 import { Input } from '../ui/input'
 import { Badge } from '../ui/badge'
 import { PortCard } from './PortCard'
+import { PortCollisionDialog } from './PortCollisionDialog'
+import { AlertTriangle } from 'lucide-react'
 import { usePortStore, COMMON_DEV_PORTS } from '@renderer/stores/usePortStore'
 import { cn } from '@renderer/lib/utils'
 
@@ -32,6 +34,8 @@ export const PortManager: React.FC = () => {
   } = usePortStore()
 
   const [testPortStart, setTestPortStart] = useState<string>('3000')
+  const [collisionModalOpen, setCollisionModalOpen] = useState(false)
+  const [targetPortToResolve, setTargetPortToResolve] = useState<number>(3000)
 
   useEffect(() => {
     fetchPorts()
@@ -196,6 +200,15 @@ export const PortManager: React.FC = () => {
           </div>
         )}
       </div>
+
+      <PortCollisionDialog
+        open={collisionModalOpen}
+        onOpenChange={setCollisionModalOpen}
+        port={targetPortToResolve}
+        projectPath=""
+        projectName="Active Port"
+        onResolved={() => fetchPorts()}
+      />
     </div>
   )
 }

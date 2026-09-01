@@ -25,7 +25,9 @@ import { toast } from 'sonner';
 interface ProjectCodePeekModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  project: ProjectInfo | null;
+  project?: ProjectInfo | null;
+  customPath?: string;
+  customName?: string;
 }
 
 interface PeekFile {
@@ -52,8 +54,12 @@ const COMMON_FILES: PeekFile[] = [
 export const ProjectCodePeekModal: React.FC<ProjectCodePeekModalProps> = ({
   open,
   onOpenChange,
-  project
+  project,
+  customPath,
+  customName
 }) => {
+  const targetPath = customPath || project?.path || '';
+  const targetName = customName || project?.name || 'Project';
   const [availableFiles, setAvailableFiles] = useState<PeekFile[]>([]);
   const [selectedFile, setSelectedFile] = useState<PeekFile | null>(null);
   const [fileContent, setFileContent] = useState<string>('');
@@ -63,13 +69,13 @@ export const ProjectCodePeekModal: React.FC<ProjectCodePeekModalProps> = ({
   const [copied, setCopied] = useState<boolean>(false);
 
   useEffect(() => {
-    if (!open || !project) return;
+    if (!open || !targetPath) return;
 
     const detectFiles = async () => {
       const detected: PeekFile[] = [];
       for (const item of COMMON_FILES) {
         try {
-          const filePath = (project.path + '/' + item.relativePath).replace(/\\/g, '/');
+          const filePath = (targetPath + '/' + item.relativePath).replace(/\\/g, '/');
           if (window.api?.env?.read) {
             const res = await window.api.env.read(filePath);
             if (res && (res.raw !== undefined || (res.entries && res.entries.length > 0))) {
@@ -85,15 +91,15 @@ export const ProjectCodePeekModal: React.FC<ProjectCodePeekModalProps> = ({
     };
 
     detectFiles();
-  }, [open, project?.id]);
+  }, [open, targetPath]);
 
   const loadFile = async (file: PeekFile) => {
-    if (!project) return;
+    if (!targetPath) return;
     setSelectedFile(file);
     setIsLoading(true);
 
     try {
-      const filePath = (project.path + '/' + file.relativePath).replace(/\\/g, '/');
+      const filePath = (targetPath + '/' + file.relativePath).replace(/\\/g, '/');
       if (window.api?.env?.read) {
         const res = await window.api.env.read(filePath);
         if (res && res.raw !== undefined) {
@@ -112,10 +118,10 @@ export const ProjectCodePeekModal: React.FC<ProjectCodePeekModalProps> = ({
   };
 
   const handleSave = async () => {
-    if (!project || !selectedFile) return;
+    if (!targetPath || !selectedFile) return;
     setIsSaving(true);
     try {
-      const filePath = (project.path + '/' + selectedFile.relativePath).replace(/\\/g, '/');
+      const filePath = (targetPath + '/' + selectedFile.relativePath).replace(/\\/g, '/');
       if (window.api?.env?.write) {
         await window.api.env.write(filePath, [], fileContent);
         setOriginalContent(fileContent);
@@ -152,11 +158,9 @@ export const ProjectCodePeekModal: React.FC<ProjectCodePeekModalProps> = ({
                 <DialogTitle className="text-sm font-bold text-zinc-100">
                   Quick Code Peek
                 </DialogTitle>
-                {project && (
-                  <Badge variant="outline" className="text-[10px] font-mono border-violet-500/40 text-violet-300">
-                    {project.name}
-                  </Badge>
-                )}
+                <Badge variant="outline" className="text-[10px] font-mono border-violet-500/40 text-violet-300">
+                  {targetName}
+                </Badge>
                 {selectedFile && (
                   <span className="text-xs text-zinc-400 font-mono">
                     / {selectedFile.relativePath}

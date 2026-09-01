@@ -6,8 +6,10 @@ import {
   Plus,
   ArrowUpDown,
   Copy,
-  ShieldAlert
+  ShieldAlert,
+  Sparkles
 } from 'lucide-react';
+import { useSecretVaultStore } from '@renderer/stores/useSecretVaultStore';
 import {
   Dialog,
   DialogContent,
@@ -247,26 +249,70 @@ export const EnvProfilerDialog: React.FC<EnvProfilerDialogProps> = ({
             <div className="space-y-2">
               <div className="flex items-center justify-between">
                 <span className="font-semibold text-zinc-300">Missing in .env</span>
-                <Button
-                  size="sm"
-                  onClick={handleAddMissingKeys}
-                  disabled={isSaving}
-                  className="h-7 text-xs bg-emerald-600 hover:bg-emerald-700 text-white gap-1 px-2.5 font-semibold"
-                >
-                  <Plus className="w-3.5 h-3.5" /> Add All to .env
-                </Button>
+                <div className="flex items-center gap-1.5">
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => {
+                      const secrets = useSecretVaultStore.getState().secrets;
+                      let filledCount = 0;
+                      const toAdd = analysis.missingInEnv.map((m) => {
+                        const matched = secrets.find((s) => s.key === m.key);
+                        if (matched && matched.value) {
+                          filledCount++;
+                          return { key: m.key, value: matched.value };
+                        }
+                        return m;
+                      });
+                      
+                      const newLines = toAdd.map((e) => `${e.key}=${e.value}`);
+                      const updated = envRaw ? `${envRaw.trim()}\n\n# Synced from Vault\n${newLines.join('\n')}\n` : newLines.join('\n');
+                      
+                      const dotEnvPath = String(projectPath + '/.env').replace(/\\/g, '/');
+                      if (window.api?.env?.write) {
+                        window.api.env.write(dotEnvPath, [], updated).then(() => {
+                          toast.success(`✨ Added ${toAdd.length} keys (${filledCount} from Vault)`);
+                          loadEnvFiles();
+                        });
+                      }
+                    }}
+                    disabled={isSaving}
+                    className="h-7 text-xs border-violet-500/30 bg-violet-950/20 hover:bg-violet-900/40 text-violet-300 gap-1 px-2 font-semibold"
+                    title="Auto-fill missing keys using Global Secrets Vault"
+                  >
+                    <Sparkles className="w-3 h-3 text-violet-400" /> Fill from Vault
+                  </Button>
+                  <Button
+                    size="sm"
+                    onClick={handleAddMissingKeys}
+                    disabled={isSaving}
+                    className="h-7 text-xs bg-emerald-600 hover:bg-emerald-700 text-white gap-1 px-2.5 font-semibold"
+                  >
+                    <Plus className="w-3.5 h-3.5" /> Add All to .env
+                  </Button>
+                </div>
               </div>
 
               <div className="space-y-1.5 border border-zinc-800 rounded-lg p-2 bg-zinc-900/40 max-h-40 overflow-y-auto">
-                {analysis.missingInEnv.map((e) => (
-                  <div
-                    key={e.key}
-                    className="flex items-center justify-between p-1.5 rounded bg-zinc-900/80 border border-zinc-800 font-mono text-[11px]"
-                  >
-                    <span className="text-amber-400 font-semibold">{e.key}</span>
-                    <span className="text-zinc-500 truncate max-w-[200px]">={e.value || '""'}</span>
-                  </div>
-                ))}
+                {analysis.missingInEnv.map((e) => {
+                  const vaultSecret = useSecretVaultStore.getState().getSecretByKey(e.key);
+                  return (
+                    <div
+                      key={e.key}
+                      className="flex items-center justify-between p-1.5 rounded bg-zinc-900/80 border border-zinc-800 font-mono text-[11px]"
+                    >
+                      <div className="flex items-center gap-1.5 truncate">
+                        <span className="text-amber-400 font-semibold">{e.key}</span>
+                        {vaultSecret && (
+                          <span className="text-[9px] px-1 py-0 rounded bg-violet-950 text-violet-300 border border-violet-800/40">
+                            Vault Ready
+                          </span>
+                        )}
+                      </div>
+                      <span className="text-zinc-500 truncate max-w-[200px]">={vaultSecret ? '••••••••' : e.value || '""'}</span>
+                    </div>
+                  );
+                })}
               </div>
             </div>
           )}

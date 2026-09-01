@@ -30,6 +30,9 @@ import { SnippetVaultModal } from './components/snippets/SnippetVaultModal';
 import { AiErrorDiagnosisDialog } from './components/ai/AiErrorDiagnosisDialog';
 import { AiChatModal } from './components/ai/AiChatModal';
 import { MobileRemoteModal } from './components/mobile/MobileRemoteModal';
+import { GlobalSecretsVaultModal } from './components/secrets/GlobalSecretsVaultModal';
+import { AssetForgeModal } from './components/assets/AssetForgeModal';
+import { ProjectArchiverModal } from './components/disk/ProjectArchiverModal';
 import { ErrorBoundary } from './components/shared/ErrorBoundary';
 import { useAppStore } from '@renderer/stores/useAppStore';
 import { useProjectStore } from '@renderer/stores/useProjectStore';
@@ -45,7 +48,7 @@ import { useKeyboard } from './hooks/useKeyboard';
 export const App: React.FC = () => {
   useKeyboard();
   const { activeTab } = useAppStore();
-  const { scanProjects } = useProjectStore();
+  const { projects, scanProjects } = useProjectStore();
   const { startMonitoring, stopMonitoring } = useSystemStore();
   const { uiMode, loadPreferences } = useThemeStore();
   const { loadCustomSnippets } = useSnippetStore();
@@ -196,6 +199,21 @@ export const App: React.FC = () => {
       <AiErrorDiagnosisDialog />
       <AiChatModal />
       <MobileRemoteModal />
+      <GlobalSecretsVaultModal
+        open={useAppStore((s) => s.secretVaultModalOpen)}
+        onOpenChange={(open) => useAppStore.getState().setSecretVaultModalOpen(open)}
+      />
+      <AssetForgeModal
+        open={useAppStore((s) => s.assetForgeModalOpen)}
+        onOpenChange={(open) => useAppStore.getState().setAssetForgeModalOpen(open)}
+        projectPath={projects[0]?.path}
+        projectName={projects[0]?.name}
+      />
+      <ProjectArchiverModal
+        open={useAppStore((s) => s.projectArchiverModalOpen)}
+        onOpenChange={(open) => useAppStore.getState().setProjectArchiverModalOpen(open)}
+        projects={projects}
+      />
     </>
   );
 };

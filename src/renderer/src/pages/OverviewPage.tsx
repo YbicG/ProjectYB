@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Maximize2, Minimize2, Radio, Activity, Clock, ShieldCheck, FolderGit2, Server, Globe } from 'lucide-react';
+import { Maximize2, Minimize2, Radio, Activity, Clock, ShieldCheck, FolderGit2, Server, Globe, Sparkles } from 'lucide-react';
 import { SystemSparklineWidget } from '../components/overview/SystemSparklineWidget';
 import { LiveServicesWidget } from '../components/overview/LiveServicesWidget';
 import { GitActivityFeedWidget } from '../components/overview/GitActivityFeedWidget';
@@ -11,6 +11,7 @@ import { useProjectStore } from '@renderer/stores/useProjectStore';
 import { useServiceStore } from '@renderer/stores/useServiceStore';
 import { usePortStore } from '@renderer/stores/usePortStore';
 import { useSystemStore } from '@renderer/stores/useSystemStore';
+import { useAppStore } from '@renderer/stores/useAppStore';
 import { cn } from '@renderer/lib/utils';
 
 export const OverviewPage: React.FC = () => {
@@ -96,6 +97,28 @@ export const OverviewPage: React.FC = () => {
               {ports.length} Ports
             </Badge>
           </div>
+
+          <Button
+            variant="outline"
+            size="sm"
+            className="h-8 text-xs border-zinc-800 gap-1.5 hover:bg-zinc-900 text-zinc-300"
+            onClick={() => useAppStore.getState().setSecretVaultModalOpen(true)}
+            title="Open Global Secrets & Credentials Vault"
+          >
+            <ShieldCheck className="w-3.5 h-3.5 text-violet-400" />
+            <span className="hidden sm:inline">Secrets Vault</span>
+          </Button>
+
+          <Button
+            variant="outline"
+            size="sm"
+            className="h-8 text-xs border-zinc-800 gap-1.5 hover:bg-zinc-900 text-zinc-300"
+            onClick={() => useAppStore.getState().setAssetForgeModalOpen(true)}
+            title="Open Developer Asset Forge & Favicon Suite"
+          >
+            <Sparkles className="w-3.5 h-3.5 text-cyan-400" />
+            <span className="hidden sm:inline">Asset Forge</span>
+          </Button>
 
           <Button
             variant="outline"

@@ -27,6 +27,12 @@ interface AppState {
   openSettingsTab: (subTab: string) => void
   mobileModalOpen: boolean
   setMobileModalOpen: (open: boolean) => void
+  assetForgeModalOpen: boolean
+  setAssetForgeModalOpen: (open: boolean) => void
+  secretVaultModalOpen: boolean
+  setSecretVaultModalOpen: (open: boolean) => void
+  projectArchiverModalOpen: boolean
+  setProjectArchiverModalOpen: (open: boolean) => void
   scanPaths: string[]
   addScanPath: (path: string) => void
   removeScanPath: (path: string) => void
@@ -45,6 +51,12 @@ export const useAppStore = create<AppState>((set) => ({
   openSettingsTab: (subTab) => set({ activeTab: 'settings', settingsSubTab: subTab }),
   mobileModalOpen: false,
   setMobileModalOpen: (open) => set({ mobileModalOpen: open }),
+  assetForgeModalOpen: false,
+  setAssetForgeModalOpen: (open) => set({ assetForgeModalOpen: open }),
+  secretVaultModalOpen: false,
+  setSecretVaultModalOpen: (open) => set({ secretVaultModalOpen: open }),
+  projectArchiverModalOpen: false,
+  setProjectArchiverModalOpen: (open) => set({ projectArchiverModalOpen: open }),
   scanPaths: ['D:\\Code'],
   addScanPath: (path) => set((state) => ({ scanPaths: [...new Set([...state.scanPaths, path])] })),
   removeScanPath: (path) => set((state) => ({ scanPaths: state.scanPaths.filter((p) => p !== path) })),

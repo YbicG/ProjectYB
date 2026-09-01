@@ -399,6 +399,25 @@ export interface IElectronAPI {
     setCredentials(username: string, rawPass: string): Promise<any>
     getCredentials(): Promise<{ username: string; rawPasswordDisplay?: string }>
   }
+  portResolver: {
+    findAvailablePort(startPort?: number): Promise<number>
+    getPortProcess(port: number): Promise<{ pid?: number; processName?: string } | null>
+    killPortProcess(port: number): Promise<{ success: boolean; message: string }>
+    updateEnvPort(projectPath: string, newPort: number): Promise<{ success: boolean; message: string; oldPort?: number }>
+  }
+  changelog: {
+    generate(projectPath: string): Promise<any>
+    applyRelease(projectPath: string, version: string, changelogText: string, createTag: boolean): Promise<{ success: boolean; message: string }>
+  }
+  assetForge: {
+    generateFaviconSuite(projectPath: string, sourceImagePath: string): Promise<{ success: boolean; generatedFiles: string[]; targetDir: string; message: string }>
+    convertImage(sourcePath: string, targetFormat: 'png' | 'jpeg', quality?: number): Promise<{ success: boolean; outputPath: string; originalSize: number; newSize: number; savedPercent: number; message: string }>
+  }
+  projectArchiver: {
+    scanInactiveProjects(projects: Array<{ id: string; name: string; path: string }>, daysThreshold?: number): Promise<any[]>
+    freezeProject(projectPath: string): Promise<{ success: boolean; savedBytes: number; message: string }>
+    thawProject(projectPath: string): Promise<{ success: boolean; message: string }>
+  }
 }
 
 declare global {

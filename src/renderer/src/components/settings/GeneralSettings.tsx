@@ -4,6 +4,7 @@ import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '../ui
 import { Button } from '../ui/button';
 import { Input } from '../ui/input';
 import { useProjectStore } from '@renderer/stores/useProjectStore';
+import { useAppStore } from '@renderer/stores/useAppStore';
 import { toast } from 'sonner';
 
 const DEFAULT_SCAN_PATHS = ['D:\\Code'];
@@ -368,6 +369,29 @@ export const GeneralSettings: React.FC = () => {
             />
           </div>
         </CardContent>
+      </Card>
+
+      {/* ── CARD 5: GLOBAL SECRETS VAULT ── */}
+      <Card className="bg-zinc-950 border-zinc-800">
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <div>
+              <CardTitle className="text-sm font-bold text-zinc-100 flex items-center gap-2">
+                <FileCode className="w-4 h-4 text-violet-400" /> Global Secrets & Credentials Vault
+              </CardTitle>
+              <CardDescription className="text-xs text-zinc-400 mt-0.5">
+                Manage reusable API keys, database connection strings, and tokens with AES-256 encryption.
+              </CardDescription>
+            </div>
+            <Button
+              size="sm"
+              onClick={() => useAppStore.getState().setSecretVaultModalOpen(true)}
+              className="bg-violet-600 hover:bg-violet-500 text-white font-semibold text-xs h-7"
+            >
+              Open Secrets Vault
+            </Button>
+          </div>
+        </CardHeader>
       </Card>
     </div>
   );

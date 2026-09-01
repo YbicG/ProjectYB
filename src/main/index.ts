@@ -36,6 +36,10 @@ import { registerServiceKillerIpc } from './ipc/service-killer.ipc';
 import { registerRootCaIpc } from './ipc/root-ca.ipc';
 import { registerCronIpc } from './ipc/cron.ipc';
 import { registerMobileCompanionIpc } from './ipc/mobile-companion.ipc';
+import { registerPortResolverIpc } from './ipc/port-resolver.ipc';
+import { registerChangelogIpc } from './ipc/changelog.ipc';
+import { registerAssetForgeIpc } from './ipc/asset-forge.ipc';
+import { registerProjectArchiverIpc } from './ipc/project-archiver.ipc';
 import { terminalService } from './services/terminal.service';
 import { systemMonitor } from './services/system-monitor';
 import { trayService } from './services/tray.service';
@@ -111,6 +115,10 @@ async function createWindow() {
   registerRootCaIpc();
   registerCronIpc();
   registerMobileCompanionIpc();
+  registerPortResolverIpc();
+  registerChangelogIpc();
+  registerAssetForgeIpc();
+  registerProjectArchiverIpc();
 
   try {
     await cronService.initialize();

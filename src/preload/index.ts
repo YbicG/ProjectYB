@@ -434,6 +434,33 @@ const api = {
     setCredentials: (username: string, rawPass: string) =>
       ipcRenderer.invoke('mobile:setCredentials', username, rawPass),
     getCredentials: () => ipcRenderer.invoke('mobile:getCredentials')
+  },
+  portResolver: {
+    findAvailablePort: (startPort?: number) =>
+      ipcRenderer.invoke('portResolver:findAvailablePort', startPort),
+    getPortProcess: (port: number) => ipcRenderer.invoke('portResolver:getPortProcess', port),
+    killPortProcess: (port: number) => ipcRenderer.invoke('portResolver:killPortProcess', port),
+    updateEnvPort: (projectPath: string, newPort: number) =>
+      ipcRenderer.invoke('portResolver:updateEnvPort', projectPath, newPort)
+  },
+  changelog: {
+    generate: (projectPath: string) => ipcRenderer.invoke('changelog:generate', projectPath),
+    applyRelease: (projectPath: string, version: string, changelogText: string, createTag: boolean) =>
+      ipcRenderer.invoke('changelog:applyRelease', projectPath, version, changelogText, createTag)
+  },
+  assetForge: {
+    generateFaviconSuite: (projectPath: string, sourceImagePath: string) =>
+      ipcRenderer.invoke('assetForge:generateFaviconSuite', projectPath, sourceImagePath),
+    convertImage: (sourcePath: string, targetFormat: 'png' | 'jpeg', quality?: number) =>
+      ipcRenderer.invoke('assetForge:convertImage', sourcePath, targetFormat, quality)
+  },
+  projectArchiver: {
+    scanInactiveProjects: (projects: Array<{ id: string; name: string; path: string }>, daysThreshold?: number) =>
+      ipcRenderer.invoke('projectArchiver:scanInactiveProjects', projects, daysThreshold),
+    freezeProject: (projectPath: string) =>
+      ipcRenderer.invoke('projectArchiver:freezeProject', projectPath),
+    thawProject: (projectPath: string) =>
+      ipcRenderer.invoke('projectArchiver:thawProject', projectPath)
   }
 }
 

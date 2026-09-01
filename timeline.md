@@ -360,3 +360,55 @@ Complete overhaul of Database Studio, decluttering the connection sidebar into p
 - **Root CA & Windows Certificate Store Trust Fix (`root-ca.service.ts`)**:
   - Fixed Windows CryptoAPI `Import-Certificate` non-interactive error (`UI is not allowed in this operation`) by supporting interactive execution and `certutil -user -addstore` fallback.
 
+---
+
+## Phase 15: Developer Power Pack, Global Secrets Vault, Executable Runbooks, Universal SQLite Engine & Automation Tools
+
+Developer productivity suite introducing monorepo subproject quick actions, encrypted Global Secrets Vault with 1-click `.env` synchronization, executable Markdown runbooks, universal multi-tier SQLite fallback, smart port collision auto-rerouting, automated SemVer release notes generator, developer asset forge, and inactive project deep freeze archiver.
+
+### Key Capabilities
+- **Universal Multi-Tier SQLite Engine (`database.service.ts`)**:
+  - Resolved Electron 34 `ERR_UNKNOWN_BUILTIN_MODULE: node:sqlite` by implementing a resilient 3-tier fallback architecture:
+    1. Tier 1: Native Node `node:sqlite` (`DatabaseSync`) wrapped in safe runtime detection.
+    2. Tier 2: Transparent CLI execution via `sqlite3 -json` for real SQL queries, PRAGMA column metadata, and schema introspection without native module compile errors.
+    3. Tier 3: High-speed binary header verification and table schema detection.
+- **Monorepo Subproject Quick Action Suite (`ModernProjectWorkbench.tsx`, `ProjectDetailPage.tsx`)**:
+  - Direct action toolbar on every nested subproject card:
+    - `>_ Terminal`: Instantly spawns a PTY terminal configured with `cwd: sub.path` and title `[Project > Subproject]` in the Universal Bottom Dock (`Ctrl+~`) without navigating away.
+    - `📁 Explorer`: Opens the subproject directory in Windows File Explorer.
+    - `⚡ Code Peek`: Quick peek editor scoped directly to the subproject folder (`package.json`, `tsconfig.json`, `.env`, etc.).
+    - `🔒 Subproject .env`: Launches the Environment Manager scoped strictly to the subproject's `.env`.
+    - `💻 VS Code`: Opens the subproject directory directly in VS Code.
+- **Global Secrets & Credentials Vault (`useSecretVaultStore.ts`, `GlobalSecretsVaultModal.tsx`)**:
+  - Centralized, encrypted store for reusable API keys, database strings, auth tokens, and webhook secrets.
+  - Environment-aware tagging (`Dev`, `Staging`, `Prod`, `All`) and category categorization (`AI`, `Database`, `Auth`, `Cloud`, `Payments`, `DevOps`).
+  - **1-Click Bulk Sync into `.env`**: Replaces placeholder/empty values and missing keys in `.env` with matching vault credentials in 1 click.
+  - **Auto-Suggest Chips & Secret Promotion**: When typing variable names in `EnvManagerDialog` or checking missing keys in `EnvProfilerDialog`, matching secrets appear as 1-click autocomplete chips.
+  - Quick promotion of any local `.env` variable directly to the Global Vault.
+- **Interactive Executable Markdown Runbooks (`MarkdownNotesEditor.tsx`)**:
+  - Fenced code blocks (````bash````, ````sh````, ````npm````, ````python````, ````sql````) render as interactive widgets:
+    - **`▶ Run in Dock`**: Launches the command in the Universal Bottom Dock.
+    - **`▶ Execute Command`**: Runs the command inline in the project directory, capturing duration (`34ms`), exit code (`Exit 0`), stdout, and stderr in an expandable dark console.
+    - 1-Click Code Copy and task-list item completion.
+- **Smart Port Collision Auto-Rerouter (`port-resolver.service.ts`, `PortCollisionDialog.tsx`)**:
+  - Discovers Windows process PID and executable name holding any occupied port using `netstat -ano`.
+  - Scans for the next available TCP port and provides 2 instant actions:
+    1. **"Kill Colliding Process (PID: X)"** via `taskkill /F /PID`.
+    2. **"Auto-Reroute to Port Y and update .env"** with safe atomic `.env` `PORT=...` rewriting.
+- **Automated SemVer Changelog & Release Generator (`changelog.service.ts`, `ChangelogGeneratorModal.tsx`)**:
+  - Analyzes Conventional Commits (`feat:`, `fix:`, `perf:`, `docs:`, `BREAKING CHANGE`) since the last Git tag.
+  - Computes SemVer bump (`major`, `minor`, `patch`) and formats structured release notes categorized by Features, Bug Fixes, and Breaking Changes.
+  - 1-Click **"Apply Release"** that updates `package.json` version, prepends release notes to `CHANGELOG.md`, and creates a Git release tag (`vX.X.X`).
+- **Developer Asset Forge & Favicon Suite (`asset-forge.service.ts`, `AssetForgeModal.tsx`)**:
+  - Uses Electron's built-in `nativeImage` pipeline to generate complete responsive favicon suites: `favicon.ico`, `favicon-16x16.png`, `favicon-32x32.png`, `apple-touch-icon.png` (180x180), `android-chrome-192x192.png`, `android-chrome-512x512.png`, and `site.webmanifest` directly into project `public/`.
+  - Batch image optimizer and format converter (PNG/JPEG) with compression quality controls and byte savings metrics.
+- **Project Deep Freeze & Inactive Storage Archiver (`project-archiver.service.ts`, `ProjectArchiverModal.tsx`)**:
+  - Scans dormant repositories past inactivity thresholds (>14, 30, 60, 90 days), calculating total and reclaimable bytes (`node_modules`, `dist`, `.cache`, `target`).
+  - **In-Place Deep Freeze**: Purges bulky build caches while saving a compressed manifest, instantly reclaiming 90%+ storage.
+  - **1-Click Thaw & Restore**: Automatically restores metadata and readies the project for immediate development.
+
+### Key Files & IPC
+- **Backend Services**: `src/main/services/port-resolver.service.ts`, `src/main/services/changelog.service.ts`, `src/main/services/asset-forge.service.ts`, `src/main/services/project-archiver.service.ts`, `src/main/services/database.service.ts`
+- **IPC Channels**: `portResolver:findAvailablePort`, `portResolver:getPortProcess`, `portResolver:killPortProcess`, `portResolver:updateEnvPort`, `changelog:generate`, `changelog:applyRelease`, `assetForge:generateFaviconSuite`, `assetForge:convertImage`, `projectArchiver:scanInactiveProjects`, `projectArchiver:freezeProject`, `projectArchiver:thawProject`
+- **Stores & UI**: `useSecretVaultStore.ts`, `GlobalSecretsVaultModal.tsx`, `PortCollisionDialog.tsx`, `ChangelogGeneratorModal.tsx`, `AssetForgeModal.tsx`, `ProjectArchiverModal.tsx`, `MarkdownNotesEditor.tsx`, `ModernProjectWorkbench.tsx`, `ProjectDetailPage.tsx`, `EnvManagerDialog.tsx`, `EnvProfilerDialog.tsx`
+

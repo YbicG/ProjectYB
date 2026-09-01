@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useMemo } from 'react'
 import {
   Dialog,
   DialogContent,
@@ -28,6 +28,9 @@ import {
   HelpCircle
 } from 'lucide-react'
 import { useEnvStore } from '@renderer/stores/useEnvStore'
+import { useAppStore } from '@renderer/stores/useAppStore'
+import { useSecretVaultStore } from '@renderer/stores/useSecretVaultStore'
+import { Shield, KeyRound, ArrowUpRight } from 'lucide-react'
 import { EnvCompareDialog } from './EnvCompareDialog'
 import { cn } from '@renderer/lib/utils'
 import { toast } from 'sonner'
@@ -71,11 +74,60 @@ export const EnvManagerDialog: React.FC<EnvManagerDialogProps> = ({
   const [search, setSearch] = useState('')
   const [copiedKey, setCopiedKey] = useState<string | null>(null)
   const [compareDialogOpen, setCompareDialogOpen] = useState(false)
+  const { secrets, getSecretByKey, bulkSyncToEnv, addSecret: addVaultSecret } = useSecretVaultStore()
+  const [vaultModalOpen, setVaultModalOpen] = useState(false)
+  const [vaultPopoverOpen, setVaultPopoverOpen] = useState(false)
+
+  const handleBulkSyncFromVault = () => {
+    const syncedMap = bulkSyncToEnv(activeEntries, 'all')
+    const keysToSync = Object.keys(syncedMap)
+    if (keysToSync.length === 0) {
+      toast.info('No matching keys found in Global Vault')
+      return
+    }
+
+    let updatedCount = 0
+    activeEntries.forEach((entry, idx) => {
+      if (syncedMap[entry.key] && (!entry.value || entry.value.includes('your_') || entry.value.includes('placeholder'))) {
+        updateEntry(idx, { value: syncedMap[entry.key] })
+        updatedCount++
+      }
+    })
+
+    if (updatedCount > 0) {
+      toast.success(`✨ Filled ${updatedCount} variable(s) from Global Secrets Vault`)
+    } else {
+      toast.info('All matched variables are already populated')
+    }
+  }
+
+  const handlePromoteToVault = async (entry: EnvEntry) => {
+    if (!entry.value) {
+      toast.error('Variable has no value to save to vault')
+      return
+    }
+    await addVaultSecret({
+      key: entry.key,
+      value: entry.value,
+      category: entry.key.includes('DB') || entry.key.includes('DATABASE') ? 'database' :
+                entry.key.includes('KEY') || entry.key.includes('TOKEN') || entry.key.includes('AI') ? 'ai' :
+                entry.key.includes('AUTH') || entry.key.includes('SECRET') ? 'auth' : 'custom',
+      environment: 'all',
+      description: `Imported from ${projectName} .env`
+    })
+    toast.success(`Promoted ${entry.key} to Global Secrets Vault`)
+  }
 
   // New variable inputs
   const [newKey, setNewKey] = useState('')
   const [newVal, setNewVal] = useState('')
   const [newComment, setNewComment] = useState('')
+
+  const matchingVaultSecrets = useMemo(() => {
+    if (!newKey.trim()) return []
+    const q = newKey.trim().toUpperCase()
+    return secrets.filter((s) => s.key.includes(q)).slice(0, 3)
+  }, [newKey, secrets])
 
   useEffect(() => {
     if (open && projectPath) {
@@ -236,6 +288,28 @@ export const EnvManagerDialog: React.FC<EnvManagerDialogProps> = ({
                   Compare / Sync
                 </Button>
 
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={handleBulkSyncFromVault}
+                  className="h-8 text-xs border-violet-500/40 bg-violet-950/20 hover:bg-violet-900/40 text-violet-300 gap-1.5 font-semibold"
+                  title="Bulk-fill matching variables from Global Secrets Vault"
+                >
+                  <Sparkles className="w-3.5 h-3.5 text-violet-400" />
+                  Sync Vault
+                </Button>
+
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => useAppStore.getState().setSecretVaultModalOpen(true)}
+                  className="h-8 text-xs border-zinc-700 hover:bg-zinc-900 text-zinc-300 gap-1.5"
+                  title="Open Global Secrets & Credentials Vault"
+                >
+                  <Shield className="w-3.5 h-3.5 text-violet-400" />
+                  Vault
+                </Button>
+
                 {activeTab === 'visual' && (
                   <Button
                     size="sm"
@@ -366,8 +440,17 @@ export const EnvManagerDialog: React.FC<EnvManagerDialogProps> = ({
                                 />
                               </div>
 
-                              {/* Delete Action */}
-                              <div className="col-span-1 text-right">
+                              {/* Actions (Promote to Vault & Delete) */}
+                              <div className="col-span-1 text-right flex items-center justify-end gap-0.5">
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  onClick={() => handlePromoteToVault(entry)}
+                                  className="h-6 w-6 text-zinc-500 hover:text-violet-400"
+                                  title="Promote to Global Secrets Vault"
+                                >
+                                  <Shield className="w-3 h-3" />
+                                </Button>
                                 <Button
                                   variant="ghost"
                                   size="icon"

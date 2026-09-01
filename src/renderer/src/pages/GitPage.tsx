@@ -20,6 +20,8 @@ import { GitStash } from '../components/git/GitStash'
 import { GitBranchGraph } from '../components/git/GitBranchGraph'
 import { GitHubPanel } from '../components/git/GitHubPanel'
 import { GitConflictResolverModal } from '../components/git/GitConflictResolverModal'
+import { ChangelogGeneratorModal } from '../components/git/ChangelogGeneratorModal'
+import { Sparkles } from 'lucide-react'
 import { Button } from '../components/ui/button'
 import { Badge } from '../components/ui/badge'
 import { useProjectStore } from '@renderer/stores/useProjectStore'
@@ -30,6 +32,7 @@ import { cn } from '@renderer/lib/utils'
 
 export const GitPage: React.FC = () => {
   const [conflictModalOpen, setConflictModalOpen] = useState(false)
+  const [changelogModalOpen, setChangelogModalOpen] = useState(false)
   const { selectProject: selectProjectStore } = useProjectStore()
   const { projects, activeWorkspace, isWorkspaceScoped } = useWorkspaceProjects()
   const {
@@ -161,6 +164,16 @@ export const GitPage: React.FC = () => {
                   Pull ({status.behind})
                 </Button>
               )}
+              <Button
+                size="sm"
+                variant="outline"
+                className="h-7 text-xs px-2 gap-1 border-violet-700/60 text-violet-300 hover:text-violet-200 bg-violet-950/20 font-semibold"
+                onClick={() => setChangelogModalOpen(true)}
+                title="Generate SemVer Release Notes & Update CHANGELOG.md"
+              >
+                <Sparkles className="w-3.5 h-3.5 text-violet-400" />
+                Release Notes
+              </Button>
               <Button
                 size="sm"
                 variant="outline"
@@ -305,6 +318,15 @@ export const GitPage: React.FC = () => {
         open={conflictModalOpen}
         onOpenChange={setConflictModalOpen}
       />
+
+      {project && (
+        <ChangelogGeneratorModal
+          open={changelogModalOpen}
+          onOpenChange={setChangelogModalOpen}
+          projectPath={project.path}
+          projectName={project.name}
+        />
+      )}
     </div>
   )
 }

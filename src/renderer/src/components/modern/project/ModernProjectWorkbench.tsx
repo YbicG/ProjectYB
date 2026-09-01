@@ -33,6 +33,7 @@ import { useWorkspaceProjects } from '@renderer/hooks/useWorkspaceProjects';
 import { useGitStore } from '@renderer/stores/useGitStore';
 import { useServiceStore } from '@renderer/stores/useServiceStore';
 import { useTerminalStore } from '@renderer/stores/useTerminalStore';
+import { useThemeStore } from '@renderer/stores/useThemeStore';
 import { useRunConfigStore, type RunConfig } from '@renderer/stores/useRunConfigStore';
 import { useAppStore } from '@renderer/stores/useAppStore';
 import { StatusDot } from '../../shared/StatusDot';
@@ -76,6 +77,48 @@ export const ModernProjectWorkbench: React.FC = () => {
   const [codePeekOpen, setCodePeekOpen] = useState(false);
   const [runConfigDialogOpen, setRunConfigDialogOpen] = useState(false);
   const [editingRunConfig, setEditingRunConfig] = useState<RunConfig | undefined>();
+  const [subprojectEnvTarget, setSubprojectEnvTarget] = useState<{ path: string; name: string } | null>(null);
+  const [subprojectPeekTarget, setSubprojectPeekTarget] = useState<{ path: string; name: string } | null>(null);
+
+  const handleOpenSubprojectTerminal = async (sub: SubProject) => {
+    try {
+      await createTerminal({
+        name: project ? `${project.name} > ${sub.name}` : sub.name,
+        cwd: sub.path,
+        projectId: project?.id,
+        projectName: project?.name
+      });
+      useThemeStore.getState().setTerminalDockOpen(true);
+      toast.success(`Spawned terminal in ${sub.name}`);
+    } catch (err: any) {
+      toast.error('Failed to open terminal: ' + err.message);
+    }
+  };
+
+  const handleOpenSubprojectExplorer = (sub: SubProject) => {
+    if (window.api?.projects?.openInExplorer) {
+      window.api.projects.openInExplorer(sub.path);
+      toast.success(`Opening ${sub.name} in File Explorer...`);
+    }
+  };
+
+  const handleOpenSubprojectIde = (sub: SubProject) => {
+    if (window.api?.projects?.openInVSCode) {
+      window.api.projects.openInVSCode(sub.path);
+      toast.success(`Opening ${sub.name} in VS Code...`);
+    }
+  };
+
+  const handleOpenSubprojectPeek = (sub: SubProject) => {
+    setSubprojectPeekTarget({ path: sub.path, name: project ? `${project.name} > ${sub.name}` : sub.name });
+    setCodePeekOpen(true);
+  };
+
+  const handleOpenSubprojectEnv = (sub: SubProject) => {
+    setSubprojectEnvTarget({ path: sub.path, name: project ? `${project.name} > ${sub.name}` : sub.name });
+    setEnvDialogOpen(true);
+  };
+
 
   const project = projects.find((p) => p.id === selectedProjectId);
 
@@ -513,32 +556,91 @@ export const ModernProjectWorkbench: React.FC = () => {
                 {project.subprojects.map((sub: SubProject) => {
                   const subScripts = Object.entries(sub.scripts || {});
                   return (
-                    <Card key={sub.path} className="bg-zinc-900/60 border-zinc-800/80 p-4 space-y-3">
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <span className="text-sm font-bold text-zinc-200 block">{sub.name}</span>
-                          <span className="text-[11px] font-mono text-zinc-500 truncate block">{sub.path}</span>
+                    <Card key={sub.path} className="bg-zinc-900/60 border-zinc-800/80 p-4 space-y-3 hover:border-zinc-700/80 transition-all">
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="min-w-0 flex-1">
+                          <div className="flex items-center gap-2">
+                            <span className="text-sm font-bold text-zinc-100 truncate">{sub.name}</span>
+                            <Badge variant="outline" className="text-[10px] font-mono border-zinc-700 text-zinc-300">
+                              {sub.type}
+                            </Badge>
+                          </div>
+                          <span className="text-[11px] font-mono text-zinc-500 truncate block mt-0.5" title={sub.path}>
+                            {sub.path}
+                          </span>
                         </div>
-                        <Badge variant="outline" className="text-[10px] font-mono border-zinc-700">
-                          {sub.type}
-                        </Badge>
+
+                        {/* Subproject Action Toolbar */}
+                        <div className="flex items-center gap-1 shrink-0">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handleOpenSubprojectTerminal(sub)}
+                            className="h-7 px-2 text-xs font-mono border-zinc-800 bg-zinc-950 hover:bg-zinc-900 text-emerald-400 hover:text-emerald-300 gap-1"
+                            title="Spawn Terminal in Universal Bottom Dock"
+                          >
+                            <Terminal className="w-3 h-3" />
+                            <span>Terminal</span>
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handleOpenSubprojectExplorer(sub)}
+                            className="h-7 px-2 text-xs border-zinc-800 bg-zinc-950 hover:bg-zinc-900 text-zinc-300 hover:text-zinc-100 gap-1"
+                            title="Open in File Explorer"
+                          >
+                            <FolderOpen className="w-3 h-3" />
+                            <span>Explorer</span>
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handleOpenSubprojectPeek(sub)}
+                            className="h-7 w-7 p-0 border-zinc-800 bg-zinc-950 hover:bg-zinc-900 text-violet-400 hover:text-violet-300"
+                            title="Quick Code Peek"
+                          >
+                            <FileCode className="w-3.5 h-3.5" />
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handleOpenSubprojectEnv(sub)}
+                            className="h-7 w-7 p-0 border-zinc-800 bg-zinc-950 hover:bg-zinc-900 text-amber-400 hover:text-amber-300"
+                            title="Subproject .env Editor"
+                          >
+                            <Lock className="w-3 h-3" />
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handleOpenSubprojectIde(sub)}
+                            className="h-7 w-7 p-0 border-zinc-800 bg-zinc-950 hover:bg-zinc-900 text-zinc-400 hover:text-zinc-200"
+                            title="Open in VS Code"
+                          >
+                            <Code className="w-3.5 h-3.5" />
+                          </Button>
+                        </div>
                       </div>
 
                       <div className="space-y-1.5 pt-2 border-t border-zinc-800/60">
                         <span className="text-[10px] font-semibold text-zinc-400 uppercase tracking-wider">Subproject Scripts</span>
-                        <div className="flex items-center gap-1.5 flex-wrap">
-                          {subScripts.map(([sName, sCmd]) => (
-                            <Button
-                              key={sName}
-                              variant="outline"
-                              size="sm"
-                              onClick={() => handleRunSubprojectScript(sub, sName, String(sCmd))}
-                              className="h-6 text-[10px] font-mono border-zinc-800 bg-zinc-950 hover:bg-zinc-900 text-zinc-300 gap-1 px-2"
-                            >
-                              <Play className="w-2.5 h-2.5 text-emerald-400" /> {sName}
-                            </Button>
-                          ))}
-                        </div>
+                        {subScripts.length === 0 ? (
+                          <p className="text-[11px] text-zinc-600 italic">No package scripts detected.</p>
+                        ) : (
+                          <div className="flex items-center gap-1.5 flex-wrap">
+                            {subScripts.map(([sName, sCmd]) => (
+                              <Button
+                                key={sName}
+                                variant="outline"
+                                size="sm"
+                                onClick={() => handleRunSubprojectScript(sub, sName, String(sCmd))}
+                                className="h-6 text-[10px] font-mono border-zinc-800 bg-zinc-950 hover:bg-zinc-900 text-zinc-300 gap-1 px-2"
+                              >
+                                <Play className="w-2.5 h-2.5 text-emerald-400" /> {sName}
+                              </Button>
+                            ))}
+                          </div>
+                        )}
                       </div>
                     </Card>
                   );
@@ -670,9 +772,12 @@ export const ModernProjectWorkbench: React.FC = () => {
 
       <EnvManagerDialog
         open={envDialogOpen}
-        onOpenChange={setEnvDialogOpen}
-        projectPath={project.path}
-        projectName={project.name}
+        onOpenChange={(open) => {
+          setEnvDialogOpen(open);
+          if (!open) setSubprojectEnvTarget(null);
+        }}
+        projectPath={subprojectEnvTarget?.path || project.path}
+        projectName={subprojectEnvTarget?.name || project.name}
       />
 
       <EnvProfilerDialog
@@ -689,8 +794,13 @@ export const ModernProjectWorkbench: React.FC = () => {
 
       <ProjectCodePeekModal
         open={codePeekOpen}
-        onOpenChange={setCodePeekOpen}
+        onOpenChange={(open) => {
+          setCodePeekOpen(open);
+          if (!open) setSubprojectPeekTarget(null);
+        }}
         project={project}
+        customPath={subprojectPeekTarget?.path}
+        customName={subprojectPeekTarget?.name}
       />
 
       <RunConfigDialog

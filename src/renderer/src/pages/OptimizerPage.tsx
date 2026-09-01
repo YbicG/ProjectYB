@@ -6,6 +6,8 @@ import { Input } from '../components/ui/input';
 import { Badge } from '../components/ui/badge';
 import { ScrollArea } from '../components/ui/scroll-area';
 import { ProjectDiskCard } from '../components/disk/ProjectDiskCard';
+import { ProjectArchiverModal } from '../components/disk/ProjectArchiverModal';
+import { Snowflake } from 'lucide-react';
 import { GlobalCacheCleaner } from '../components/disk/GlobalCacheCleaner';
 import { useDiskStore } from '@renderer/stores/useDiskStore';
 import { useProjectStore } from '@renderer/stores/useProjectStore';
@@ -24,6 +26,7 @@ export const OptimizerPage: React.FC = () => {
   } = useDiskStore();
 
   const [search, setSearch] = useState('');
+  const [archiverOpen, setArchiverOpen] = useState(false);
 
   useEffect(() => {
     if (projects.length > 0) {
@@ -84,6 +87,17 @@ export const OptimizerPage: React.FC = () => {
               Reclaim All Build & Cache (~{formatSize((summary.buildBytes || 0) + (summary.cachesBytes || 0))})
             </Button>
           )}
+
+          <Button
+            variant="outline"
+            size="sm"
+            className="h-8 text-xs border-cyan-800/60 bg-cyan-950/20 text-cyan-300 hover:bg-cyan-950/40 gap-1.5 font-semibold"
+            onClick={() => setArchiverOpen(true)}
+            title="Open Inactive Project Deep Freeze Archiver"
+          >
+            <Snowflake className="w-3.5 h-3.5 text-cyan-400" />
+            Deep Freeze Archiver
+          </Button>
 
           <Button
             variant="outline"
@@ -225,6 +239,12 @@ export const OptimizerPage: React.FC = () => {
           )}
         </ScrollArea>
       </div>
+
+      <ProjectArchiverModal
+        open={archiverOpen}
+        onOpenChange={setArchiverOpen}
+        projects={projects}
+      />
     </div>
   );
 };

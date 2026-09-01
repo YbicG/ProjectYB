@@ -1,8 +1,12 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import * as net from 'net';
+import { exec } from 'child_process';
+import { promisify } from 'util';
 import { BrowserWindow } from 'electron';
 import { logger } from '../utils/logger';
+
+const execAsync = promisify(exec);
 
 export type DatabaseEngine = 'sqlite' | 'postgres' | 'mysql' | 'redis' | 'mongodb';
 
@@ -389,64 +393,69 @@ export class DatabaseService {
   }
 
   private async executeSqliteQuery(conn: DatabaseConnection, query: string, start: number): Promise<QueryResult> {
-    try {
-      if (!conn.filePath || !fs.existsSync(conn.filePath)) {
-        return { columns: ['error'], rows: [{ error: 'SQLite file not found' }], rowCount: 0, durationMs: 0, error: 'SQLite file not found' };
-      }
+    if (!conn.filePath || !fs.existsSync(conn.filePath)) {
+      return { columns: ['error'], rows: [{ error: 'SQLite file not found' }], rowCount: 0, durationMs: 0, error: 'SQLite file not found' };
+    }
 
+    const trimmed = query.trim();
+    const upper = trimmed.toUpperCase();
+    const isSelect = upper.startsWith('SELECT') || upper.startsWith('PRAGMA') || upper.startsWith('EXPLAIN') || upper.startsWith('WITH');
+
+    // Tier 1: Try node:sqlite if available in runtime
+    try {
       const { DatabaseSync } = require('node:sqlite');
       const db = new DatabaseSync(conn.filePath);
-
-      const trimmed = query.trim();
-      const upper = trimmed.toUpperCase();
-
-      if (upper.startsWith('SELECT') || upper.startsWith('PRAGMA') || upper.startsWith('EXPLAIN') || upper.startsWith('WITH')) {
+      if (isSelect) {
         const stmt = db.prepare(trimmed);
         const rows = stmt.all();
         const columns = rows.length > 0 ? Object.keys(rows[0]) : [];
         db.close();
-
-        return {
-          columns,
-          rows,
-          rowCount: rows.length,
-          durationMs: Date.now() - start
-        };
+        return { columns, rows, rowCount: rows.length, durationMs: Date.now() - start };
       } else {
         db.exec(trimmed);
         db.close();
+        return { columns: ['status', 'message'], rows: [{ status: 'SUCCESS', message: 'Executed query successfully' }], rowCount: 1, durationMs: Date.now() - start };
+      }
+    } catch {
+      // Fall through to Tier 2
+    }
 
-        return {
-          columns: ['status', 'message'],
-          rows: [{ status: 'SUCCESS', message: 'Executed query successfully' }],
-          rowCount: 1,
-          durationMs: Date.now() - start
-        };
+    // Tier 2: sqlite3 CLI with -json
+    try {
+      const flag = isSelect ? '-json' : '';
+      const escapedQuery = trimmed.replace(/"/g, '""');
+      const cmd = `sqlite3 ${flag} "${conn.filePath}" "${escapedQuery}"`;
+      const { stdout } = await execAsync(cmd, { maxBuffer: 10 * 1024 * 1024 });
+      if (isSelect) {
+        const trimmedOut = stdout.trim();
+        let rows: any[] = [];
+        if (trimmedOut) {
+          try {
+            rows = JSON.parse(trimmedOut);
+            if (!Array.isArray(rows)) rows = [rows];
+          } catch {
+            rows = [{ output: trimmedOut }];
+          }
+        }
+        const columns = rows.length > 0 ? Object.keys(rows[0]) : [];
+        return { columns, rows, rowCount: rows.length, durationMs: Date.now() - start };
+      } else {
+        return { columns: ['status', 'message'], rows: [{ status: 'SUCCESS', message: 'Executed statement successfully' }], rowCount: 1, durationMs: Date.now() - start };
       }
     } catch (err: any) {
-      return {
-        columns: ['error'],
-        rows: [{ error: err.message }],
-        rowCount: 0,
-        durationMs: Date.now() - start,
-        error: err.message
-      };
+      return { columns: ['error'], rows: [{ error: err.message }], rowCount: 0, durationMs: Date.now() - start, error: err.message };
     }
   }
 
   private async getSqliteSchema(filePath: string): Promise<TableSchema[]> {
-    try {
-      if (!fs.existsSync(filePath)) return [];
+    if (!fs.existsSync(filePath)) return [];
 
+    // Tier 1: Try node:sqlite if available
+    try {
       const { DatabaseSync } = require('node:sqlite');
       const db = new DatabaseSync(filePath, { readOnly: true });
-
-      const tables = db
-        .prepare("SELECT name, type FROM sqlite_master WHERE type IN ('table', 'view') AND name NOT LIKE 'sqlite_%' ORDER BY name ASC")
-        .all() as Array<{ name: string; type: 'table' | 'view' }>;
-
+      const tables = db.prepare("SELECT name, type FROM sqlite_master WHERE type IN ('table', 'view') AND name NOT LIKE 'sqlite_%' ORDER BY name ASC").all() as Array<{ name: string; type: 'table' | 'view' }>;
       const schema: TableSchema[] = [];
-
       for (const tbl of tables) {
         try {
           const info = db.prepare("PRAGMA table_info('" + tbl.name + "')").all() as any[];
@@ -455,7 +464,6 @@ export class DatabaseService {
             const cntRes = db.prepare("SELECT COUNT(*) as count FROM '" + tbl.name + "'").get() as any;
             rowCount = cntRes?.count ?? 0;
           } catch {}
-
           schema.push({
             name: tbl.name,
             type: tbl.type,
@@ -469,11 +477,49 @@ export class DatabaseService {
           });
         } catch {}
       }
-
       db.close();
       return schema;
-    } catch (err) {
-      logger.error('Failed to introspect SQLite schema for ' + filePath, err);
+    } catch {
+      // Fall through to Tier 2
+    }
+
+    // Tier 2: sqlite3 CLI
+    try {
+      const cmd = `sqlite3 -json "${filePath}" "SELECT name, type FROM sqlite_master WHERE type IN ('table', 'view') AND name NOT LIKE 'sqlite_%' ORDER BY name ASC;"`;
+      const { stdout } = await execAsync(cmd);
+      const tables = stdout.trim() ? JSON.parse(stdout.trim()) : [];
+      const schema: TableSchema[] = [];
+
+      for (const tbl of tables) {
+        try {
+          const infoCmd = `sqlite3 -json "${filePath}" "PRAGMA table_info('${tbl.name}');"`;
+          const { stdout: infoOut } = await execAsync(infoCmd);
+          const info = infoOut.trim() ? JSON.parse(infoOut.trim()) : [];
+
+          let rowCount = 0;
+          try {
+            const cntCmd = `sqlite3 -json "${filePath}" "SELECT COUNT(*) as count FROM '${tbl.name}';"`;
+            const { stdout: cntOut } = await execAsync(cntCmd);
+            const cntParsed = cntOut.trim() ? JSON.parse(cntOut.trim()) : [];
+            rowCount = cntParsed[0]?.count ?? 0;
+          } catch {}
+
+          schema.push({
+            name: tbl.name,
+            type: tbl.type || 'table',
+            rowCount,
+            columns: info.map((c: any) => ({
+              name: c.name,
+              type: c.type || 'TEXT',
+              nullable: c.notnull === 0,
+              isPrimary: (c.pk || 0) > 0
+            }))
+          });
+        } catch {}
+      }
+      return schema;
+    } catch (err: any) {
+      logger.warn('[DatabaseService] Failed to introspect SQLite schema for ' + filePath + ': ' + err.message);
       return [];
     }
   }

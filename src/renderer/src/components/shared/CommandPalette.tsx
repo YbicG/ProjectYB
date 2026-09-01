@@ -237,6 +237,18 @@ export const CommandPalette: React.FC = () => {
             <Smartphone className="mr-2 h-4 w-4 text-violet-400" />
             Launch Mobile Remote Companion (PWA & Tunnel) (Ctrl+Shift+M)...
           </CommandItem>
+          <CommandItem onSelect={() => runCommand(() => useAppStore.getState().setSecretVaultModalOpen(true))}>
+            <Shield className="mr-2 h-4 w-4 text-violet-400" />
+            Global Secrets & Credentials Vault (AES-256)...
+          </CommandItem>
+          <CommandItem onSelect={() => runCommand(() => useAppStore.getState().setAssetForgeModalOpen(true))}>
+            <Sparkles className="mr-2 h-4 w-4 text-cyan-400" />
+            Developer Asset Forge (Favicon & PWA Suite)...
+          </CommandItem>
+          <CommandItem onSelect={() => runCommand(() => useAppStore.getState().setProjectArchiverModalOpen(true))}>
+            <HardDrive className="mr-2 h-4 w-4 text-cyan-400" />
+            Inactive Project Deep Freeze Archiver...
+          </CommandItem>
           <CommandItem onSelect={() => runCommand(() => { setActiveTab('settings'); setBackupModalOpen(true); })}>
             <Shield className="mr-2 h-4 w-4 text-violet-400" />
             Backup Workspace to Encrypted Cloud Vault (AES-256)...

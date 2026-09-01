@@ -46,6 +46,7 @@
     "react-resizable-panels": "^2.1.7",
     "simple-git": "^3.27.0",
     "sonner": "^1.7.4",
+    "sqlite": "^5.1.1",
     "systeminformation": "^5.23.5",
     "tailwind-merge": "^2.6.0",
     "zustand": "^5.0.3"
