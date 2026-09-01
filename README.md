@@ -1,5 +1,14 @@
 # ProjectYB
 
+[![Version](https://img.shields.io/badge/version-1.0.0-8b5cf6?style=flat-square&logo=semver&logoColor=white)](https://github.com/YbicG/ProjectYB/releases/tag/v1.0.0)
+[![Electron](https://img.shields.io/badge/Electron-34.2.0-47848F?style=flat-square&logo=electron&logoColor=white)](https://www.electronjs.org/)
+[![React](https://img.shields.io/badge/React-19.0.0-61DAFB?style=flat-square&logo=react&logoColor=black)](https://react.dev/)
+[![TypeScript](https://img.shields.io/badge/TypeScript-5.7.3-3178C6?style=flat-square&logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
+[![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS-v4.0-38B2AC?style=flat-square&logo=tailwind-css&logoColor=white)](https://tailwindcss.com/)
+[![Vite](https://img.shields.io/badge/Vite-6.1.0-646CFF?style=flat-square&logo=vite&logoColor=white)](https://vitejs.dev/)
+[![Platform](https://img.shields.io/badge/platform-Windows%20|%20macOS%20|%20Linux-22c55e?style=flat-square)](#getting-started)
+[![License](https://img.shields.io/badge/license-MIT-f59e0b?style=flat-square)](LICENSE)
+
 Desktop project manager and command deck for developers. Built with Electron, React, TypeScript, and Tailwind CSS.
 
 ProjectYB consolidates local repository management, multi-process terminals, background services, Git workflows, database inspection, and local network tooling into a single desktop application.
