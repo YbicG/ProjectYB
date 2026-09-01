@@ -39,7 +39,7 @@ interface ThemeState {
   loadPreferences: () => Promise<void>;
 }
 
-export const applyThemeToDOM = (theme: AccentColor, density: Density, uiMode: UIMode = 'classic') => {
+export const applyThemeToDOM = (theme: AccentColor, density: Density, uiMode: UIMode = 'modern') => {
   if (typeof document !== 'undefined') {
     document.documentElement.setAttribute('data-theme', theme);
     document.documentElement.setAttribute('data-density', density);
@@ -52,11 +52,11 @@ export const applyThemeToDOM = (theme: AccentColor, density: Density, uiMode: UI
 
 // Initial DOM attribute setup
 if (typeof document !== 'undefined') {
-  applyThemeToDOM('violet', 'comfortable', 'classic');
+  applyThemeToDOM('violet', 'comfortable', 'modern');
 }
 
 export const useThemeStore = create<ThemeState>((set, get) => ({
-  uiMode: 'classic',
+  uiMode: 'modern',
   accentColor: 'violet',
   density: 'comfortable',
   terminalFontFamily: 'Consolas, "Cascadia Code", "Courier New", monospace',
@@ -152,7 +152,7 @@ export const useThemeStore = create<ThemeState>((set, get) => ({
   loadPreferences: async () => {
     if (!window.api?.store) return;
     try {
-      const mode = ((await window.api.store.get('theme:uiMode')) as UIMode) || 'classic';
+      const mode = ((await window.api.store.get('theme:uiMode')) as UIMode) || 'modern';
       const color = ((await window.api.store.get('theme:accentColor')) as AccentColor) || 'violet';
       const density = ((await window.api.store.get('theme:density')) as Density) || 'comfortable';
       const font = (await window.api.store.get('terminal:fontFamily')) as string;
