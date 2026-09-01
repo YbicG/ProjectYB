@@ -43,9 +43,11 @@ import { ScrollArea } from '../components/ui/scroll-area';
 import { MarkdownNotesEditor } from '../components/notes/MarkdownNotesEditor';
 import { ProjectConfigDialog } from '../components/dashboard/ProjectConfigDialog';
 import { EnvManagerDialog } from '../components/env/EnvManagerDialog';
+import { EnvProfilerDialog } from '../components/env/EnvProfilerDialog';
 import { ProjectSnapshotDialog } from '../components/dashboard/ProjectSnapshotDialog';
 import { ProjectCodePeekModal } from '../components/project/ProjectCodePeekModal';
 import { RunConfigDialog } from '../components/services/RunConfigDialog';
+import { useBenchmarkStore } from '@renderer/stores/useBenchmarkStore';
 import { toast } from 'sonner';
 import { cn, generateId } from '@renderer/lib/utils';
 import type { ProjectInfo, SubProject } from '@renderer/types/project';
@@ -69,12 +71,17 @@ export const ProjectDetailPage: React.FC = () => {
   // Dialogs
   const [configDialogOpen, setConfigDialogOpen] = useState(false);
   const [envDialogOpen, setEnvDialogOpen] = useState(false);
+  const [envProfilerOpen, setEnvProfilerOpen] = useState(false);
   const [snapshotDialogOpen, setSnapshotDialogOpen] = useState(false);
   const [codePeekOpen, setCodePeekOpen] = useState(false);
   const [runConfigDialogOpen, setRunConfigDialogOpen] = useState(false);
   const [editingRunConfig, setEditingRunConfig] = useState<RunConfig | undefined>();
 
   const project = projects.find((p) => p.id === selectedProjectId);
+
+  useEffect(() => {
+    useBenchmarkStore.getState().loadBenchmarks();
+  }, []);
 
   useEffect(() => {
     if (!project) return;
@@ -438,9 +445,21 @@ export const ProjectDetailPage: React.FC = () => {
                       >
                         <div>
                           <div className="flex items-center justify-between gap-2">
-                            <span className="font-mono text-xs font-bold text-zinc-200">{name}</span>
+                            <div className="flex items-center gap-1.5 min-w-0">
+                              <span className="font-mono text-xs font-bold text-zinc-200 truncate">{name}</span>
+                              {useBenchmarkStore.getState().getAverageDuration(project.id, name) && (
+                                <Badge
+                                  variant="outline"
+                                  className="text-[9px] h-4 font-mono border-zinc-800 text-zinc-400 bg-zinc-950 px-1 py-0 flex items-center gap-0.5"
+                                  title={`Average execution time: ${(useBenchmarkStore.getState().getAverageDuration(project.id, name)! / 1000).toFixed(1)}s`}
+                                >
+                                  <Clock className="w-2.5 h-2.5 text-zinc-500" />
+                                  {(useBenchmarkStore.getState().getAverageDuration(project.id, name)! / 1000).toFixed(1)}s
+                                </Badge>
+                              )}
+                            </div>
                             {isRunning && (
-                              <Badge className="text-[9px] h-4 bg-emerald-950 text-emerald-300 border-emerald-700/60 font-mono flex items-center gap-1">
+                              <Badge className="text-[9px] h-4 bg-emerald-950 text-emerald-300 border-emerald-700/60 font-mono flex items-center gap-1 shrink-0">
                                 <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
                                 Running
                               </Badge>
@@ -596,26 +615,47 @@ export const ProjectDetailPage: React.FC = () => {
                 </h3>
                 <p className="text-[11px] text-zinc-500 mt-0.5">Manage .env files, credentials, and comparison diffs</p>
               </div>
-              <Button
-                size="sm"
-                onClick={() => setEnvDialogOpen(true)}
-                className="bg-violet-600 hover:bg-violet-700 text-xs h-7 gap-1.5"
-              >
-                <Lock className="w-3 h-3" /> Open Env Manager
-              </Button>
+              <div className="flex items-center gap-2">
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => setEnvProfilerOpen(true)}
+                  className="border-emerald-800/60 bg-emerald-950/20 text-emerald-300 hover:bg-emerald-950/40 text-xs h-7 gap-1.5"
+                  title="Compare .env vs .env.example and detect missing keys"
+                >
+                  <FileText className="w-3 h-3 text-emerald-400" /> Profiler & Sync
+                </Button>
+                <Button
+                  size="sm"
+                  onClick={() => setEnvDialogOpen(true)}
+                  className="bg-violet-600 hover:bg-violet-700 text-xs h-7 gap-1.5"
+                >
+                  <Lock className="w-3 h-3" /> Open Env Manager
+                </Button>
+              </div>
             </div>
 
             <Card className="bg-zinc-900/50 border-zinc-800/80 p-6 text-center text-xs text-zinc-400 space-y-3">
               <Lock className="w-8 h-8 text-zinc-700 mx-auto" />
               <p>Secure environment variables and secret files are managed in the Environment Manager dialog.</p>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setEnvDialogOpen(true)}
-                className="border-zinc-800 hover:bg-zinc-900 text-zinc-300 text-xs"
-              >
-                Launch Env Manager
-              </Button>
+              <div className="flex items-center justify-center gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setEnvProfilerOpen(true)}
+                  className="border-emerald-800/60 text-emerald-300 hover:bg-emerald-950/30 text-xs gap-1.5"
+                >
+                  <FileText className="w-3.5 h-3.5" /> Launch Env Profiler
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setEnvDialogOpen(true)}
+                  className="border-zinc-800 hover:bg-zinc-900 text-zinc-300 text-xs"
+                >
+                  Launch Env Manager
+                </Button>
+              </div>
             </Card>
           </div>
         )}
@@ -633,6 +673,12 @@ export const ProjectDetailPage: React.FC = () => {
         onOpenChange={setEnvDialogOpen}
         projectPath={project.path}
         projectName={project.name}
+      />
+
+      <EnvProfilerDialog
+        open={envProfilerOpen}
+        onOpenChange={setEnvProfilerOpen}
+        projectPath={project.path}
       />
 
       <ProjectSnapshotDialog

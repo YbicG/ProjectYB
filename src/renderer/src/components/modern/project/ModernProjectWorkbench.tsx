@@ -445,9 +445,21 @@ export const ModernProjectWorkbench: React.FC = () => {
                       >
                         <div>
                           <div className="flex items-center justify-between gap-2">
-                            <span className="font-mono text-xs font-bold text-zinc-200">{name}</span>
+                            <div className="flex items-center gap-1.5 min-w-0">
+                              <span className="font-mono text-xs font-bold text-zinc-200 truncate">{name}</span>
+                              {useBenchmarkStore.getState().getAverageDuration(project.id, name) && (
+                                <Badge
+                                  variant="outline"
+                                  className="text-[9px] h-4 font-mono border-zinc-800 text-zinc-400 bg-zinc-950 px-1 py-0 flex items-center gap-0.5"
+                                  title={`Average execution time: ${(useBenchmarkStore.getState().getAverageDuration(project.id, name)! / 1000).toFixed(1)}s`}
+                                >
+                                  <Clock className="w-2.5 h-2.5 text-zinc-500" />
+                                  {(useBenchmarkStore.getState().getAverageDuration(project.id, name)! / 1000).toFixed(1)}s
+                                </Badge>
+                              )}
+                            </div>
                             {isRunning && (
-                              <Badge className="text-[9px] h-4 bg-emerald-950 text-emerald-300 border-emerald-700/60 font-mono flex items-center gap-1">
+                              <Badge className="text-[9px] h-4 bg-emerald-950 text-emerald-300 border-emerald-700/60 font-mono flex items-center gap-1 shrink-0">
                                 <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
                                 Running
                               </Badge>
