@@ -30,6 +30,7 @@ import {
 import { motion, AnimatePresence } from 'framer-motion';
 import { useProjectStore } from '@renderer/stores/useProjectStore';
 import { useWorkspaceProjects } from '@renderer/hooks/useWorkspaceProjects';
+import { useGitStore } from '@renderer/stores/useGitStore';
 import { useServiceStore } from '@renderer/stores/useServiceStore';
 import { useTerminalStore } from '@renderer/stores/useTerminalStore';
 import { useRunConfigStore, type RunConfig } from '@renderer/stores/useRunConfigStore';
@@ -188,6 +189,15 @@ export const ModernProjectWorkbench: React.FC = () => {
     }
   };
 
+  const handleOpenFullGitStudio = () => {
+    if (project) {
+      selectProject(project.id);
+      useGitStore.getState().selectProject(project.id);
+      useGitStore.getState().fetchStatus(project.id, project.path);
+    }
+    setActiveTab('git');
+  };
+
   const handleCopyPath = () => {
     navigator.clipboard.writeText(project.path);
     setCopiedPath(true);
@@ -224,10 +234,17 @@ export const ModernProjectWorkbench: React.FC = () => {
                 {project.type || 'node'}
               </Badge>
               {project.isGitRepo && (
-                <Badge variant="outline" className="text-[10px] font-mono border-violet-500/40 text-violet-300 flex items-center gap-1">
-                  <GitBranch className="w-2.5 h-2.5" />
-                  {project.gitBranch || 'main'}
-                </Badge>
+                <button
+                  type="button"
+                  onClick={handleOpenFullGitStudio}
+                  title="Open in Git Studio"
+                  className="cursor-pointer hover:opacity-80 transition-opacity"
+                >
+                  <Badge variant="outline" className="text-[10px] font-mono border-violet-500/40 text-violet-300 flex items-center gap-1 hover:bg-violet-950/40">
+                    <GitBranch className="w-2.5 h-2.5" />
+                    {project.gitBranch || 'main'}
+                  </Badge>
+                </button>
               )}
             </div>
 
@@ -522,7 +539,7 @@ export const ModernProjectWorkbench: React.FC = () => {
               <Button
                 variant="outline"
                 size="sm"
-                onClick={() => setActiveTab('git')}
+                onClick={handleOpenFullGitStudio}
                 className="h-6 text-xs border-zinc-800 hover:bg-zinc-900 text-zinc-400"
               >
                 Open Full Git Studio <ChevronRight className="w-3 h-3 ml-1" />

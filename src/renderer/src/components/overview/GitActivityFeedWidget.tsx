@@ -5,6 +5,7 @@ import { Badge } from '../ui/badge';
 import { Button } from '../ui/button';
 import { useWorkspaceProjects } from '@renderer/hooks/useWorkspaceProjects';
 import { useGitStore } from '@renderer/stores/useGitStore';
+import { useProjectStore } from '@renderer/stores/useProjectStore';
 import { useAppStore } from '@renderer/stores/useAppStore';
 
 interface CommitFeedEntry {
@@ -18,7 +19,8 @@ interface CommitFeedEntry {
 
 export const GitActivityFeedWidget: React.FC = () => {
   const { projects } = useWorkspaceProjects();
-  const { statuses, fetchStatus } = useGitStore();
+  const { statuses, fetchStatus, selectProject: gitSelectProject } = useGitStore();
+  const { selectProject } = useProjectStore();
   const { setActiveTab } = useAppStore();
 
   const [recentCommits, setRecentCommits] = useState<CommitFeedEntry[]>([]);
@@ -99,11 +101,18 @@ export const GitActivityFeedWidget: React.FC = () => {
           recentCommits.map((item, idx) => (
             <div
               key={`${item.hash}-${idx}`}
-              className="p-2.5 rounded-lg bg-zinc-900/60 border border-zinc-800/60 hover:border-zinc-700 transition-colors flex items-start justify-between gap-2"
+              onClick={() => {
+                selectProject(item.projectId);
+                gitSelectProject(item.projectId);
+                const proj = projects.find((p) => p.id === item.projectId);
+                if (proj) fetchStatus(item.projectId, proj.path);
+                setActiveTab('git');
+              }}
+              className="p-2.5 rounded-lg bg-zinc-900/60 border border-zinc-800/60 hover:border-violet-500/60 hover:bg-zinc-900 cursor-pointer transition-all flex items-start justify-between gap-2 group"
             >
               <div className="min-w-0 flex-1 space-y-1">
                 <div className="flex items-center gap-2 flex-wrap">
-                  <Badge variant="outline" className="text-[10px] bg-violet-950/30 text-violet-300 border-violet-800/40 font-semibold px-1.5 py-0">
+                  <Badge variant="outline" className="text-[10px] bg-violet-950/30 text-violet-300 border-violet-800/40 font-semibold px-1.5 py-0 group-hover:border-violet-600">
                     {item.projectName}
                   </Badge>
                   <span className="font-mono text-[10px] text-zinc-500">{item.hash}</span>
