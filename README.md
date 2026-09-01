@@ -280,3 +280,10 @@ Contributions, issues, and feature requests are welcome:
 ## License
 
 Distributed under the **MIT License**. See `LICENSE` for more information.
+
+---
+
+<div align="center">
+  <sub>Built with ❤️ by <b>YBicG</b> and the ProjectYB Engineering Team.</sub>
+</div>
+
