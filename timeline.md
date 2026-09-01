@@ -322,3 +322,41 @@ High-performance optimizations across all data-heavy views, eliminating UI freez
   - Compares `.env` against `.env.example`, flags missing keys and duplicate entries, sorts keys alphabetically, and offers 1-click sync of missing keys.
 - **Workspace Selector Layout Fix (`WorkspaceSelector.tsx`)**:
   - Replaced text "Boot Stack" / "Stop Stack" button with a sleek, compact icon button (`<Play />` / `<Square />` with tooltip), eliminating flex overflow and truncation on custom workspace names.
+
+---
+
+## Phase 14: Next-Gen Database Studio Overhaul, Native SQLite Engine, Schema Explorer & Multi-Engine Workbenches
+
+Complete overhaul of Database Studio, decluttering the connection sidebar into project-grouped hierarchy, deduplicating `.env` and SQLite instances, adding native `node:sqlite` real SQL query execution, interactive schema/table tree exploration, Redis key-value inspector, and Root CA certificate fixes.
+
+### Key Capabilities
+- **Project-Grouped Connection Hierarchy & Clutter Elimination (`DatabasePage.tsx`)**:
+  - Replaced flat, repetitive cards with a collapsible project hierarchy (e.g. `📁 RealETA (2)`, `📁 Sober (1)`, `📁 ybicgmail (1)`) and toggleable flat view.
+  - Features real-time search filtering across connection names, project names, database names, and hostnames.
+  - Added clean Engine Filter chips (`All`, `Postgres`, `SQLite`, `Redis`, `MySQL`, `MongoDB`) with instant count badges.
+  - Masks sensitive database credentials in connection strings (`postgres://****:****@localhost:5432/db`) to prevent credentials leaks.
+- **Smart Connection Discovery & Deduplication (`database.service.ts`)**:
+  - Recursively discovers `.env` and `.env.*` files across root and subfolders (`src/`, `server/`, `backend/`, `api/`, `app/`, `prisma/`, `data/`, `db/`).
+  - Prioritizes active `.env` and `.env.local` files over `.env.example`, filtering out empty placeholder templates (`user:password@host/db`).
+  - Automatically deduplicates duplicate connection strings for the same project.
+- **Native Node 22 SQLite Query Engine (`database.service.ts`)**:
+  - Embedded zero-dependency native `node:sqlite` (`DatabaseSync`) engine for 100% real query execution against local `.sqlite`, `.sqlite3`, and `.db` files.
+  - Executes arbitrary `SELECT`, `PRAGMA`, `INSERT`, `UPDATE`, `DELETE`, and `CREATE TABLE` queries with sub-millisecond duration tracking and real column mapping.
+- **Interactive Table & Schema Explorer Tree Panel (`DatabasePage.tsx`)**:
+  - Collapsible side explorer displaying detected tables, views, and collections with live row counts.
+  - Expandable column inspector showing data types (`INTEGER`, `TEXT`, `VARCHAR`, `TIMESTAMP`), `PK` badges, and nullable indicators.
+  - 1-Click "Inspect Rows" button (`SELECT * FROM <table> LIMIT 50`) that auto-populates the query console and runs immediately.
+- **Advanced SQL Workbench & Data Table (`DatabasePage.tsx`)**:
+  - Multi-line query console with syntax insertion shortcuts (`SELECT * FROM`, `WHERE`, `ORDER BY`, `LIMIT 50`, `COUNT(*)`).
+  - Interactive table grid with sticky headers, column data types, row number indicators, in-table text filtering, and pagination (25 / 50 / 100 per page).
+  - 1-Click cell value copy and JSON modal inspector for complex objects.
+  - 1-Click CSV and JSON export buttons.
+- **Dedicated Redis Key-Value Studio (`DatabasePage.tsx` & `database.service.ts`)**:
+  - Real RESP protocol command tokenizer and executor (`GET`, `SET`, `HGETALL`, `KEYS`, `INFO`).
+  - Interactive key browser with pattern scanning (`user:*`, `cache:*`, `*`), type badges (`STRING`, `HASH`, `LIST`, `SET`), and TTL timers (`3600s`, `Persistent`).
+  - Side-by-side Key Value Inspector panel with formatted JSON and raw string views.
+- **Connection Latency Status Telemetry**:
+  - Live TCP and socket ping verification (`🟢 4ms` / `🔴 Offline`) for PostgreSQL, MySQL, Redis, MongoDB, and SQLite databases.
+- **Root CA & Windows Certificate Store Trust Fix (`root-ca.service.ts`)**:
+  - Fixed Windows CryptoAPI `Import-Certificate` non-interactive error (`UI is not allowed in this operation`) by supporting interactive execution and `certutil -user -addstore` fallback.
+

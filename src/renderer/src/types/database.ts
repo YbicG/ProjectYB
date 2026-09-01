@@ -6,6 +6,7 @@ export interface DatabaseConnection {
   engine: DatabaseEngine;
   connectionString?: string;
   filePath?: string;
+  maskedUri?: string;
   host?: string;
   port?: number;
   database?: string;
@@ -13,6 +14,7 @@ export interface DatabaseConnection {
   password?: string;
   projectId?: string;
   projectName?: string;
+  envSource?: string;
   source: 'auto-discovered' | 'manual' | 'docker';
   createdAt: number;
 }
@@ -34,7 +36,7 @@ export interface TableColumn {
 
 export interface TableSchema {
   name: string;
-  type: 'table' | 'view';
+  type: 'table' | 'view' | 'collection';
   columns: TableColumn[];
   rowCount?: number;
 }

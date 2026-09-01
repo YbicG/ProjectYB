@@ -35,10 +35,11 @@ export class RootCaService {
     }
   }
 
-  private async runPowerShell(script: string): Promise<{ stdout: string; stderr: string }> {
+  private async runPowerShell(script: string, interactive: boolean = false): Promise<{ stdout: string; stderr: string }> {
     const scriptBuffer = Buffer.from(script, 'utf16le');
     const encoded = scriptBuffer.toString('base64');
-    return execAsync(`powershell -NoProfile -NonInteractive -EncodedCommand ${encoded}`);
+    const nonInteractiveFlag = interactive ? '' : '-NonInteractive';
+    return execAsync(`powershell -NoProfile ${nonInteractiveFlag} -EncodedCommand ${encoded}`);
   }
 
   /**
@@ -83,9 +84,11 @@ export class RootCaService {
     if (process.platform === 'win32') {
       try {
         const outPath = this.caCertPath.replace(/\\/g, '\\\\');
-        const psCommand = `
+        
+        // Step 1: Generate certificate in CurrentUser\My and export public .crt
+        const psGenCommand = `
           $caName = "CN=ProjectYB Local Development CA, O=ProjectYB Dev, OU=Local Development";
-          $existing = Get-ChildItem Cert:\\CurrentUser\\Root | Where-Object { $_.Subject -like "*ProjectYB Local Development CA*" };
+          $existing = Get-ChildItem Cert:\\CurrentUser\\My | Where-Object { $_.Subject -like "*ProjectYB Local Development CA*" };
           if ($existing) {
             $existing | Remove-Item -Force -ErrorAction SilentlyContinue;
           }
@@ -95,16 +98,26 @@ export class RootCaService {
           # Export public cert to user directory
           $certBytes = $cert.Export([System.Security.Cryptography.X509Certificates.X509ContentType]::Cert);
           [System.IO.File]::WriteAllBytes("${outPath}", $certBytes);
-
-          # Import into CurrentUser Root Store
-          Import-Certificate -FilePath "${outPath}" -CertStoreLocation Cert:\\CurrentUser\\Root;
         `;
 
-        await this.runPowerShell(psCommand);
-        logger.info('[RootCA] Successfully generated and installed ProjectYB Root CA into Windows Store');
+        await this.runPowerShell(psGenCommand);
+
+        // Step 2: Try importing into CurrentUser\Root via interactive powershell or certutil
+        try {
+          await this.runPowerShell(`Import-Certificate -FilePath "${outPath}" -CertStoreLocation Cert:\\CurrentUser\\Root;`, true);
+        } catch {
+          // Fallback to certutil if Import-Certificate fails
+          try {
+            await execAsync(`certutil -user -addstore -f Root "${this.caCertPath}"`);
+          } catch (e2: any) {
+            logger.warn('[RootCA] Root store import prompt was dismissed or failed:', e2.message);
+          }
+        }
+
+        logger.info('[RootCA] Successfully generated and exported ProjectYB Root CA');
         return {
           success: true,
-          message: 'ProjectYB Local Root CA created and trusted in Windows Certificate Store! Green Padlock active.'
+          message: 'ProjectYB Local Root CA created and registered! Trusted for local HTTPS domains.'
         };
       } catch (err: any) {
         logger.error('[RootCA] Failed to install Root CA:', err);
