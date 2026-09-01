@@ -19,6 +19,7 @@ import { useSearchStore } from '@renderer/stores/useSearchStore';
 import { useThemeStore } from '@renderer/stores/useThemeStore';
 import { useWorkspaceProjects } from '@renderer/hooks/useWorkspaceProjects';
 import { NotificationCenter } from '../../shared/NotificationCenter';
+import { ProcessActivityRadarModal } from '../../overview/ProcessActivityRadarModal';
 import { Button } from '../../ui/button';
 import { Badge } from '../../ui/badge';
 import { cn } from '@renderer/lib/utils';
@@ -32,6 +33,7 @@ export const ModernHeader: React.FC = () => {
   const { ports } = usePortStore();
   const { setModalOpen: setSearchModalOpen } = useSearchStore();
   const { setShortcutsModalOpen } = useThemeStore();
+  const [radarOpen, setRadarOpen] = React.useState(false);
 
   const selectedProject = projects.find((p) => p.id === selectedProjectId);
 
@@ -114,11 +116,15 @@ export const ModernHeader: React.FC = () => {
       {/* ── Right: Live Micro-Telemetry HUD & Notification Center ── */}
       <div className="flex items-center gap-2 sm:gap-3 shrink-0">
         {/* Real-time Telemetry Pill */}
-        <div className="hidden lg:flex items-center gap-3 px-3 py-1 rounded-lg bg-zinc-900/70 border border-zinc-800 font-mono text-[11px]">
+        <div
+          onClick={() => setRadarOpen(true)}
+          className="hidden lg:flex items-center gap-3 px-3 py-1 rounded-lg bg-zinc-900/70 border border-zinc-800 hover:border-zinc-700 font-mono text-[11px] cursor-pointer transition-colors group"
+          title="Click to open Developer Process & Port Activity Radar"
+        >
           {/* CPU Gauge */}
           <div className="flex items-center gap-1.5" title={`CPU: ${cpuUsage}%`}>
             <Cpu className={cn('w-3.5 h-3.5', cpuUsage > 80 ? 'text-rose-400' : 'text-violet-400')} />
-            <span className="text-zinc-300">{cpuUsage}%</span>
+            <span className="text-zinc-300 group-hover:text-white transition-colors">{cpuUsage}%</span>
           </div>
 
           <span className="text-zinc-700">|</span>
@@ -126,7 +132,7 @@ export const ModernHeader: React.FC = () => {
           {/* RAM Gauge */}
           <div className="flex items-center gap-1.5" title={`RAM: ${ramUsage}%`}>
             <Activity className={cn('w-3.5 h-3.5', ramUsage > 85 ? 'text-rose-400' : 'text-cyan-400')} />
-            <span className="text-zinc-300">{ramUsage}%</span>
+            <span className="text-zinc-300 group-hover:text-white transition-colors">{ramUsage}%</span>
           </div>
 
           <span className="text-zinc-700">|</span>
@@ -134,7 +140,7 @@ export const ModernHeader: React.FC = () => {
           {/* Services Active */}
           <div className="flex items-center gap-1.5" title={`${runningServices.length} Active Services`}>
             <Server className="w-3.5 h-3.5 text-emerald-400" />
-            <span className="text-zinc-300">{runningServices.length}</span>
+            <span className="text-zinc-300 group-hover:text-white transition-colors">{runningServices.length}</span>
           </div>
 
           <span className="text-zinc-700">|</span>
@@ -142,7 +148,7 @@ export const ModernHeader: React.FC = () => {
           {/* Open Ports */}
           <div className="flex items-center gap-1.5" title={`${ports.length} Open Ports`}>
             <Radio className="w-3.5 h-3.5 text-amber-400" />
-            <span className="text-zinc-300">{ports.length}</span>
+            <span className="text-zinc-300 group-hover:text-white transition-colors">{ports.length}</span>
           </div>
         </div>
 
@@ -160,6 +166,9 @@ export const ModernHeader: React.FC = () => {
         {/* Notifications */}
         <NotificationCenter />
       </div>
+
+      {/* Developer Process & Port Activity Radar Modal */}
+      <ProcessActivityRadarModal open={radarOpen} onOpenChange={setRadarOpen} />
     </header>
   );
 };

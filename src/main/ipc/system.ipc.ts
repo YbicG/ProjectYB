@@ -14,6 +14,7 @@ export function setupSystemIpc(mainWindow: BrowserWindow) {
   });
   
   ipcMain.handle('system:getProcessStats', (_, pids: number[]) => systemMonitor.getProcessStats(pids));
+  ipcMain.handle('system:getDeveloperProcesses', () => systemMonitor.getAllDeveloperProcesses());
 
   ipcMain.handle('system:showNotification', (_, { title, body }: { title: string; body: string }) => {
     if (Notification.isSupported()) {

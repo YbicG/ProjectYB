@@ -84,10 +84,10 @@ export const DependenciesPage: React.FC = () => {
             variant="outline"
             size="icon"
             className="h-8 w-8 border-zinc-800"
-            onClick={() => currentProject && loadAllForProject(currentProject.path)}
-            title="Refresh dependencies"
+            onClick={() => currentProject && loadAllForProject(currentProject.path, true)}
+            title="Force refresh dependencies and security audit"
           >
-            <RefreshCw className="w-3.5 h-3.5" />
+            <RefreshCw className={cn('w-3.5 h-3.5', (useDependencyStore.getState().isLoadingOutdated || useDependencyStore.getState().isLoadingAudit) && 'animate-spin')} />
           </Button>
         </div>
       </div>

@@ -43,29 +43,59 @@ const BUILD_DIRS = ['dist', 'build', 'out', 'target', '.next', '.nuxt', '.output
 const CACHE_DIRS = ['.turbo', '.vite', '.cache', '__pycache__', '.parcel-cache', '.eslintcache', '.pytest_cache', '.swc', '.rpt2_cache'];
 
 class DiskCleanerService {
+  private isCancelled = false;
+  private dirCache = new Map<string, { mtime: number; size: number }>();
+
+  cancelScan() {
+    this.isCancelled = true;
+  }
+
   /**
-   * Recursively calculate folder size
+   * Ultra-fast directory size calculator with mtime caching and breadth-first worker queue
    */
-  async getDirectorySize(dirPath: string, maxDepth: number = 6, currentDepth: number = 0): Promise<number> {
-    if (currentDepth > maxDepth) return 0;
-    let total = 0;
+  async getDirectorySize(dirPath: string, maxDepth: number = 6): Promise<number> {
+    if (this.isCancelled) return 0;
 
     try {
-      const entries = await fs.promises.readdir(dirPath, { withFileTypes: true });
-      for (const entry of entries) {
-        const fullPath = path.join(dirPath, entry.name);
-        try {
-          if (entry.isDirectory()) {
-            total += await this.getDirectorySize(fullPath, maxDepth, currentDepth + 1);
-          } else if (entry.isFile()) {
-            const stat = await fs.promises.stat(fullPath);
-            total += stat.size;
-          }
-        } catch {}
+      const rootStat = await fs.promises.stat(dirPath);
+      const cached = this.dirCache.get(dirPath);
+      if (cached && cached.mtime === rootStat.mtimeMs) {
+        return cached.size;
       }
-    } catch {}
 
-    return total;
+      let total = 0;
+      const queue: Array<{ p: string; depth: number }> = [{ p: dirPath, depth: 0 }];
+
+      while (queue.length > 0) {
+        if (this.isCancelled) return 0;
+        const currentBatch = queue.splice(0, 32);
+
+        await Promise.all(
+          currentBatch.map(async ({ p, depth }) => {
+            if (depth > maxDepth) return;
+            try {
+              const entries = await fs.promises.readdir(p, { withFileTypes: true });
+              for (const entry of entries) {
+                const full = path.join(p, entry.name);
+                if (entry.isDirectory()) {
+                  queue.push({ p: full, depth: depth + 1 });
+                } else if (entry.isFile()) {
+                  try {
+                    const st = await fs.promises.stat(full);
+                    total += st.size;
+                  } catch {}
+                }
+              }
+            } catch {}
+          })
+        );
+      }
+
+      this.dirCache.set(dirPath, { mtime: rootStat.mtimeMs, size: total });
+      return total;
+    } catch {
+      return 0;
+    }
   }
 
   /**
@@ -82,39 +112,44 @@ class DiskCleanerService {
       if (fs.existsSync(projectPath)) {
         const topEntries = await fs.promises.readdir(projectPath, { withFileTypes: true });
 
-        for (const entry of topEntries) {
-          const fullPath = path.join(projectPath, entry.name);
-          try {
-            if (entry.isDirectory()) {
-              const name = entry.name;
-              let cat: CleanCategory | null = null;
+        // Run category checks in parallel
+        await Promise.all(
+          topEntries.map(async (entry) => {
+            if (this.isCancelled) return;
+            const fullPath = path.join(projectPath, entry.name);
 
-              if (DEPENDENCY_DIRS.includes(name)) cat = 'dependencies';
-              else if (BUILD_DIRS.includes(name)) cat = 'build';
-              else if (CACHE_DIRS.includes(name)) cat = 'caches';
+            try {
+              if (entry.isDirectory()) {
+                const name = entry.name;
+                let cat: CleanCategory | null = null;
 
-              const dirSize = await this.getDirectorySize(fullPath);
-              totalBytes += dirSize;
+                if (DEPENDENCY_DIRS.includes(name)) cat = 'dependencies';
+                else if (BUILD_DIRS.includes(name)) cat = 'build';
+                else if (CACHE_DIRS.includes(name)) cat = 'caches';
 
-              if (cat) {
-                if (cat === 'dependencies') dependenciesBytes += dirSize;
-                else if (cat === 'build') buildBytes += dirSize;
-                else if (cat === 'caches') cachesBytes += dirSize;
+                if (cat) {
+                  const dirSize = await this.getDirectorySize(fullPath);
+                  totalBytes += dirSize;
 
-                items.push({
-                  name,
-                  relativePath: name,
-                  fullPath,
-                  category: cat,
-                  bytes: dirSize
-                });
+                  if (cat === 'dependencies') dependenciesBytes += dirSize;
+                  else if (cat === 'build') buildBytes += dirSize;
+                  else if (cat === 'caches') cachesBytes += dirSize;
+
+                  items.push({
+                    name,
+                    relativePath: name,
+                    fullPath,
+                    category: cat,
+                    bytes: dirSize
+                  });
+                }
+              } else if (entry.isFile()) {
+                const stat = await fs.promises.stat(fullPath);
+                totalBytes += stat.size;
               }
-            } else if (entry.isFile()) {
-              const stat = await fs.promises.stat(fullPath);
-              totalBytes += stat.size;
-            }
-          } catch {}
-        }
+            } catch {}
+          })
+        );
       }
     } catch (err) {
       logger.error(`Failed to analyze disk usage for ${projectPath}`, err);
@@ -138,14 +173,28 @@ class DiskCleanerService {
   }
 
   /**
-   * Analyze multiple projects in batch
+   * Analyze multiple projects in batch with progressive streaming
    */
-  async analyzeProjects(projects: Array<{ id: string; name: string; path: string }>): Promise<GlobalDiskSummary> {
+  async analyzeProjects(
+    projects: Array<{ id: string; name: string; path: string }>,
+    onProgress?: (usage: ProjectDiskUsage) => void
+  ): Promise<GlobalDiskSummary> {
+    this.isCancelled = false;
     const usages: ProjectDiskUsage[] = [];
-    const chunkSize = 4;
+    const chunkSize = 6;
+
     for (let i = 0; i < projects.length; i += chunkSize) {
+      if (this.isCancelled) break;
       const chunk = projects.slice(i, i + chunkSize);
-      const results = await Promise.all(chunk.map((p) => this.analyzeProject(p.id, p.name, p.path)));
+      const results = await Promise.all(
+        chunk.map(async (p) => {
+          const res = await this.analyzeProject(p.id, p.name, p.path);
+          if (onProgress && !this.isCancelled) {
+            onProgress(res);
+          }
+          return res;
+        })
+      );
       usages.push(...results);
     }
 
@@ -197,6 +246,7 @@ class DiskCleanerService {
           try {
             const size = await this.getDirectorySize(targetPath);
             await fs.promises.rm(targetPath, { recursive: true, force: true });
+            this.dirCache.delete(targetPath);
             freedBytes += size;
             cleanedPaths.push(name);
           } catch (delErr) {

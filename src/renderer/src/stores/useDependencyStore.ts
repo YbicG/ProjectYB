@@ -17,10 +17,10 @@ interface DependencyState {
   selectedUpgradePackages: string[];
 
   setSelectedProject: (projectId: string | null) => void;
-  loadAllForProject: (projectPath: string) => Promise<void>;
+  loadAllForProject: (projectPath: string, force?: boolean) => Promise<void>;
   loadInstalled: (projectPath: string) => Promise<void>;
-  loadOutdated: (projectPath: string) => Promise<void>;
-  loadAudit: (projectPath: string) => Promise<void>;
+  loadOutdated: (projectPath: string, force?: boolean) => Promise<void>;
+  loadAudit: (projectPath: string, force?: boolean) => Promise<void>;
   searchPackages: (query: string) => Promise<void>;
   upgradePackage: (projectPath: string, packageName: string, targetVersion?: string, isDev?: boolean) => Promise<boolean>;
   upgradeSelectedPackages: (projectPath: string) => Promise<void>;
@@ -31,6 +31,11 @@ interface DependencyState {
   selectAllUpgrades: () => void;
   deselectAllUpgrades: () => void;
 }
+
+// In-memory cache for outdated packages and security audits (5 min TTL)
+const outdatedCache = new Map<string, { time: number; data: OutdatedPackage[] }>();
+const auditCache = new Map<string, { time: number; data: AuditSummary | null }>();
+const CACHE_TTL_MS = 5 * 60 * 1000;
 
 export const useDependencyStore = create<DependencyState>((set, get) => ({
   selectedProjectId: null,
@@ -49,13 +54,14 @@ export const useDependencyStore = create<DependencyState>((set, get) => ({
     set({ selectedProjectId: projectId, installedPackages: [], outdatedPackages: [], auditSummary: null, selectedUpgradePackages: [] });
   },
 
-  loadAllForProject: async (projectPath: string) => {
+  loadAllForProject: async (projectPath: string, force = false) => {
     const { loadInstalled, loadOutdated, loadAudit } = get();
-    await Promise.all([
-      loadInstalled(projectPath),
-      loadOutdated(projectPath),
-      loadAudit(projectPath)
-    ]);
+    // 1. Instant local manifest load (< 5ms)
+    await loadInstalled(projectPath);
+
+    // 2. Load outdated and audit in background or from cache
+    loadOutdated(projectPath, force).catch(() => {});
+    loadAudit(projectPath, force).catch(() => {});
   },
 
   loadInstalled: async (projectPath: string) => {
@@ -71,12 +77,23 @@ export const useDependencyStore = create<DependencyState>((set, get) => ({
     }
   },
 
-  loadOutdated: async (projectPath: string) => {
+  loadOutdated: async (projectPath: string, force = false) => {
     if (!window.api?.dependencies) return;
+
+    if (!force) {
+      const cached = outdatedCache.get(projectPath);
+      if (cached && Date.now() - cached.time < CACHE_TTL_MS) {
+        set({ outdatedPackages: cached.data, selectedUpgradePackages: cached.data.map((p) => p.name) });
+        return;
+      }
+    }
+
     set({ isLoadingOutdated: true });
     try {
       const outdated = await window.api.dependencies.getOutdated(projectPath);
-      set({ outdatedPackages: outdated || [], selectedUpgradePackages: (outdated || []).map(p => p.name) });
+      const data = outdated || [];
+      outdatedCache.set(projectPath, { time: Date.now(), data });
+      set({ outdatedPackages: data, selectedUpgradePackages: data.map((p) => p.name) });
     } catch {
       set({ outdatedPackages: [], selectedUpgradePackages: [] });
     } finally {
@@ -84,12 +101,23 @@ export const useDependencyStore = create<DependencyState>((set, get) => ({
     }
   },
 
-  loadAudit: async (projectPath: string) => {
+  loadAudit: async (projectPath: string, force = false) => {
     if (!window.api?.dependencies) return;
+
+    if (!force) {
+      const cached = auditCache.get(projectPath);
+      if (cached && Date.now() - cached.time < CACHE_TTL_MS) {
+        set({ auditSummary: cached.data });
+        return;
+      }
+    }
+
     set({ isLoadingAudit: true });
     try {
       const summary = await window.api.dependencies.getAudit(projectPath);
-      set({ auditSummary: summary || null });
+      const data = summary || null;
+      auditCache.set(projectPath, { time: Date.now(), data });
+      set({ auditSummary: data });
     } catch {
       set({ auditSummary: null });
     } finally {

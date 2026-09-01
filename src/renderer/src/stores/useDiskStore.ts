@@ -9,14 +9,20 @@ interface DiskState {
   isAnalyzing: boolean;
   isCleaning: boolean;
   activeFilter: 'all' | 'large' | 'reclaimable';
+  analyzedCount: number;
+  totalToAnalyze: number;
+  lastScanTimestamp: number;
 
   setFilter: (filter: 'all' | 'large' | 'reclaimable') => void;
-  analyzeAllProjects: (projects: Array<{ id: string; name: string; path: string }>) => Promise<void>;
+  analyzeAllProjects: (projects: Array<{ id: string; name: string; path: string }>, force?: boolean) => Promise<void>;
+  cancelScan: () => Promise<void>;
   analyzeProject: (projectId: string, projectName: string, projectPath: string) => Promise<ProjectDiskUsage | null>;
   cleanProject: (projectId: string, projectPath: string, categories: CleanCategory[]) => Promise<boolean>;
   cleanAllReclaimable: (categories?: CleanCategory[]) => Promise<void>;
   cleanGlobalCache: (type: 'pnpm' | 'npm' | 'cargo' | 'pip') => Promise<boolean>;
 }
+
+let cleanupProjectListener: (() => void) | null = null;
 
 export const useDiskStore = create<DiskState>((set, get) => ({
   summary: null,
@@ -24,18 +30,109 @@ export const useDiskStore = create<DiskState>((set, get) => ({
   isAnalyzing: false,
   isCleaning: false,
   activeFilter: 'all',
+  analyzedCount: 0,
+  totalToAnalyze: 0,
+  lastScanTimestamp: 0,
 
   setFilter: (activeFilter) => set({ activeFilter }),
 
-  analyzeAllProjects: async (projects) => {
+  cancelScan: async () => {
+    if (window.api?.disk?.cancelScan) {
+      await window.api.disk.cancelScan();
+    }
+    if (cleanupProjectListener) {
+      cleanupProjectListener();
+      cleanupProjectListener = null;
+    }
+    set({ isAnalyzing: false });
+  },
+
+  analyzeAllProjects: async (projects, force = false) => {
     if (!window.api?.disk || projects.length === 0) return;
-    set({ isAnalyzing: true });
+
+    // Cache check: if scanned in last 3 minutes and not forced, keep existing summary
+    const state = get();
+    if (!force && state.summary && state.summary.projects.length === projects.length && Date.now() - state.lastScanTimestamp < 180000) {
+      return;
+    }
+
+    // Cancel any in-flight listener
+    if (cleanupProjectListener) {
+      cleanupProjectListener();
+      cleanupProjectListener = null;
+    }
+
+    // Initialize progressive state
+    set({
+      isAnalyzing: true,
+      analyzedCount: 0,
+      totalToAnalyze: projects.length,
+      summary: state.summary ? state.summary : {
+        totalAnalyzedBytes: 0,
+        totalReclaimableBytes: 0,
+        dependenciesBytes: 0,
+        buildBytes: 0,
+        cachesBytes: 0,
+        projects: []
+      }
+    });
+
+    // Setup progressive stream listener
+    if (window.api.disk.onProjectAnalyzed) {
+      cleanupProjectListener = window.api.disk.onProjectAnalyzed((projectUsage) => {
+        set((s) => {
+          const existingProjects = s.summary?.projects || [];
+          const idx = existingProjects.findIndex((p) => p.projectId === projectUsage.projectId);
+          let updatedProjects: ProjectDiskUsage[];
+
+          if (idx >= 0) {
+            updatedProjects = [...existingProjects];
+            updatedProjects[idx] = projectUsage;
+          } else {
+            updatedProjects = [...existingProjects, projectUsage];
+          }
+
+          let totalAnalyzed = 0;
+          let totalReclaimable = 0;
+          let depBytes = 0;
+          let bldBytes = 0;
+          let cchBytes = 0;
+
+          for (const u of updatedProjects) {
+            totalAnalyzed += u.totalBytes;
+            totalReclaimable += u.reclaimableBytes;
+            depBytes += u.dependenciesBytes;
+            bldBytes += u.buildBytes;
+            cchBytes += u.cachesBytes;
+          }
+
+          return {
+            analyzedCount: s.analyzedCount + 1,
+            summary: {
+              totalAnalyzedBytes: totalAnalyzed,
+              totalReclaimableBytes: totalReclaimable,
+              dependenciesBytes: depBytes,
+              buildBytes: bldBytes,
+              cachesBytes: cchBytes,
+              projects: updatedProjects
+            }
+          };
+        });
+      });
+    }
+
     try {
       const summary = await window.api.disk.analyzeProjects(projects);
-      set({ summary });
+      if (summary) {
+        set({ summary, lastScanTimestamp: Date.now() });
+      }
     } catch {
-      set({ summary: null });
+      // Keep existing partial summary if aborted
     } finally {
+      if (cleanupProjectListener) {
+        cleanupProjectListener();
+        cleanupProjectListener = null;
+      }
       set({ isAnalyzing: false });
     }
   },

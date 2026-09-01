@@ -51,11 +51,13 @@ import { useProxyStore } from '@renderer/stores/useProxyStore';
 import { useSyncStore } from '@renderer/stores/useSyncStore';
 import { useMockServerStore } from '@renderer/stores/useMockServerStore';
 import { useMobileStore } from '@renderer/stores/useMobileStore';
+import { ProcessActivityRadarModal } from '../overview/ProcessActivityRadarModal';
 import { toast } from 'sonner';
 
 export const CommandPalette: React.FC = () => {
   const { setActiveTab, commandPaletteOpen, setCommandPaletteOpen } = useAppStore();
   const { setModalOpen: setMobileModalOpen } = useMobileStore();
+  const [radarOpen, setRadarOpen] = useState(false);
   const { selectProject } = useProjectStore();
   const { projects, activeWorkspace, isWorkspaceScoped, setActiveWorkspace } = useWorkspaceProjects();
   const { createTerminal } = useTerminalStore();
@@ -247,6 +249,10 @@ export const CommandPalette: React.FC = () => {
             <FileText className="mr-2 h-4 w-4 text-violet-400" />
             Open Global Quick Scratchpad (Ctrl+N)
           </CommandItem>
+          <CommandItem onSelect={() => runCommand(() => setRadarOpen(true))}>
+            <Activity className="mr-2 h-4 w-4 text-rose-400" />
+            Developer Process & Port Activity Radar (Task Manager)...
+          </CommandItem>
           <CommandItem onSelect={() => runCommand(() => setHealthModalOpen(true))}>
             <Activity className="mr-2 h-4 w-4 text-cyan-400" />
             View Project Health & Activity Radar
@@ -269,6 +275,8 @@ export const CommandPalette: React.FC = () => {
           </CommandItem>
         </CommandGroup>
       </CommandList>
+
+      <ProcessActivityRadarModal open={radarOpen} onOpenChange={setRadarOpen} />
     </CommandDialog>
   );
 };

@@ -95,6 +95,7 @@ export interface IElectronAPI {
   system: {
     getMetrics(): Promise<SystemMetrics>
     getProcessStats(pids: number[]): Promise<ProcessStats[]>
+    getDeveloperProcesses(): Promise<any[]>
     showNotification(title: string, body: string): Promise<boolean>
     onMetrics(callback: (metrics: SystemMetrics) => void): () => void
     onServiceStats(callback: (stats: Record<string, { cpu: number; memory: number }>) => void): () => void
@@ -155,6 +156,8 @@ export interface IElectronAPI {
   disk: {
     analyzeProject(projectId: string, projectName: string, projectPath: string): Promise<any>
     analyzeProjects(projects: Array<{ id: string; name: string; path: string }>): Promise<any>
+    cancelScan(): Promise<boolean>
+    onProjectAnalyzed(callback: (projectUsage: any) => void): () => void
     cleanProject(projectPath: string, categories: string[]): Promise<{ success: boolean; freedBytes: number; cleanedPaths: string[] }>
     cleanGlobalCache(type: 'pnpm' | 'npm' | 'cargo' | 'pip'): Promise<{ success: boolean; output: string }>
   }

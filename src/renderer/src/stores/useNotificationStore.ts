@@ -87,12 +87,30 @@ const DEFAULT_SETTINGS: NotificationSettings = {
   }
 };
 
-// Pure Web Audio API tone synthesizer (0 external files needed)
+// Pure Web Audio API tone synthesizer (reusable singleton AudioContext, zero leaks)
+let sharedAudioCtx: AudioContext | null = null;
+
+function getSharedAudioContext(): AudioContext | null {
+  try {
+    if (!sharedAudioCtx || sharedAudioCtx.state === 'closed') {
+      const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
+      if (AudioCtx) {
+        sharedAudioCtx = new AudioCtx();
+      }
+    }
+    if (sharedAudioCtx && sharedAudioCtx.state === 'suspended') {
+      sharedAudioCtx.resume().catch(() => {});
+    }
+    return sharedAudioCtx;
+  } catch {
+    return null;
+  }
+}
+
 function playNotificationSound(type: NotificationType = 'info') {
   try {
-    const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
-    if (!AudioCtx) return;
-    const ctx = new AudioCtx();
+    const ctx = getSharedAudioContext();
+    if (!ctx) return;
     const now = ctx.currentTime;
     const osc = ctx.createOscillator();
     const gain = ctx.createGain();
@@ -222,6 +240,12 @@ export const useNotificationStore = create<NotificationState>((set, get) => ({
     // Check if this specific category is enabled
     if (settings.categories[category] === false) return;
 
+    // Deduplicate rapid identical notifications within 1.5 seconds
+    const existing = get().notifications[0];
+    if (existing && existing.title === title && existing.message === message && Date.now() - existing.time < 1500) {
+      return;
+    }
+
     const newNotification: AppNotification = {
       id: `${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
       title,
@@ -233,9 +257,9 @@ export const useNotificationStore = create<NotificationState>((set, get) => ({
       actionTab
     };
 
-    // 1. Add to In-App History (limit to 100 items)
+    // 1. Add to In-App History (limit to 50 items to keep memory ultralight)
     set((state) => ({
-      notifications: [newNotification, ...state.notifications].slice(0, 100)
+      notifications: [newNotification, ...state.notifications].slice(0, 50)
     }));
 
     // 2. Play sound if configured

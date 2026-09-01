@@ -1,11 +1,23 @@
 import si from 'systeminformation';
 import { terminalService } from './terminal.service';
 
+export interface DeveloperProcessInfo {
+  pid: number;
+  parentPid: number;
+  name: string;
+  command: string;
+  cpu: number;
+  memoryMb: number;
+  terminalId?: string;
+  terminalTitle?: string;
+}
+
 class SystemMonitor {
   private intervalId: NodeJS.Timeout | null = null;
   private isProcessing = false;
+  private lastProcCheckTime = 0;
 
-  startMonitoring(mainWindow: any, intervalMs: number = 2000) {
+  startMonitoring(mainWindow: any) {
     if (this.intervalId) this.stopMonitoring();
 
     this.intervalId = setInterval(async () => {
@@ -18,17 +30,28 @@ class SystemMonitor {
           return;
         }
 
+        // Adaptive polling: if minimized or blurred, reduce frequency and skip heavy process scans
+        const isMinimized = typeof mainWindow.isMinimized === 'function' && mainWindow.isMinimized();
+
         const terminals = terminalService.getAllTerminals();
         const hasTerminals = terminals.length > 0;
+        const now = Date.now();
+
+        // Only scan processes every 4 seconds when focused, or skip if minimized
+        const shouldScanProcesses = hasTerminals && !isMinimized && (now - this.lastProcCheckTime > 3800);
 
         const promises: [Promise<any>, Promise<any>, Promise<any>, Promise<any>] = [
           si.currentLoad(),
           si.mem(),
           si.networkStats(),
-          hasTerminals ? si.processes() : Promise.resolve(null)
+          shouldScanProcesses ? si.processes() : Promise.resolve(null)
         ];
 
         const [cpu, mem, network, processesData] = await Promise.all(promises);
+
+        if (shouldScanProcesses) {
+          this.lastProcCheckTime = now;
+        }
 
         const rx = Array.isArray(network) ? network.reduce((acc, n) => acc + (n.rx_sec || 0), 0) : 0;
         const tx = Array.isArray(network) ? network.reduce((acc, n) => acc + (n.tx_sec || 0), 0) : 0;
@@ -98,7 +121,63 @@ class SystemMonitor {
       } finally {
         this.isProcessing = false;
       }
-    }, intervalMs);
+    }, 2500);
+  }
+
+  async getAllDeveloperProcesses(): Promise<DeveloperProcessInfo[]> {
+    try {
+      const terminals = terminalService.getAllTerminals();
+      const termMap = new Map(terminals.map((t) => [t.pid, t]));
+
+      const processesData = await si.processes();
+      if (!processesData || !Array.isArray(processesData.list)) return [];
+
+      const procList = processesData.list;
+      const childrenMap = new Map<number, number[]>();
+      const procByPid = new Map<number, any>();
+
+      for (const p of procList) {
+        procByPid.set(p.pid, p);
+        if (!childrenMap.has(p.parentPid)) childrenMap.set(p.parentPid, []);
+        childrenMap.get(p.parentPid)!.push(p.pid);
+      }
+
+      const results: DeveloperProcessInfo[] = [];
+
+      for (const [pid, term] of termMap) {
+        const queue = [pid];
+        const visited = new Set<number>();
+
+        while (queue.length > 0) {
+          const curr = queue.shift()!;
+          if (visited.has(curr)) continue;
+          visited.add(curr);
+
+          const p = procByPid.get(curr);
+          if (p) {
+            results.push({
+              pid: p.pid,
+              parentPid: p.parentPid,
+              name: p.name || 'node',
+              command: p.command || '',
+              cpu: Math.round((p.cpu || 0) * 10) / 10,
+              memoryMb: Math.round((p.memRss || 0) / 1024),
+              terminalId: term.id,
+              terminalTitle: term.name || term.projectName || 'Terminal'
+            });
+          }
+
+          const children = childrenMap.get(curr);
+          if (children) {
+            for (const c of children) queue.push(c);
+          }
+        }
+      }
+
+      return results;
+    } catch {
+      return [];
+    }
   }
 
   async getProcessStats(pids: number[]) {

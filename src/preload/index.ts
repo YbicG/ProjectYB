@@ -118,6 +118,7 @@ const api = {
   system: {
     getMetrics: () => ipcRenderer.invoke('system:getMetrics'),
     getProcessStats: (pids: number[]) => ipcRenderer.invoke('system:getProcessStats', pids),
+    getDeveloperProcesses: () => ipcRenderer.invoke('system:getDeveloperProcesses'),
     showNotification: (title: string, body: string) =>
       ipcRenderer.invoke('system:showNotification', { title, body }),
     onMetrics: (callback: (metrics: any) => void) => {
@@ -216,6 +217,14 @@ const api = {
       ipcRenderer.invoke('disk:analyzeProject', projectId, projectName, projectPath),
     analyzeProjects: (projects: Array<{ id: string; name: string; path: string }>) =>
       ipcRenderer.invoke('disk:analyzeProjects', projects),
+    cancelScan: () => ipcRenderer.invoke('disk:cancelScan'),
+    onProjectAnalyzed: (callback: (projectUsage: any) => void) => {
+      const handler = (_event: any, data: any) => callback(data);
+      ipcRenderer.on('disk:project-analyzed', handler);
+      return () => {
+        ipcRenderer.removeListener('disk:project-analyzed', handler);
+      };
+    },
     cleanProject: (projectPath: string, categories: string[]) =>
       ipcRenderer.invoke('disk:cleanProject', projectPath, categories),
     cleanGlobalCache: (type: 'pnpm' | 'npm' | 'cargo' | 'pip') =>

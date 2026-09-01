@@ -218,16 +218,17 @@ export const WorkspaceSelector: React.FC = () => {
           </DropdownMenuContent>
         </DropdownMenu>
 
-        {/* 1-Click Launch Active Stack Button */}
+        {/* 1-Click Launch Active Stack Button (Compact Icon) */}
         {activeWorkspace && activeWorkspace.services?.length > 0 && (
           <Button
-            size="sm"
+            size="icon"
             className={cn(
-              'h-8 text-xs px-2.5 gap-1.5 shadow-md active:scale-95 transition-all font-semibold',
+              'h-8 w-8 shrink-0 shadow-md active:scale-95 transition-all',
               isRunning
                 ? 'bg-rose-500/20 border border-rose-500/30 hover:bg-rose-500/30 text-rose-300'
                 : 'bg-violet-600 hover:bg-violet-500 text-white'
             )}
+            title={isRunning ? `Stop Workspace Stack (${activeWorkspace.name})` : `Boot Workspace Stack (${activeWorkspace.name})`}
             onClick={() => {
               if (isRunning) {
                 stopWorkspace(activeWorkspace);
@@ -237,13 +238,9 @@ export const WorkspaceSelector: React.FC = () => {
             }}
           >
             {isRunning ? (
-              <>
-                <Square className="w-3 h-3" /> Stop Stack
-              </>
+              <Square className="w-3.5 h-3.5" />
             ) : (
-              <>
-                <Play className="w-3 h-3" /> Boot Stack
-              </>
+              <Play className="w-3.5 h-3.5 fill-current" />
             )}
           </Button>
         )}

@@ -64,6 +64,21 @@ export const OptimizerPage: React.FC = () => {
         </div>
 
         <div className="flex items-center gap-2">
+          {isAnalyzing && (
+            <div className="flex items-center gap-2 px-3 py-1 bg-zinc-900 border border-zinc-800 rounded-lg text-xs font-mono text-amber-400">
+              <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+              <span>Analyzing storage ({useDiskStore.getState().analyzedCount}/{useDiskStore.getState().totalToAnalyze || projects.length})...</span>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => useDiskStore.getState().cancelScan()}
+                className="h-5 px-1.5 text-[10px] text-rose-400 hover:text-rose-300 hover:bg-rose-950/40 ml-1"
+              >
+                Stop
+              </Button>
+            </div>
+          )}
+
           {summary && summary.totalReclaimableBytes > 0 && (
             <Button
               size="sm"
@@ -81,8 +96,8 @@ export const OptimizerPage: React.FC = () => {
             size="icon"
             className="h-8 w-8 border-zinc-800"
             disabled={isAnalyzing}
-            onClick={() => analyzeAllProjects(projects.map(p => ({ id: p.id, name: p.name, path: p.path })))}
-            title="Re-analyze all projects"
+            onClick={() => analyzeAllProjects(projects.map(p => ({ id: p.id, name: p.name, path: p.path })), true)}
+            title="Force re-scan all projects"
           >
             <RefreshCw className={cn('w-3.5 h-3.5', isAnalyzing && 'animate-spin')} />
           </Button>

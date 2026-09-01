@@ -6,9 +6,18 @@ export function setupDiskIpc() {
     diskCleanerService.analyzeProject(projectId, projectName, projectPath)
   );
 
-  ipcMain.handle('disk:analyzeProjects', (_, projects: Array<{ id: string; name: string; path: string }>) =>
-    diskCleanerService.analyzeProjects(projects)
+  ipcMain.handle('disk:analyzeProjects', (event, projects: Array<{ id: string; name: string; path: string }>) =>
+    diskCleanerService.analyzeProjects(projects, (projectUsage) => {
+      if (event.sender && !event.sender.isDestroyed()) {
+        event.sender.send('disk:project-analyzed', projectUsage);
+      }
+    })
   );
+
+  ipcMain.handle('disk:cancelScan', () => {
+    diskCleanerService.cancelScan();
+    return true;
+  });
 
   ipcMain.handle('disk:cleanProject', (_, projectPath: string, categories: CleanCategory[]) =>
     diskCleanerService.cleanProject(projectPath, categories)
