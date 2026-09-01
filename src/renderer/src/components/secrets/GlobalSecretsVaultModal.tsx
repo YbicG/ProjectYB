@@ -14,6 +14,8 @@ import {
   Shield,
   Lock,
   Layers,
+  Edit2,
+  FileCode,
   CheckCircle2
 } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '../ui/dialog';
@@ -22,7 +24,7 @@ import { Input } from '../ui/input';
 import { Badge } from '../ui/badge';
 import { Label } from '../ui/label';
 import { useSecretVaultStore } from '@renderer/stores/useSecretVaultStore';
-import { SecretCategory, SecretEnvironment } from '@renderer/types/secret';
+import { SecretCategory, SecretEnvironment, SecretVaultItem } from '@renderer/types/secret';
 import { cn } from '@renderer/lib/utils';
 import { toast } from 'sonner';
 
@@ -46,13 +48,18 @@ export const GlobalSecretsVaultModal: React.FC<GlobalSecretsVaultModalProps> = (
     setSearchQuery,
     loadSecrets,
     addSecret,
+    updateSecret,
     deleteSecret,
-    exportVaultToTemplate
+    exportVaultToTemplate,
+    importSecretsFromTemplate
   } = useSecretVaultStore();
 
   const [revealedIds, setRevealedIds] = useState<Record<string, boolean>>({});
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [showAddForm, setShowAddForm] = useState(false);
+  const [showImportForm, setShowImportForm] = useState(false);
+  const [importText, setImportText] = useState('');
+  const [editingSecret, setEditingSecret] = useState<SecretVaultItem | null>(null);
 
   // Add Secret Form State
   const [newKey, setNewKey] = useState('');
@@ -60,6 +67,13 @@ export const GlobalSecretsVaultModal: React.FC<GlobalSecretsVaultModalProps> = (
   const [newCat, setNewCat] = useState<SecretCategory>('ai');
   const [newEnv, setNewEnv] = useState<SecretEnvironment>('all');
   const [newDesc, setNewDesc] = useState('');
+
+  // Edit Secret Form State
+  const [editKey, setEditKey] = useState('');
+  const [editVal, setEditVal] = useState('');
+  const [editCat, setEditCat] = useState<SecretCategory>('ai');
+  const [editEnv, setEditEnv] = useState<SecretEnvironment>('all');
+  const [editDesc, setEditDesc] = useState('');
 
   useEffect(() => {
     if (open && !isLoaded) {
@@ -113,16 +127,78 @@ export const GlobalSecretsVaultModal: React.FC<GlobalSecretsVaultModalProps> = (
     setShowAddForm(false);
   };
 
+  const handleStartEdit = (sec: SecretVaultItem) => {
+    setEditingSecret(sec);
+    setEditKey(sec.key);
+    setEditVal(sec.value);
+    setEditCat(sec.category);
+    setEditEnv(sec.environment);
+    setEditDesc(sec.description || '');
+    setShowAddForm(false);
+    setShowImportForm(false);
+  };
+
+  const handleSaveEdit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingSecret) return;
+    if (!editKey.trim() || !editVal.trim()) {
+      toast.error('Secret key and value are required');
+      return;
+    }
+
+    await updateSecret(editingSecret.id, {
+      key: editKey.trim().toUpperCase().replace(/[^A-Z0-9_]/g, '_'),
+      value: editVal.trim(),
+      category: editCat,
+      environment: editEnv,
+      description: editDesc.trim() || undefined
+    });
+
+    setEditingSecret(null);
+  };
+
   const handleExport = () => {
     const text = exportVaultToTemplate();
     navigator.clipboard.writeText(text);
     toast.success('Exported vault as .env template to clipboard');
   };
 
+  const handleImportTemplate = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!importText.trim()) {
+      toast.error('Please paste .env content to import');
+      return;
+    }
+
+    const count = await importSecretsFromTemplate(importText);
+    if (count > 0) {
+      setImportText('');
+      setShowImportForm(false);
+    }
+  };
+
+  const categoriesList: Array<{ id: string; label: string }> = [
+    { id: 'all', label: 'All' },
+    { id: 'ai', label: 'AI / LLMs' },
+    { id: 'database', label: 'Database' },
+    { id: 'auth', label: 'Auth' },
+    { id: 'cloud', label: 'Cloud' },
+    { id: 'payments', label: 'Payments' },
+    { id: 'devops', label: 'DevOps' },
+    { id: 'custom', label: 'Custom' }
+  ];
+
+  const envsList: Array<{ id: string; label: string }> = [
+    { id: 'all', label: 'All Envs' },
+    { id: 'dev', label: 'Dev' },
+    { id: 'staging', label: 'Staging' },
+    { id: 'prod', label: 'Prod' }
+  ];
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="bg-zinc-950 border-zinc-800 text-zinc-50 max-w-2xl p-5">
-        <DialogHeader className="pb-3 border-b border-zinc-850 flex flex-row items-center justify-between">
+      <DialogContent className="bg-zinc-950 border-zinc-800 text-zinc-50 max-w-3xl p-5 shadow-2xl">
+        <DialogHeader className="pb-3 border-b border-zinc-800 flex flex-row items-center justify-between">
           <div className="space-y-0.5">
             <DialogTitle className="text-sm font-bold flex items-center gap-2 text-zinc-100">
               <Shield className="w-4 h-4 text-violet-400" />
@@ -140,15 +216,32 @@ export const GlobalSecretsVaultModal: React.FC<GlobalSecretsVaultModalProps> = (
             <Button
               variant="outline"
               size="sm"
+              onClick={() => {
+                setShowImportForm(!showImportForm);
+                setShowAddForm(false);
+                setEditingSecret(null);
+              }}
+              className="h-7 text-xs border-zinc-800 hover:bg-zinc-900 text-zinc-300 gap-1"
+              title="Import .env template or key-values"
+            >
+              <Upload className="w-3 h-3 text-cyan-400" /> Import
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
               onClick={handleExport}
               className="h-7 text-xs border-zinc-800 hover:bg-zinc-900 text-zinc-300 gap-1"
               title="Copy all secrets as .env template"
             >
-              <Download className="w-3 h-3 text-zinc-400" /> Export
+              <Download className="w-3 h-3 text-amber-400" /> Export
             </Button>
             <Button
               size="sm"
-              onClick={() => setShowAddForm(!showAddForm)}
+              onClick={() => {
+                setShowAddForm(!showAddForm);
+                setShowImportForm(false);
+                setEditingSecret(null);
+              }}
               className="h-7 text-xs bg-violet-600 hover:bg-violet-500 text-white font-semibold gap-1"
             >
               <Plus className="w-3 h-3" /> {showAddForm ? 'Close' : 'Add Secret'}
@@ -247,33 +340,201 @@ export const GlobalSecretsVaultModal: React.FC<GlobalSecretsVaultModalProps> = (
           </form>
         )}
 
-        {/* Search & Filter Toolbar */}
-        <div className="flex flex-col sm:flex-row items-center justify-between gap-2 pt-1">
-          <div className="relative flex-1 w-full">
-            <Search className="w-3.5 h-3.5 absolute left-2.5 top-2 text-zinc-500" />
-            <Input
-              type="text"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Search secrets by key or description..."
-              className="h-7.5 pl-8 bg-zinc-900 border-zinc-800 text-xs font-mono"
+        {/* Edit Secret Inline Form */}
+        {editingSecret && (
+          <form onSubmit={handleSaveEdit} className="p-3 rounded-lg border border-cyan-500/40 bg-cyan-950/20 space-y-3">
+            <div className="flex items-center justify-between border-b border-cyan-500/20 pb-1.5">
+              <span className="text-xs font-bold text-cyan-300 flex items-center gap-1.5">
+                <Edit2 className="w-3.5 h-3.5" /> Editing Secret: {editingSecret.key}
+              </span>
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                onClick={() => setEditingSecret(null)}
+                className="h-6 text-[11px] text-zinc-400"
+              >
+                Cancel
+              </Button>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div className="space-y-1">
+                <Label className="text-[11px] text-zinc-300">Secret Key Name</Label>
+                <Input
+                  type="text"
+                  value={editKey}
+                  onChange={(e) => setEditKey(e.target.value)}
+                  required
+                  className="bg-zinc-900 border-zinc-800 text-xs font-mono uppercase"
+                />
+              </div>
+              <div className="space-y-1">
+                <Label className="text-[11px] text-zinc-300">Secret Value</Label>
+                <Input
+                  type="text"
+                  value={editVal}
+                  onChange={(e) => setEditVal(e.target.value)}
+                  required
+                  className="bg-zinc-900 border-zinc-800 text-xs font-mono"
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              <div className="space-y-1">
+                <Label className="text-[11px] text-zinc-300">Category</Label>
+                <select
+                  value={editCat}
+                  onChange={(e) => setEditCat(e.target.value as SecretCategory)}
+                  className="w-full h-8 rounded-md bg-zinc-900 border border-zinc-800 px-2 text-xs text-zinc-200 font-mono"
+                >
+                  <option value="ai">AI / LLMs</option>
+                  <option value="database">Database</option>
+                  <option value="auth">Auth & Security</option>
+                  <option value="cloud">Cloud & Hosting</option>
+                  <option value="payments">Payments & Billing</option>
+                  <option value="devops">DevOps & CI</option>
+                  <option value="custom">Custom / Other</option>
+                </select>
+              </div>
+              <div className="space-y-1">
+                <Label className="text-[11px] text-zinc-300">Target Environment</Label>
+                <select
+                  value={editEnv}
+                  onChange={(e) => setEditEnv(e.target.value as SecretEnvironment)}
+                  className="w-full h-8 rounded-md bg-zinc-900 border border-zinc-800 px-2 text-xs text-zinc-200 font-mono"
+                >
+                  <option value="all">All Environments</option>
+                  <option value="dev">Development</option>
+                  <option value="staging">Staging</option>
+                  <option value="prod">Production</option>
+                </select>
+              </div>
+              <div className="space-y-1">
+                <Label className="text-[11px] text-zinc-300">Description (Optional)</Label>
+                <Input
+                  type="text"
+                  value={editDesc}
+                  onChange={(e) => setEditDesc(e.target.value)}
+                  className="bg-zinc-900 border-zinc-800 text-xs"
+                />
+              </div>
+            </div>
+
+            <div className="flex justify-end gap-2 pt-1">
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                onClick={() => setEditingSecret(null)}
+                className="h-7 text-xs text-zinc-400"
+              >
+                Cancel
+              </Button>
+              <Button
+                type="submit"
+                size="sm"
+                className="h-7 text-xs bg-cyan-600 hover:bg-cyan-500 text-white font-semibold"
+              >
+                Update Secret
+              </Button>
+            </div>
+          </form>
+        )}
+
+        {/* Import Template Form */}
+        {showImportForm && (
+          <form onSubmit={handleImportTemplate} className="p-3 rounded-lg border border-cyan-500/30 bg-cyan-950/20 space-y-2.5">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-bold text-cyan-300 flex items-center gap-1.5">
+                <FileCode className="w-3.5 h-3.5" /> Bulk Import .env Template into Vault
+              </span>
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                onClick={() => setShowImportForm(false)}
+                className="h-6 text-[11px] text-zinc-400"
+              >
+                Cancel
+              </Button>
+            </div>
+            <textarea
+              value={importText}
+              onChange={(e) => setImportText(e.target.value)}
+              placeholder="# Paste environment variables or .env template here&#10;OPENAI_API_KEY=sk-proj-...&#10;DATABASE_URL=postgresql://..."
+              rows={4}
+              className="w-full bg-zinc-900 border border-zinc-800 rounded p-2 text-xs font-mono text-zinc-100 placeholder:text-zinc-600 focus:outline-none focus:ring-1 focus:ring-cyan-500 resize-none"
             />
+            <div className="flex justify-end gap-2">
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                onClick={() => setShowImportForm(false)}
+                className="h-7 text-xs text-zinc-400"
+              >
+                Cancel
+              </Button>
+              <Button
+                type="submit"
+                size="sm"
+                className="h-7 text-xs bg-cyan-600 hover:bg-cyan-500 text-white font-semibold"
+              >
+                Import to Vault
+              </Button>
+            </div>
+          </form>
+        )}
+
+        {/* Search & Filter Toolbar */}
+        <div className="space-y-2 pt-1">
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-2">
+            <div className="relative flex-1 w-full">
+              <Search className="w-3.5 h-3.5 absolute left-2.5 top-2 text-zinc-500" />
+              <Input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Search secrets by key or description..."
+                className="h-7.5 pl-8 bg-zinc-900 border-zinc-800 text-xs font-mono"
+              />
+            </div>
+
+            {/* Environment Selector Pills */}
+            <div className="flex items-center gap-1 shrink-0 bg-zinc-900 p-0.5 rounded-lg border border-zinc-800">
+              {envsList.map((env) => (
+                <button
+                  key={env.id}
+                  onClick={() => setFilterEnvironment(env.id)}
+                  className={cn(
+                    'px-2 py-0.5 rounded text-[10px] font-mono transition-colors',
+                    filterEnvironment === env.id
+                      ? 'bg-violet-600 text-white font-semibold shadow-sm'
+                      : 'text-zinc-400 hover:text-zinc-200'
+                  )}
+                >
+                  {env.label}
+                </button>
+              ))}
+            </div>
           </div>
 
           {/* Category Chips */}
           <div className="flex items-center gap-1 overflow-x-auto no-scrollbar py-0.5">
-            {['all', 'ai', 'database', 'auth', 'cloud', 'payments'].map((cat) => (
+            {categoriesList.map((cat) => (
               <button
-                key={cat}
-                onClick={() => setFilterCategory(cat)}
+                key={cat.id}
+                onClick={() => setFilterCategory(cat.id)}
                 className={cn(
-                  'px-2 py-0.5 rounded text-[10px] font-mono capitalize transition-colors',
-                  filterCategory === cat
+                  'px-2 py-0.5 rounded text-[10px] font-mono transition-colors whitespace-nowrap',
+                  filterCategory === cat.id
                     ? 'bg-violet-600 text-white font-semibold'
                     : 'bg-zinc-900 border border-zinc-800 text-zinc-400 hover:text-zinc-200'
                 )}
               >
-                {cat}
+                {cat.label}
               </button>
             ))}
           </div>
@@ -282,7 +543,7 @@ export const GlobalSecretsVaultModal: React.FC<GlobalSecretsVaultModalProps> = (
         {/* Secrets List */}
         <div className="max-h-72 overflow-y-auto space-y-2 font-mono text-xs pr-1">
           {filteredSecrets.length === 0 ? (
-            <div className="p-8 text-center text-zinc-500 text-xs italic bg-zinc-900/20 rounded-lg border border-zinc-855">
+            <div className="p-8 text-center text-zinc-500 text-xs italic bg-zinc-900/20 rounded-lg border border-zinc-800">
               No secrets found in vault matching criteria.
             </div>
           ) : (
@@ -327,6 +588,15 @@ export const GlobalSecretsVaultModal: React.FC<GlobalSecretsVaultModalProps> = (
                   </div>
 
                   <div className="flex items-center gap-1 shrink-0">
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => handleStartEdit(sec)}
+                      className="h-6 w-6 text-zinc-400 hover:text-cyan-300"
+                      title="Edit secret"
+                    >
+                      <Edit2 className="w-3 h-3" />
+                    </Button>
                     <Button
                       variant="ghost"
                       size="icon"

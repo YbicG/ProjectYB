@@ -114,11 +114,14 @@ export const PipelinesPage: React.FC = () => {
 
   const { projects } = useWorkspaceProjects();
   const [selectedPipelineId, setSelectedPipelineId] = useState<string>('');
+  const [expandedStepLogs, setExpandedStepLogs] = useState<Record<string, boolean>>({});
 
   // Builder form state
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
   const [targetProjectId, setTargetProjectId] = useState<string>('');
+  const [executionMode, setExecutionMode] = useState<'sequential' | 'parallel'>('sequential');
+  const [stopOnError, setStopOnError] = useState(true);
   const [steps, setSteps] = useState<PipelineStep[]>([]);
 
   useEffect(() => {
@@ -136,16 +139,27 @@ export const PipelinesPage: React.FC = () => {
       setName(editingPipeline.name);
       setDescription(editingPipeline.description || '');
       setTargetProjectId(editingPipeline.targetProjectId || '');
+      setExecutionMode(editingPipeline.executionMode || 'sequential');
+      setStopOnError(editingPipeline.stopOnError !== false);
       setSteps(editingPipeline.steps || []);
     } else {
       setName('');
       setDescription('');
       setTargetProjectId(projects[0]?.id || '');
+      setExecutionMode('sequential');
+      setStopOnError(true);
       setSteps([]);
     }
   }, [editingPipeline, editorModalOpen]);
 
   const selectedPipeline = pipelines.find((p) => p.id === selectedPipelineId) || pipelines[0];
+
+  const toggleStepLogs = (stepId: string) => {
+    setExpandedStepLogs((prev) => ({
+      ...prev,
+      [stepId]: !prev[stepId]
+    }));
+  };
 
   const handleAddActionBlock = (blockType: RecipeActionBlockType) => {
     const template = ACTION_BLOCK_DEFAULTS[blockType];
@@ -162,6 +176,16 @@ export const PipelinesPage: React.FC = () => {
 
   const handleRemoveStep = (id: string) => {
     setSteps(steps.filter((s) => s.id !== id));
+  };
+
+  const handleMoveStep = (index: number, direction: 'up' | 'down') => {
+    const targetIndex = direction === 'up' ? index - 1 : index + 1;
+    if (targetIndex < 0 || targetIndex >= steps.length) return;
+    const newSteps = [...steps];
+    const temp = newSteps[index];
+    newSteps[index] = newSteps[targetIndex];
+    newSteps[targetIndex] = temp;
+    setSteps(newSteps);
   };
 
   const handleUpdateStep = (id: string, patch: Partial<PipelineStep>) => {
@@ -188,6 +212,8 @@ export const PipelinesPage: React.FC = () => {
       targetProjectId: targetProjectId || undefined,
       targetProjectName: targetProj?.name,
       targetProjectPath: targetProj?.path,
+      executionMode,
+      stopOnError,
       steps,
       createdAt: editingPipeline ? editingPipeline.createdAt : Date.now()
     };
@@ -267,15 +293,22 @@ export const PipelinesPage: React.FC = () => {
                   >
                     <div className="flex items-center justify-between w-full mb-1">
                       <span className="text-xs font-bold text-zinc-200 truncate">{pipe.name}</span>
-                      {isRunning ? (
-                        <Badge className="text-[9px] h-4 bg-violet-950 text-violet-300 border-violet-700 animate-pulse font-mono">
-                          Running
-                        </Badge>
-                      ) : (
-                        <Badge variant="outline" className="text-[9px] h-4 bg-zinc-950 text-zinc-500 border-zinc-800 font-mono">
-                          {pipe.steps.length} steps
-                        </Badge>
-                      )}
+                      <div className="flex items-center gap-1">
+                        {pipe.executionMode === 'parallel' && (
+                          <Badge variant="outline" className="text-[8px] h-3.5 border-cyan-500/40 text-cyan-300 font-mono px-1">
+                            PARALLEL
+                          </Badge>
+                        )}
+                        {isRunning ? (
+                          <Badge className="text-[9px] h-4 bg-violet-950 text-violet-300 border-violet-700 animate-pulse font-mono">
+                            Running
+                          </Badge>
+                        ) : (
+                          <Badge variant="outline" className="text-[9px] h-4 bg-zinc-950 text-zinc-500 border-zinc-800 font-mono">
+                            {pipe.steps.length} steps
+                          </Badge>
+                        )}
+                      </div>
                     </div>
                     {pipe.description && (
                       <p className="text-[11px] text-zinc-500 line-clamp-2">{pipe.description}</p>
@@ -296,6 +329,9 @@ export const PipelinesPage: React.FC = () => {
                 <div>
                   <h2 className="text-sm font-bold text-zinc-100 flex items-center gap-2">
                     {selectedPipeline.name}
+                    <Badge variant="outline" className={cn('text-[9px] font-mono uppercase px-1.5 py-0', selectedPipeline.executionMode === 'parallel' ? 'border-cyan-500/40 text-cyan-300 bg-cyan-950/20' : 'border-zinc-700 text-zinc-400')}>
+                      {selectedPipeline.executionMode || 'sequential'}
+                    </Badge>
                   </h2>
                   <p className="text-xs text-zinc-400 mt-0.5">{selectedPipeline.description}</p>
                 </div>
@@ -336,9 +372,9 @@ export const PipelinesPage: React.FC = () => {
                     <Button
                       size="sm"
                       onClick={handleRunActiveRecipe}
-                      className="h-7 text-xs bg-emerald-600 hover:bg-emerald-700 text-white gap-1.5 px-3"
+                      className="h-7 text-xs bg-emerald-600 hover:bg-emerald-700 text-white gap-1.5 px-3 font-semibold shadow-md shadow-emerald-900/30"
                     >
-                      <Play className="w-3.5 h-3.5" /> Run Recipe
+                      <Play className="w-3.5 h-3.5 fill-current" /> Run Recipe
                     </Button>
                   )}
                 </div>
@@ -351,14 +387,16 @@ export const PipelinesPage: React.FC = () => {
                     const template = step.actionType ? ACTION_BLOCK_DEFAULTS[step.actionType] : ACTION_BLOCK_DEFAULTS.custom_command;
                     const Icon = template.icon;
                     const runLog = activeRun?.stepLogs.find((l) => l.stepId === step.id);
-                    const isStepRunning = activeRun?.status === 'running' && activeRun.currentStepIndex === idx;
+                    const isStepRunning = activeRun?.status === 'running' && (selectedPipeline.executionMode === 'parallel' ? runLog?.status === 'running' : activeRun.currentStepIndex === idx);
                     const isStepSuccess = runLog?.status === 'success';
                     const isStepFailed = runLog?.status === 'failed';
+                    const isStepSkipped = runLog?.status === 'skipped';
+                    const isLogsExpanded = expandedStepLogs[step.id] ?? false;
 
                     return (
                       <div key={step.id || idx} className="relative">
                         {/* Timeline vertical connector */}
-                        {idx < selectedPipeline.steps.length - 1 && (
+                        {idx < selectedPipeline.steps.length - 1 && selectedPipeline.executionMode !== 'parallel' && (
                           <div className="absolute left-6 top-10 bottom-[-16px] w-0.5 bg-zinc-800 z-0" />
                         )}
 
@@ -371,11 +409,13 @@ export const PipelinesPage: React.FC = () => {
                                 ? 'bg-zinc-900/50 border-emerald-800/60'
                                 : isStepFailed
                                   ? 'bg-rose-950/20 border-rose-800/60'
-                                  : 'bg-zinc-900/40 border-zinc-800/80'
+                                  : isStepSkipped
+                                    ? 'bg-zinc-950/40 border-zinc-900 opacity-60'
+                                    : 'bg-zinc-900/40 border-zinc-800/80'
                           )}
                         >
                           <div className="flex items-start justify-between gap-3">
-                            <div className="flex items-start gap-3">
+                            <div className="flex items-start gap-3 min-w-0 flex-1">
                               <div
                                 className={cn(
                                   'p-2 rounded-lg border shrink-0 mt-0.5',
@@ -385,20 +425,24 @@ export const PipelinesPage: React.FC = () => {
                                       ? 'bg-emerald-950/60 border-emerald-700 text-emerald-400'
                                       : isStepFailed
                                         ? 'bg-rose-950/60 border-rose-700 text-rose-400'
-                                        : 'bg-zinc-900 border-zinc-800 text-zinc-400'
+                                        : isStepSkipped
+                                          ? 'bg-zinc-900 border-zinc-800 text-zinc-600'
+                                          : 'bg-zinc-900 border-zinc-800 text-zinc-400'
                                 )}
                               >
                                 {isStepRunning ? (
                                   <RotateCw className="w-4 h-4 animate-spin text-violet-400" />
                                 ) : isStepSuccess ? (
                                   <Check className="w-4 h-4 text-emerald-400" />
+                                ) : isStepFailed ? (
+                                  <AlertTriangle className="w-4 h-4 text-rose-400" />
                                 ) : (
                                   <Icon className="w-4 h-4" />
                                 )}
                               </div>
 
-                              <div>
-                                <div className="flex items-center gap-2">
+                              <div className="min-w-0 flex-1">
+                                <div className="flex items-center gap-2 flex-wrap">
                                   <span className="text-xs font-bold text-zinc-200">
                                     Step {idx + 1}: {step.name}
                                   </span>
@@ -407,15 +451,60 @@ export const PipelinesPage: React.FC = () => {
                                       {step.actionType}
                                     </Badge>
                                   )}
+                                  {step.continueOnError && (
+                                    <Badge variant="outline" className="text-[8px] font-mono border-amber-500/30 text-amber-400 bg-amber-950/20">
+                                      continue on error
+                                    </Badge>
+                                  )}
+                                  {runLog?.status && (
+                                    <Badge
+                                      variant="outline"
+                                      className={cn(
+                                        'text-[9px] font-mono uppercase',
+                                        isStepSuccess
+                                          ? 'border-emerald-500/40 text-emerald-400'
+                                          : isStepFailed
+                                          ? 'border-rose-500/40 text-rose-400'
+                                          : isStepRunning
+                                          ? 'border-violet-500/40 text-violet-300'
+                                          : isStepSkipped
+                                          ? 'border-zinc-800 text-zinc-600'
+                                          : 'border-zinc-800 text-zinc-500'
+                                      )}
+                                    >
+                                      {runLog.status}
+                                    </Badge>
+                                  )}
                                   {runLog?.durationMs ? (
                                     <span className="text-[10px] font-mono text-zinc-500">
                                       ({(runLog.durationMs / 1000).toFixed(2)}s)
                                     </span>
                                   ) : null}
                                 </div>
-                                <div className="mt-1.5 p-2 bg-zinc-950 rounded border border-zinc-800/80 font-mono text-[11px] text-zinc-300">
+
+                                <div className="mt-1.5 p-2 bg-zinc-950 rounded border border-zinc-800/80 font-mono text-[11px] text-zinc-300 truncate">
                                   {step.command}
                                 </div>
+
+                                {/* Step Terminal Output Logs Drawer */}
+                                {runLog && runLog.logs.length > 0 && (
+                                  <div className="mt-2 space-y-1">
+                                    <button
+                                      type="button"
+                                      onClick={() => toggleStepLogs(step.id)}
+                                      className="text-[10px] font-mono text-zinc-400 hover:text-zinc-200 flex items-center gap-1 py-0.5"
+                                    >
+                                      <Terminal className="w-3 h-3 text-violet-400" />
+                                      <span>{isLogsExpanded ? 'Hide' : 'Show'} Terminal Logs ({runLog.logs.length} lines)</span>
+                                    </button>
+
+                                    {isLogsExpanded && (
+                                      <pre className="p-2.5 rounded bg-black/80 border border-zinc-800 font-mono text-[10px] text-zinc-300 max-h-48 overflow-y-auto whitespace-pre-wrap leading-relaxed">
+                                        {runLog.logs.join('\n')}
+                                      </pre>
+                                    )}
+                                  </div>
+                                )}
                               </div>
                             </div>
                           </div>
@@ -443,7 +532,7 @@ export const PipelinesPage: React.FC = () => {
               {editingPipeline ? 'Edit Developer Recipe' : 'Create Visual Developer Recipe'}
             </DialogTitle>
             <DialogDescription className="text-xs text-zinc-400">
-              Add visual action blocks to chain automated development tasks.
+              Configure execution mode, step order, error handling, and action blocks.
             </DialogDescription>
           </DialogHeader>
 
@@ -485,6 +574,69 @@ export const PipelinesPage: React.FC = () => {
                 onChange={(e) => setDescription(e.target.value)}
                 className="bg-zinc-900 border-zinc-800 text-xs text-zinc-300"
               />
+            </div>
+
+            {/* Execution Strategy Controls */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 p-3 bg-zinc-900/40 rounded-xl border border-zinc-800">
+              <div className="space-y-1.5">
+                <Label className="text-xs text-zinc-300 font-semibold">Execution Mode</Label>
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setExecutionMode('sequential')}
+                    className={cn(
+                      'flex-1 py-1.5 px-3 rounded-lg text-xs font-medium border transition-all text-center',
+                      executionMode === 'sequential'
+                        ? 'bg-violet-950/60 border-violet-500 text-violet-200 font-bold'
+                        : 'bg-zinc-900 border-zinc-800 text-zinc-400 hover:text-zinc-200'
+                    )}
+                  >
+                    Sequential (Step-by-step)
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setExecutionMode('parallel')}
+                    className={cn(
+                      'flex-1 py-1.5 px-3 rounded-lg text-xs font-medium border transition-all text-center',
+                      executionMode === 'parallel'
+                        ? 'bg-cyan-950/60 border-cyan-500 text-cyan-200 font-bold'
+                        : 'bg-zinc-900 border-zinc-800 text-zinc-400 hover:text-zinc-200'
+                    )}
+                  >
+                    Parallel (All at once)
+                  </button>
+                </div>
+              </div>
+
+              <div className="space-y-1.5">
+                <Label className="text-xs text-zinc-300 font-semibold">Failure Behavior</Label>
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setStopOnError(true)}
+                    className={cn(
+                      'flex-1 py-1.5 px-3 rounded-lg text-xs font-medium border transition-all text-center',
+                      stopOnError
+                        ? 'bg-rose-950/60 border-rose-500 text-rose-200 font-bold'
+                        : 'bg-zinc-900 border-zinc-800 text-zinc-400 hover:text-zinc-200'
+                    )}
+                  >
+                    Stop on Error
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setStopOnError(false)}
+                    className={cn(
+                      'flex-1 py-1.5 px-3 rounded-lg text-xs font-medium border transition-all text-center',
+                      !stopOnError
+                        ? 'bg-zinc-800 border-zinc-700 text-zinc-200 font-bold'
+                        : 'bg-zinc-900 border-zinc-800 text-zinc-400 hover:text-zinc-200'
+                    )}
+                  >
+                    Continue Regardless
+                  </button>
+                </div>
+              </div>
             </div>
 
             {/* Action Block Palette */}
@@ -530,16 +682,49 @@ export const PipelinesPage: React.FC = () => {
                       className="p-3 rounded-lg border border-zinc-800 bg-zinc-900/60 space-y-2"
                     >
                       <div className="flex items-center justify-between gap-2">
-                        <span className="text-xs font-bold text-violet-300 font-mono">Step {idx + 1}</span>
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => handleRemoveStep(step.id)}
-                          className="h-6 w-6 text-zinc-500 hover:text-rose-400"
-                        >
-                          <Trash2 className="w-3 h-3" />
-                        </Button>
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs font-bold text-violet-300 font-mono">Step {idx + 1}</span>
+                          <button
+                            type="button"
+                            disabled={idx === 0}
+                            onClick={() => handleMoveStep(idx, 'up')}
+                            className="text-[10px] text-zinc-500 hover:text-zinc-200 disabled:opacity-30"
+                            title="Move Up"
+                          >
+                            ▲
+                          </button>
+                          <button
+                            type="button"
+                            disabled={idx === steps.length - 1}
+                            onClick={() => handleMoveStep(idx, 'down')}
+                            className="text-[10px] text-zinc-500 hover:text-zinc-200 disabled:opacity-30"
+                            title="Move Down"
+                          >
+                            ▼
+                          </button>
+                        </div>
+
+                        <div className="flex items-center gap-3">
+                          <label className="flex items-center gap-1.5 text-[11px] text-zinc-400 cursor-pointer">
+                            <input
+                              type="checkbox"
+                              checked={step.continueOnError ?? false}
+                              onChange={(e) => handleUpdateStep(step.id, { continueOnError: e.target.checked })}
+                              className="rounded border-zinc-700 bg-zinc-950 text-violet-600 focus:ring-0"
+                            />
+                            <span>Continue on error</span>
+                          </label>
+
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => handleRemoveStep(step.id)}
+                            className="h-6 w-6 text-zinc-500 hover:text-rose-400"
+                          >
+                            <Trash2 className="w-3 h-3" />
+                          </Button>
+                        </div>
                       </div>
 
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
@@ -567,7 +752,7 @@ export const PipelinesPage: React.FC = () => {
             <Button type="button" variant="outline" size="sm" onClick={closeEditor} className="text-xs border-zinc-800">
               Cancel
             </Button>
-            <Button type="button" size="sm" onClick={handleSaveRecipe} className="bg-violet-600 hover:bg-violet-700 text-xs">
+            <Button type="button" size="sm" onClick={handleSaveRecipe} className="bg-violet-600 hover:bg-violet-700 text-xs font-semibold">
               Save Recipe
             </Button>
           </div>

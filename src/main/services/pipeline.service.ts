@@ -1,4 +1,4 @@
-import { spawn, ChildProcess } from 'child_process';
+import { spawn, exec, ChildProcess } from 'child_process';
 import { BrowserWindow } from 'electron';
 import { getStore } from '../ipc/store.ipc';
 
@@ -19,6 +19,8 @@ export interface Pipeline {
   targetProjectId?: string;
   targetProjectName?: string;
   targetProjectPath?: string;
+  executionMode?: 'sequential' | 'parallel';
+  stopOnError?: boolean;
   steps: PipelineStep[];
   cronExpression?: string;
   isCronActive?: boolean;
@@ -48,15 +50,21 @@ export interface PipelineRunState {
 
 export class PipelineService {
   private mainWindow: BrowserWindow | null = null;
-  private activeRuns = new Map<string, { state: PipelineRunState; currentProcess?: ChildProcess; abortController?: AbortController }>();
-  private cronIntervals = new Map<string, NodeJS.Timeout>();
+  private activeRuns = new Map<
+    string,
+    {
+      state: PipelineRunState;
+      activeProcesses: Set<ChildProcess>;
+      isStopped: boolean;
+    }
+  >();
 
   setMainWindow(window: BrowserWindow) {
     this.mainWindow = window;
   }
 
   /**
-   * Run a pipeline sequentially
+   * Run a pipeline sequentially or in parallel
    */
   async runPipeline(pipeline: Pipeline, baseCwd: string = 'D:\\Code'): Promise<PipelineRunState> {
     const runState: PipelineRunState = {
@@ -76,75 +84,141 @@ export class PipelineService {
 
     const runContext = {
       state: runState,
-      currentProcess: undefined as ChildProcess | undefined
+      activeProcesses: new Set<ChildProcess>(),
+      isStopped: false
     };
 
     this.activeRuns.set(pipeline.id, runContext);
     this.emitPipelineUpdate(runState);
 
+    const isParallel = pipeline.executionMode === 'parallel';
+
     // Execute steps in background
     (async () => {
-      let failed = false;
+      if (isParallel) {
+        // Parallel Execution
+        const stepPromises = pipeline.steps.map(async (step, index) => {
+          if (runContext.isStopped) {
+            runState.stepLogs[index].status = 'skipped';
+            return;
+          }
 
-      for (let i = 0; i < pipeline.steps.length; i++) {
-        if (runState.status === 'stopped') break;
+          const stepLog = runState.stepLogs[index];
+          stepLog.status = 'running';
+          const stepStart = Date.now();
+          this.emitPipelineUpdate(runState);
 
-        const step = pipeline.steps[i];
-        runState.currentStepIndex = i;
-        const stepLog = runState.stepLogs[i];
-        stepLog.status = 'running';
-        const stepStart = Date.now();
-        this.emitPipelineUpdate(runState);
-
-        try {
-          if (step.type === 'delay') {
-            await new Promise((r) => setTimeout(r, step.delayMs || 1000));
-            stepLog.status = 'success';
-            stepLog.logs.push(`Delayed for ${step.delayMs || 1000}ms`);
-          } else if (step.type === 'command' || step.type === 'script' || step.type === 'docker') {
-            const cwd = step.cwd || pipeline.targetProjectPath || baseCwd;
-            const cmd = step.command || 'echo "Step completed"';
-
-            const exitCode = await this.executeStepCommand(
-              pipeline.id,
-              step.id,
-              cmd,
-              cwd,
-              stepLog,
-              runContext
-            );
-
-            stepLog.exitCode = exitCode;
-            if (exitCode === 0) {
+          try {
+            if (step.type === 'delay') {
+              await new Promise((r) => setTimeout(r, step.delayMs || 1000));
               stepLog.status = 'success';
+              stepLog.logs.push(`Delayed for ${step.delayMs || 1000}ms`);
+            } else if (step.type === 'command' || step.type === 'script' || step.type === 'docker') {
+              const cwd = step.cwd || pipeline.targetProjectPath || baseCwd;
+              const cmd = step.command || 'echo "Step completed"';
+
+              const exitCode = await this.executeStepCommand(
+                pipeline.id,
+                step.id,
+                cmd,
+                cwd,
+                stepLog,
+                runContext
+              );
+
+              stepLog.exitCode = exitCode;
+              stepLog.status = exitCode === 0 ? 'success' : 'failed';
             } else {
-              stepLog.status = 'failed';
-              if (!step.continueOnError) {
-                failed = true;
-              }
+              stepLog.status = 'success';
             }
-          } else {
-            stepLog.status = 'success';
+          } catch (err: any) {
+            stepLog.status = 'failed';
+            stepLog.logs.push(`Error: ${err.message}`);
           }
-        } catch (err: any) {
-          stepLog.status = 'failed';
-          stepLog.logs.push(`Error: ${err.message}`);
-          if (!step.continueOnError) failed = true;
+
+          stepLog.durationMs = Date.now() - stepStart;
+          this.emitPipelineUpdate(runState);
+        });
+
+        await Promise.allSettled(stepPromises);
+
+        const anyFailed = runState.stepLogs.some((l) => l.status === 'failed');
+        runState.status = runContext.isStopped
+          ? 'stopped'
+          : anyFailed
+          ? 'failed'
+          : 'success';
+      } else {
+        // Sequential Execution
+        let failed = false;
+
+        for (let i = 0; i < pipeline.steps.length; i++) {
+          if (runContext.isStopped || runState.status === 'stopped') break;
+
+          const step = pipeline.steps[i];
+          runState.currentStepIndex = i;
+          const stepLog = runState.stepLogs[i];
+          stepLog.status = 'running';
+          const stepStart = Date.now();
+          this.emitPipelineUpdate(runState);
+
+          try {
+            if (step.type === 'delay') {
+              await new Promise((r) => setTimeout(r, step.delayMs || 1000));
+              stepLog.status = 'success';
+              stepLog.logs.push(`Delayed for ${step.delayMs || 1000}ms`);
+            } else if (step.type === 'command' || step.type === 'script' || step.type === 'docker') {
+              const cwd = step.cwd || pipeline.targetProjectPath || baseCwd;
+              const cmd = step.command || 'echo "Step completed"';
+
+              const exitCode = await this.executeStepCommand(
+                pipeline.id,
+                step.id,
+                cmd,
+                cwd,
+                stepLog,
+                runContext
+              );
+
+              stepLog.exitCode = exitCode;
+              if (exitCode === 0) {
+                stepLog.status = 'success';
+              } else {
+                stepLog.status = 'failed';
+                if (!step.continueOnError && pipeline.stopOnError !== false) {
+                  failed = true;
+                }
+              }
+            } else {
+              stepLog.status = 'success';
+            }
+          } catch (err: any) {
+            stepLog.status = 'failed';
+            stepLog.logs.push(`Error: ${err.message}`);
+            if (!step.continueOnError && pipeline.stopOnError !== false) {
+              failed = true;
+            }
+          }
+
+          stepLog.durationMs = Date.now() - stepStart;
+          this.emitPipelineUpdate(runState);
+
+          if (failed) {
+            // Mark remaining steps as skipped
+            for (let j = i + 1; j < pipeline.steps.length; j++) {
+              runState.stepLogs[j].status = 'skipped';
+            }
+            break;
+          }
         }
 
-        stepLog.durationMs = Date.now() - stepStart;
-        this.emitPipelineUpdate(runState);
-
-        if (failed) {
-          // Mark remaining as skipped
-          for (let j = i + 1; j < pipeline.steps.length; j++) {
-            runState.stepLogs[j].status = 'skipped';
-          }
-          break;
-        }
+        runState.status = runContext.isStopped
+          ? 'stopped'
+          : failed
+          ? 'failed'
+          : 'success';
       }
 
-      runState.status = failed ? 'failed' : runState.status === 'stopped' ? 'stopped' : 'success';
       runState.completedAt = Date.now();
       this.activeRuns.delete(pipeline.id);
       this.emitPipelineUpdate(runState);
@@ -159,22 +233,32 @@ export class PipelineService {
     command: string,
     cwd: string,
     stepLog: PipelineRunLog,
-    context: any
+    context: { activeProcesses: Set<ChildProcess>; isStopped: boolean }
   ): Promise<number> {
     return new Promise((resolve) => {
+      if (context.isStopped) {
+        return resolve(1);
+      }
+
       const shell = process.platform === 'win32' ? 'powershell.exe' : 'bash';
       const args = process.platform === 'win32' ? ['-NoProfile', '-Command', command] : ['-c', command];
 
-      const child = spawn(shell, args, {
-        cwd,
-        windowsHide: true,
-        stdio: ['ignore', 'pipe', 'pipe']
-      });
+      let child: ChildProcess;
+      try {
+        child = spawn(shell, args, {
+          cwd,
+          windowsHide: true,
+          stdio: ['ignore', 'pipe', 'pipe']
+        });
+      } catch (err: any) {
+        stepLog.logs.push(`Spawn error: ${err.message}`);
+        return resolve(1);
+      }
 
-      context.currentProcess = child;
+      context.activeProcesses.add(child);
 
       const append = (data: Buffer) => {
-        const lines = data.toString().split('\n');
+        const lines = data.toString().split(/\r?\n/);
         for (const line of lines) {
           const trimmed = line.trim();
           if (trimmed) {
@@ -194,11 +278,13 @@ export class PipelineService {
       child.stderr?.on('data', append);
 
       child.on('error', (err) => {
+        context.activeProcesses.delete(child);
         stepLog.logs.push(`Execution error: ${err.message}`);
         resolve(1);
       });
 
       child.on('close', (code) => {
+        context.activeProcesses.delete(child);
         resolve(code ?? 0);
       });
     });
@@ -211,16 +297,19 @@ export class PipelineService {
     const run = this.activeRuns.get(pipelineId);
     if (!run) return false;
 
+    run.isStopped = true;
     run.state.status = 'stopped';
-    if (run.currentProcess) {
+
+    for (const proc of run.activeProcesses) {
       try {
-        if (process.platform === 'win32' && run.currentProcess.pid) {
-          require('child_process').exec(`taskkill /pid ${run.currentProcess.pid} /T /F`, () => {});
+        if (process.platform === 'win32' && proc.pid) {
+          exec(`taskkill /pid ${proc.pid} /T /F`, () => {});
         } else {
-          run.currentProcess.kill('SIGTERM');
+          proc.kill('SIGTERM');
         }
       } catch {}
     }
+    run.activeProcesses.clear();
 
     this.activeRuns.delete(pipelineId);
     this.emitPipelineUpdate(run.state);

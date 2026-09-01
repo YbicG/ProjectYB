@@ -64,7 +64,7 @@ export const TerminalGrid: React.FC = () => {
             onClick={() => setActiveTerminal(term.id)}
             className="relative h-full w-full overflow-hidden"
           >
-            <TerminalView terminalId={term.id} cwd={term.cwd} isActive={activeTerminalId === term.id} />
+            <TerminalView terminalId={term.id} cwd={term.cwd} isActive={true} />
           </Panel>
           {index < terminals.length - 1 && (
             <PanelResizeHandle className="w-1 bg-zinc-800 hover:bg-violet-500 transition-colors cursor-col-resize" />

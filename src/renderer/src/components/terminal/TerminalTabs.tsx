@@ -15,6 +15,7 @@ import {
   List
 } from 'lucide-react';
 import { useTerminalStore } from '@renderer/stores/useTerminalStore';
+import { useAppStore } from '@renderer/stores/useAppStore';
 import { StatusDot } from '../shared/StatusDot';
 import { cn } from '@renderer/lib/utils';
 import { ScrollArea, ScrollBar } from '../ui/scroll-area';
@@ -78,7 +79,10 @@ export const TerminalTabs: React.FC = () => {
         <Button
           size="sm"
           variant="outline"
-          onClick={() => createTerminal({ name: 'Terminal', cwd: 'D:\\Code' })}
+          onClick={() => {
+            const defaultCwd = useAppStore.getState().scanPaths[0] || 'D:\\Code';
+            createTerminal({ name: 'Terminal', cwd: defaultCwd });
+          }}
           className="h-8 px-2.5 text-xs bg-zinc-900/80 border-zinc-800 text-zinc-200 hover:border-violet-500/40 hover:text-violet-300 gap-1.5 font-medium shadow-sm"
           title="New Terminal (Ctrl+T)"
         >
@@ -91,7 +95,8 @@ export const TerminalTabs: React.FC = () => {
           size="icon"
           className="h-8 w-8 text-zinc-400 hover:text-zinc-100 hover:bg-zinc-900"
           onClick={() => {
-            createTerminal({ name: 'Terminal', cwd: 'D:\\Code' });
+            const defaultCwd = useAppStore.getState().scanPaths[0] || 'D:\\Code';
+            createTerminal({ name: 'Terminal', cwd: defaultCwd });
             setLayout('grid');
           }}
           title="Split Terminal Horizontal"
@@ -104,7 +109,8 @@ export const TerminalTabs: React.FC = () => {
           size="icon"
           className="h-8 w-8 text-zinc-400 hover:text-zinc-100 hover:bg-zinc-900"
           onClick={() => {
-            createTerminal({ name: 'Terminal', cwd: 'D:\\Code' });
+            const defaultCwd = useAppStore.getState().scanPaths[0] || 'D:\\Code';
+            createTerminal({ name: 'Terminal', cwd: defaultCwd });
             setLayout('grid');
           }}
           title="Split Terminal Vertical"

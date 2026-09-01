@@ -72,18 +72,21 @@ export const ProjectCard: React.FC<ProjectCardProps> = ({ project }) => {
   const handleOpenExternalTerminal = (targetPath?: string) => {
     if (window.api?.projects) {
       window.api.projects.openTerminal(targetPath || project.path)
+      toast.success(`Opening terminal in ${project.name}...`)
     }
   }
 
   const handleOpenVSCode = () => {
     if (window.api?.projects) {
       window.api.projects.openInVSCode(project.path)
+      toast.success(`Opening ${project.name} in VS Code...`)
     }
   }
 
   const handleOpenFolder = () => {
     if (window.api?.projects) {
       window.api.projects.openInExplorer(project.path)
+      toast.success(`Opening ${project.name} in File Explorer...`)
     }
   }
 
@@ -427,11 +430,7 @@ export const ProjectCard: React.FC<ProjectCardProps> = ({ project }) => {
             <DropdownMenuItem
               className="cursor-pointer focus:bg-zinc-800 gap-2"
               onClick={() => {
-                const devCmd = project.scripts?.dev
-                  ? 'pnpm dev'
-                  : project.scripts?.start
-                    ? 'pnpm start'
-                    : null
+                const devCmd = project.scripts?.dev || project.scripts?.start || null
                 handleQuickRun(devCmd || undefined)
               }}
             >
@@ -511,11 +510,7 @@ export const ProjectCard: React.FC<ProjectCardProps> = ({ project }) => {
                     key={sub.id || sub.name}
                     className="cursor-pointer focus:bg-zinc-800 gap-2"
                     onClick={() => {
-                      const subCmd = sub.scripts?.dev
-                        ? 'pnpm dev'
-                        : sub.scripts?.start
-                          ? 'pnpm start'
-                          : undefined
+                      const subCmd = sub.scripts?.dev || sub.scripts?.start || undefined
                       handleQuickRun(subCmd, sub)
                     }}
                   >

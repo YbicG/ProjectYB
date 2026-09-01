@@ -20,7 +20,7 @@ export interface InactiveProjectItem {
 
 const HEAVY_FOLDERS = ['node_modules', 'dist', '.cache', 'target', '.next', '.nuxt', 'build', '.turbo', '.parcel-cache'];
 
-function getDirSize(dirPath: string, maxDepth: number = 4): number {
+function getDirSize(dirPath: string, maxDepth: number = 16): number {
   let total = 0;
   try {
     if (!fs.existsSync(dirPath)) return 0;

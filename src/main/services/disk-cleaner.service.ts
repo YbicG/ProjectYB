@@ -170,6 +170,37 @@ class DiskCleanerService {
                             category: subCat,
                             bytes: subSize
                           });
+                        } else {
+                          // Check 1 level further down inside subpackages (e.g., packages/ui/node_modules)
+                          try {
+                            const nestedEntries = await fs.promises.readdir(subFullPath, { withFileTypes: true });
+                            for (const nested of nestedEntries) {
+                              if (nested.isDirectory()) {
+                                const nestedName = nested.name;
+                                const nestedFullPath = path.join(subFullPath, nestedName);
+                                let nestedCat: CleanCategory | null = null;
+
+                                if (DEPENDENCY_DIRS.includes(nestedName)) nestedCat = 'dependencies';
+                                else if (BUILD_DIRS.includes(nestedName)) nestedCat = 'build';
+                                else if (CACHE_DIRS.includes(nestedName)) nestedCat = 'caches';
+
+                                if (nestedCat) {
+                                  const nestedSize = await this.getDirectorySize(nestedFullPath);
+                                  if (nestedCat === 'dependencies') dependenciesBytes += nestedSize;
+                                  else if (nestedCat === 'build') buildBytes += nestedSize;
+                                  else if (nestedCat === 'caches') cachesBytes += nestedSize;
+
+                                  items.push({
+                                    name: name + '/' + subName + '/' + nestedName,
+                                    relativePath: name + '/' + subName + '/' + nestedName,
+                                    fullPath: nestedFullPath,
+                                    category: nestedCat,
+                                    bytes: nestedSize
+                                  });
+                                }
+                              }
+                            }
+                          } catch {}
                         }
                       }
                     }

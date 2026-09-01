@@ -3,6 +3,7 @@ import { Plus, PanelRight, PanelBottom, Trash, RotateCw, Eraser, LayoutGrid, Lis
 import { Button } from '../ui/button';
 import { Separator } from '../ui/separator';
 import { useTerminalStore } from '@renderer/stores/useTerminalStore';
+import { useAppStore } from '@renderer/stores/useAppStore';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '../ui/tooltip';
 import { cn } from '@renderer/lib/utils';
 
@@ -14,7 +15,15 @@ export const TerminalToolbar: React.FC = () => {
       <TooltipProvider>
         <Tooltip>
           <TooltipTrigger asChild>
-            <Button variant="ghost" size="icon" className="h-8 w-8 text-zinc-400 hover:text-zinc-50" onClick={() => createTerminal({ name: 'Local', cwd: 'D:\\Code' })}>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8 text-zinc-400 hover:text-zinc-50"
+              onClick={() => {
+                const defaultCwd = useAppStore.getState().scanPaths[0] || 'D:\\Code';
+                createTerminal({ name: 'Local', cwd: defaultCwd });
+              }}
+            >
               <Plus className="w-4 h-4" />
             </Button>
           </TooltipTrigger>
@@ -25,8 +34,15 @@ export const TerminalToolbar: React.FC = () => {
 
         <Tooltip>
           <TooltipTrigger asChild>
-            <Button variant="ghost" size="icon" className="h-8 w-8 text-zinc-400 hover:text-zinc-50"
-              onClick={() => { createTerminal({ name: 'Local', cwd: 'D:\\Code' }); setLayout('grid'); }}
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8 text-zinc-400 hover:text-zinc-50"
+              onClick={() => {
+                const defaultCwd = useAppStore.getState().scanPaths[0] || 'D:\\Code';
+                createTerminal({ name: 'Local', cwd: defaultCwd });
+                setLayout('grid');
+              }}
             >
               <PanelRight className="w-4 h-4" />
             </Button>
@@ -36,8 +52,15 @@ export const TerminalToolbar: React.FC = () => {
 
         <Tooltip>
           <TooltipTrigger asChild>
-            <Button variant="ghost" size="icon" className="h-8 w-8 text-zinc-400 hover:text-zinc-50"
-              onClick={() => { createTerminal({ name: 'Local', cwd: 'D:\\Code' }); setLayout('grid'); }}
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8 text-zinc-400 hover:text-zinc-50"
+              onClick={() => {
+                const defaultCwd = useAppStore.getState().scanPaths[0] || 'D:\\Code';
+                createTerminal({ name: 'Local', cwd: defaultCwd });
+                setLayout('grid');
+              }}
             >
               <PanelBottom className="w-4 h-4" />
             </Button>

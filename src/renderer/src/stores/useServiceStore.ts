@@ -18,6 +18,8 @@ interface ServiceState {
   stopService: (id: string) => void
   forceKillService: (id: string, port?: number) => Promise<void>
   restartService: (id: string) => Promise<void>
+  handleServiceExit: (serviceId: string, exitCode: number) => Promise<void>
+  setServiceStatus: (id: string, status: ServiceStatus) => void
   updateServiceStats: (id: string, stats: ProcessStats) => void
   updateAllServiceStats: (statsMap: Record<string, { cpu: number; memory: number }>) => void
   addProfile: (profile: StartupProfile) => void
@@ -27,6 +29,8 @@ interface ServiceState {
   saveState: () => void
   restoreState: () => void
 }
+
+const restartAttempts = new Map<string, number>()
 
 export const useServiceStore = create<ServiceState>((set, get) => ({
   services: [],
@@ -61,6 +65,7 @@ export const useServiceStore = create<ServiceState>((set, get) => ({
       projectName,
       terminalId,
       pid: term?.pid,
+      port: config.port,
       status: 'running',
       startedAt: Date.now(),
       autoRestart: config.autoRestart ?? false
@@ -88,6 +93,7 @@ export const useServiceStore = create<ServiceState>((set, get) => ({
   stopService: (id) => {
     const { services } = get()
     const service = services.find(s => s.id === id)
+    restartAttempts.delete(id)
     
     if (service) {
       if (service.terminalId) {
@@ -111,11 +117,13 @@ export const useServiceStore = create<ServiceState>((set, get) => ({
   forceKillService: async (id, port) => {
     const { services } = get()
     const service = services.find(s => s.id === id)
+    restartAttempts.delete(id)
     
+    const effectivePort = port || service?.port
     if (window.api?.services) {
       await window.api.services.forceKill({
         pid: service?.pid,
-        port: port,
+        port: effectivePort,
         terminalId: service?.terminalId
       })
     }
@@ -151,6 +159,7 @@ export const useServiceStore = create<ServiceState>((set, get) => ({
         name: service.name,
         command: service.command,
         cwd: project?.path,
+        port: service.port,
         autoRestart: service.autoRestart
       })
 
@@ -163,6 +172,59 @@ export const useServiceStore = create<ServiceState>((set, get) => ({
       })
     }
   },
+
+  handleServiceExit: async (serviceId: string, exitCode: number) => {
+    const { services, restartService } = get()
+    const service = services.find(s => s.id === serviceId)
+    if (!service) return
+
+    if (exitCode !== 0) {
+      const attempts = restartAttempts.get(serviceId) || 0
+      if (service.autoRestart && attempts < 5) {
+        restartAttempts.set(serviceId, attempts + 1)
+        set((state) => ({
+          services: state.services.map(s => s.id === serviceId ? { ...s, status: 'restarting' as ServiceStatus } : s),
+          runningServices: state.runningServices.map(s => s.id === serviceId ? { ...s, status: 'restarting' as ServiceStatus } : s)
+        }))
+
+        useNotificationStore.getState().notify({
+          title: 'Service Auto-Restarting',
+          message: `Service "${service.name}" crashed (exit code ${exitCode}). Auto-restarting (attempt ${attempts + 1}/5)...`,
+          type: 'warning',
+          category: 'services',
+          actionTab: 'services'
+        })
+
+        setTimeout(async () => {
+          await restartService(serviceId)
+        }, 1500)
+      } else {
+        set((state) => ({
+          services: state.services.map(s => s.id === serviceId ? { ...s, status: 'crashed' as ServiceStatus } : s),
+          runningServices: state.runningServices.map(s => s.id === serviceId ? { ...s, status: 'crashed' as ServiceStatus } : s)
+        }))
+
+        useNotificationStore.getState().notify({
+          title: 'Service Crashed',
+          message: `Service "${service.name}" crashed with exit code ${exitCode}`,
+          type: 'error',
+          category: 'services',
+          actionTab: 'services'
+        })
+      }
+    } else {
+      restartAttempts.delete(serviceId)
+      set((state) => ({
+        services: state.services.map(s => s.id === serviceId ? { ...s, status: 'stopped' as ServiceStatus } : s),
+        runningServices: state.runningServices.filter(s => s.id !== serviceId)
+      }))
+    }
+  },
+
+  setServiceStatus: (id, status) => set((state) => ({
+    services: state.services.map(s => s.id === id ? { ...s, status } : s),
+    runningServices: state.runningServices.map(s => s.id === id ? { ...s, status } : s)
+  })),
   
   updateServiceStats: (id, stats) => set((state) => {
     const updatedServices = state.services.map(s => s.id === id ? {
@@ -203,19 +265,51 @@ export const useServiceStore = create<ServiceState>((set, get) => ({
   removeProfile: (id) => set((state) => ({ profiles: state.profiles.filter(p => p.id !== id) })),
   
   startProfile: async (profileId) => {
-    const { profiles } = get()
+    const { profiles, startService } = get()
     const profile = profiles.find(p => p.id === profileId)
-    
-    if (profile) {
-      console.log('Starting profile:', profile.name)
-      // Implementation depends on having full service configs available
+    if (!profile) return
+
+    const projects = useProjectStore.getState().projects
+    const saved = (await window.api?.store?.get('runConfigs')) as any[] | undefined
+    const configs = Array.isArray(saved) ? saved : []
+
+    const targetServiceIds = profile.serviceIds || (profile.serviceConfigs || []).map(sc => sc.serviceId)
+    let launchedCount = 0
+
+    for (const sId of targetServiceIds) {
+      const cfg = configs.find(c => c.id === sId)
+      if (cfg) {
+        const project = projects.find(p => p.id === cfg.projectId)
+        const effectiveCwd = cfg.cwd || project?.path || cfg.projectPath
+        const combinedCmd = cfg.commands?.length
+          ? cfg.commands.map((c: any) => c.command).join(' && ')
+          : (cfg.command || '')
+
+        if (combinedCmd) {
+          await startService(cfg.projectId, cfg.projectName, {
+            id: cfg.id,
+            name: cfg.name,
+            command: combinedCmd,
+            cwd: effectiveCwd,
+            autoRestart: cfg.autoRestart
+          })
+          launchedCount++
+        }
+      }
     }
+
+    useNotificationStore.getState().notify({
+      title: 'Profile Launched',
+      message: `Started ${launchedCount} services from profile "${profile.name}"`,
+      type: 'success',
+      category: 'services',
+      actionTab: 'services'
+    })
   },
   
   getServicesByProject: (projectId) => get().services.filter(s => s.projectId === projectId),
   
   saveState: () => {
-    // In real app, persist to store
     console.log('Saving service state')
   },
   

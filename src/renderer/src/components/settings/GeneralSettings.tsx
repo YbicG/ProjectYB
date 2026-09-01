@@ -68,13 +68,11 @@ export const GeneralSettings: React.FC = () => {
   const addPath = async (mode: 'git' | 'all') => {
     let pathToAdd = newPath.trim();
     
-    if (!pathToAdd && window.api?.window) {
+    if (!pathToAdd && (window.api?.system as any)?.selectDirectory) {
       try {
-        const result = await (window as any).api.dialog?.showOpenDialog?.({
-          properties: ['openDirectory']
-        });
-        if (result && !result.canceled && result.filePaths?.[0]) {
-          pathToAdd = result.filePaths[0];
+        const selected = await (window.api.system as any).selectDirectory();
+        if (selected) {
+          pathToAdd = selected;
         }
       } catch {}
     }
@@ -97,7 +95,17 @@ export const GeneralSettings: React.FC = () => {
   };
 
   const addManual = async () => {
-    const pathToAdd = newManualPath.trim();
+    let pathToAdd = newManualPath.trim();
+
+    if (!pathToAdd && (window.api?.system as any)?.selectDirectory) {
+      try {
+        const selected = await (window.api.system as any).selectDirectory();
+        if (selected) {
+          pathToAdd = selected;
+        }
+      } catch {}
+    }
+
     if (pathToAdd && !manualProjects.includes(pathToAdd)) {
       const updated = [...manualProjects, pathToAdd];
       setManualProjects(updated);

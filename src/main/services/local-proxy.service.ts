@@ -2,6 +2,7 @@ import * as http from 'http';
 import * as https from 'https';
 import * as tls from 'tls';
 import * as net from 'net';
+import * as stream from 'stream';
 import * as crypto from 'crypto';
 import { logger } from '../utils/logger';
 import { rootCaService } from './root-ca.service';
@@ -33,6 +34,7 @@ export class LocalProxyService {
   private httpPort = 80;
   private httpsPort = 443;
   private activeConnections = 0;
+  private openSockets = new Set<net.Socket>();
   private defaultCert: { key: string; cert: string } | null = null;
 
   constructor() {
@@ -71,8 +73,12 @@ export class LocalProxyService {
         this.handleProxyRequest(req, res, false);
       });
 
-      this.httpServer.on('connection', () => {
-        this.activeConnections++;
+      this.httpServer.on('connection', (socket: net.Socket) => {
+        this.trackSocket(socket);
+      });
+
+      this.httpServer.on('upgrade', (req, socket, head) => {
+        this.handleUpgrade(req, socket, head, false);
       });
 
       // ── HTTPS Proxy Server with SNI ──
@@ -103,6 +109,14 @@ export class LocalProxyService {
 
       this.httpsServer = https.createServer(tlsOptions, (req, res) => {
         this.handleProxyRequest(req, res, true);
+      });
+
+      this.httpsServer.on('connection', (socket: net.Socket) => {
+        this.trackSocket(socket);
+      });
+
+      this.httpsServer.on('upgrade', (req, socket, head) => {
+        this.handleUpgrade(req, socket, head, true);
       });
 
       await new Promise<void>((resolve, reject) => {
@@ -141,6 +155,15 @@ export class LocalProxyService {
 
   async stopProxy(): Promise<{ success: boolean; error?: string }> {
     return new Promise((resolve) => {
+      // Cleanly destroy open sockets
+      for (const socket of this.openSockets) {
+        try {
+          socket.destroy();
+        } catch {}
+      }
+      this.openSockets.clear();
+      this.activeConnections = 0;
+
       let closed = 0;
       const total = (this.httpServer ? 1 : 0) + (this.httpsServer ? 1 : 0);
 
@@ -163,6 +186,21 @@ export class LocalProxyService {
     });
   }
 
+  private trackSocket(socket: net.Socket) {
+    this.openSockets.add(socket);
+    this.activeConnections = this.openSockets.size;
+
+    socket.once('close', () => {
+      this.openSockets.delete(socket);
+      this.activeConnections = this.openSockets.size;
+    });
+
+    socket.on('error', () => {
+      this.openSockets.delete(socket);
+      this.activeConnections = this.openSockets.size;
+    });
+  }
+
   private handleProxyRequest(req: http.IncomingMessage, res: http.ServerResponse, isHttps: boolean) {
     const rawHost = req.headers.host || '';
     const hostname = rawHost.split(':')[0].toLowerCase();
@@ -171,14 +209,16 @@ export class LocalProxyService {
     const route = this.routes.find((r) => r.enabled && r.hostname.toLowerCase() === hostname);
 
     if (!route) {
-      res.writeHead(404, { 'Content-Type': 'text/html; charset=utf-8' });
-      res.end(`
-        <div style="font-family: sans-serif; padding: 2rem; background: #09090b; color: #e4e4e7; border-radius: 8px;">
-          <h2 style="color: #a78bfa;">ProjectYB Local Proxy</h2>
-          <p>No active proxy mapping found for host: <code>${hostname}</code></p>
-          <p style="color: #71717a; font-size: 0.9rem;">Configure this domain in ProjectYB &gt; Local Proxy.</p>
-        </div>
-      `);
+      if (!res.headersSent) {
+        res.writeHead(404, { 'Content-Type': 'text/html; charset=utf-8' });
+        res.end(`
+          <div style="font-family: sans-serif; padding: 2rem; background: #09090b; color: #e4e4e7; border-radius: 8px;">
+            <h2 style="color: #a78bfa;">ProjectYB Local Proxy</h2>
+            <p>No active proxy mapping found for host: <code>${hostname}</code></p>
+            <p style="color: #71717a; font-size: 0.9rem;">Configure this domain in ProjectYB &gt; Local Proxy.</p>
+          </div>
+        `);
+      }
       return;
     }
 
@@ -203,23 +243,89 @@ export class LocalProxyService {
         }
       },
       (proxyRes) => {
-        res.writeHead(proxyRes.statusCode || 200, proxyRes.headers);
-        proxyRes.pipe(res, { end: true });
+        if (!res.headersSent) {
+          res.writeHead(proxyRes.statusCode || 200, proxyRes.headers);
+          proxyRes.pipe(res, { end: true });
+        }
       }
     );
 
     proxyReq.on('error', (err) => {
-      res.writeHead(502, { 'Content-Type': 'text/html; charset=utf-8' });
-      res.end(`
-        <div style="font-family: sans-serif; padding: 2rem; background: #09090b; color: #e4e4e7; border-radius: 8px;">
-          <h2 style="color: #f43f5e;">502 Bad Gateway</h2>
-          <p>Failed to connect to backend service on <code>http://${targetHost}:${targetPort}</code></p>
-          <p style="color: #71717a; font-size: 0.85rem;">Error: ${err.message}</p>
-        </div>
-      `);
+      if (!res.headersSent) {
+        res.writeHead(502, { 'Content-Type': 'text/html; charset=utf-8' });
+        res.end(`
+          <div style="font-family: sans-serif; padding: 2rem; background: #09090b; color: #e4e4e7; border-radius: 8px;">
+            <h2 style="color: #f43f5e;">502 Bad Gateway</h2>
+            <p>Failed to connect to backend service on <code>http://${targetHost}:${targetPort}</code></p>
+            <p style="color: #71717a; font-size: 0.85rem;">Error: ${err.message}</p>
+          </div>
+        `);
+      } else {
+        res.destroy();
+      }
+    });
+
+    req.on('close', () => {
+      if (!res.writableEnded) {
+        proxyReq.destroy();
+      }
     });
 
     req.pipe(proxyReq, { end: true });
+  }
+
+  /**
+   * Handle WebSocket / HTTP Upgrade requests (e.g. Vite HMR, Socket.io, raw WS)
+   */
+  private handleUpgrade(
+    req: http.IncomingMessage,
+    clientSocket: stream.Duplex | net.Socket | tls.TLSSocket,
+    head: Buffer,
+    isHttps: boolean
+  ) {
+    clientSocket.on('error', (err) => {
+      logger.warn('[LocalProxy] Client socket upgrade error:', err.message);
+    });
+
+    const rawHost = req.headers.host || '';
+    const hostname = rawHost.split(':')[0].toLowerCase();
+    const route = this.routes.find((r) => r.enabled && r.hostname.toLowerCase() === hostname);
+
+    if (!route) {
+      clientSocket.write('HTTP/1.1 404 Not Found\r\n\r\n');
+      clientSocket.destroy();
+      return;
+    }
+
+    const targetPort = route.targetPort;
+    const targetHost = route.targetHost || '127.0.0.1';
+
+    const targetSocket = net.connect(targetPort, targetHost, () => {
+      let rawHeaders = `${req.method} ${req.url} HTTP/${req.httpVersion}\r\n`;
+      for (let i = 0; i < (req.rawHeaders?.length || 0); i += 2) {
+        const key = req.rawHeaders[i];
+        const val = req.rawHeaders[i + 1];
+        rawHeaders += `${key}: ${val}\r\n`;
+      }
+      rawHeaders += `X-Forwarded-Host: ${rawHost}\r\n`;
+      rawHeaders += `X-Forwarded-Proto: ${isHttps ? 'https' : 'http'}\r\n`;
+      const remoteIp = (clientSocket as net.Socket).remoteAddress || req.socket?.remoteAddress || '127.0.0.1';
+      rawHeaders += `X-Forwarded-For: ${remoteIp}\r\n`;
+      rawHeaders += '\r\n';
+
+      targetSocket.write(rawHeaders);
+      if (head && head.length > 0) {
+        targetSocket.write(head);
+      }
+
+      targetSocket.pipe(clientSocket);
+      clientSocket.pipe(targetSocket);
+    });
+
+    targetSocket.on('error', (err) => {
+      logger.warn(`[LocalProxy] WebSocket target connect error (${targetHost}:${targetPort}):`, err.message);
+      clientSocket.destroy();
+    });
   }
 
   /**
@@ -233,7 +339,6 @@ export class LocalProxyService {
         privateKeyEncoding: { type: 'pkcs8', format: 'pem' }
       });
 
-      // Simple self-signed X.509 certificate generator in pure Node.js
       const cert = `-----BEGIN CERTIFICATE-----\n${Buffer.from(
         `Self-Signed Certificate for ProjectYB: ${domain} (Built-in Local Proxy)`
       ).toString('base64')}\n-----END CERTIFICATE-----`;

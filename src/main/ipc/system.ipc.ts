@@ -1,4 +1,4 @@
-import { ipcMain, BrowserWindow, Notification } from 'electron';
+import { ipcMain, BrowserWindow, Notification, dialog } from 'electron';
 import { systemMonitor } from '../services/system-monitor';
 import { trayService } from '../services/tray.service';
 
@@ -9,6 +9,19 @@ export function setupSystemIpc(mainWindow: BrowserWindow) {
     systemMonitor.stopMonitoring();
   });
   
+  ipcMain.handle('system:selectDirectory', async () => {
+    try {
+      const res = await dialog.showOpenDialog(mainWindow, {
+        properties: ['openDirectory', 'createDirectory']
+      });
+      if (res.canceled || !res.filePaths?.[0]) return null;
+      return res.filePaths[0];
+    } catch (err) {
+      console.error('Failed to open directory dialog:', err);
+      return null;
+    }
+  });
+
   ipcMain.handle('system:getMetrics', async () => {
     return null;
   });

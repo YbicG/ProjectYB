@@ -92,20 +92,27 @@ class GitService {
     }
   }
 
-  async discardChanges(path: string, filePath: string) {
-    const git = this.git(path);
+  async discardChanges(pathStr: string, filePath: string) {
+    const git = this.git(pathStr);
+    const fullPath = path.isAbsolute(filePath) ? filePath : path.join(pathStr, filePath);
+    
+    // 1. Reset from index if staged
     try {
-      return await git.checkout(['--', filePath]);
-    } catch {
-      try {
-        const fs = require('fs');
-        const pathUtil = require('path');
-        const fullPath = pathUtil.isAbsolute(filePath) ? filePath : pathUtil.join(path, filePath);
-        if (fs.existsSync(fullPath)) {
-          fs.rmSync(fullPath, { recursive: true, force: true });
-        }
-      } catch {}
-    }
+      await git.reset(['HEAD', filePath]);
+    } catch {}
+
+    // 2. Checkout from HEAD (restores modified or deleted tracked files)
+    try {
+      await git.checkout(['--', filePath]);
+      return;
+    } catch {}
+
+    // 3. If untracked or newly created file still exists on disk, remove it
+    try {
+      if (fs.existsSync(fullPath)) {
+        fs.rmSync(fullPath, { recursive: true, force: true });
+      }
+    } catch {}
   }
 
   async commit(path: string, message: string, stageAll: boolean = true) {
@@ -191,24 +198,32 @@ class GitService {
     }
   }
 
-  async getFileDiff(path: string, filePath: string, staged: boolean = false) {
-    if (!(await this.isGitRepo(path))) {
+  async getFileDiff(repoPath: string, filePath: string, staged: boolean = false) {
+    if (!(await this.isGitRepo(repoPath))) {
       return '';
     }
-    const git = this.git(path);
+    const git = this.git(repoPath);
     try {
       if (staged) {
         return await git.diff(['--cached', '--', filePath]);
       }
       const res = await git.diff(['--', filePath]);
       if (!res || !res.trim()) {
-        // If untracked file or newly added, read content or diff against /dev/null
+        // If untracked file or newly added, read content or diff against /dev/null safely
         try {
-          const fs = require('fs');
-          const pathUtil = require('path');
-          const fullPath = pathUtil.isAbsolute(filePath) ? filePath : pathUtil.join(path, filePath);
+          const fullPath = path.isAbsolute(filePath) ? filePath : path.join(repoPath, filePath);
           if (fs.existsSync(fullPath) && fs.statSync(fullPath).isFile()) {
-            const content = await fs.promises.readFile(fullPath, 'utf8');
+            const stat = fs.statSync(fullPath);
+            if (stat.size > 2 * 1024 * 1024) {
+              return `(Large file: ${(stat.size / 1024 / 1024).toFixed(2)} MB - diff preview truncated)`;
+            }
+            const buffer = await fs.promises.readFile(fullPath);
+            // Quick binary check (look for null bytes in initial chunk)
+            const sample = buffer.slice(0, 1024);
+            if (sample.includes(0)) {
+              return `(Binary file - diff preview unavailable)`;
+            }
+            const content = buffer.toString('utf8');
             const lines = content.split('\n');
             return `--- /dev/null\n+++ b/${filePath}\n@@ -0,0 +1,${lines.length} @@\n` + lines.map((l: string) => `+${l}`).join('\n');
           }
@@ -220,25 +235,25 @@ class GitService {
     }
   }
 
-  async getCommitDiff(path: string, commitHash: string) {
-    if (!(await this.isGitRepo(path))) {
+  async getCommitDiff(repoPath: string, commitHash: string) {
+    if (!(await this.isGitRepo(repoPath))) {
       return '';
     }
     try {
-      const git = this.git(path);
+      const git = this.git(repoPath);
       return await git.show([commitHash]);
     } catch {
       return '';
     }
   }
 
-  async stash(path: string, action: 'push' | 'pop' | 'list' | 'apply' | 'drop', message?: string, index: number = 0) {
-    if (!(await this.isGitRepo(path))) {
+  async stash(repoPath: string, action: 'push' | 'pop' | 'list' | 'apply' | 'drop', message?: string, index: number = 0) {
+    if (!(await this.isGitRepo(repoPath))) {
       return action === 'list' ? [] : undefined;
     }
-    const git = this.git(path);
+    const git = this.git(repoPath);
     if (action === 'push') {
-      const args = ['push'];
+      const args = ['push', '-u'];
       if (message) args.push('-m', message);
       return await git.stash(args);
     }

@@ -13,7 +13,7 @@ interface InstalledPackagesListProps {
 }
 
 export const InstalledPackagesList: React.FC<InstalledPackagesListProps> = ({ projectPath }) => {
-  const { installedPackages, isLoadingInstalled, uninstallPackage, upgradePackage } = useDependencyStore();
+  const { installedPackages, isLoadingInstalled, uninstallPackage } = useDependencyStore();
   const [filterType, setFilterType] = useState<'all' | 'dependency' | 'devDependency'>('all');
   const [search, setSearch] = useState('');
   const [removingName, setRemovingName] = useState<string | null>(null);

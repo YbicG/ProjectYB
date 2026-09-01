@@ -151,11 +151,20 @@ export class CloudflareService {
     return new Promise((resolve, reject) => {
       const file = fs.createWriteStream(dest);
 
-      const request = (currentUrl: string) => {
-        https.get(currentUrl, (response) => {
+      const request = (currentUrl: string, redirectCount = 0) => {
+        if (redirectCount > 10) {
+          file.close();
+          fs.unlink(dest, () => {});
+          return reject(new Error('Too many HTTP redirects during binary download'));
+        }
+
+        const client = currentUrl.startsWith('http:') ? require('http') : https;
+
+        client.get(currentUrl, (response: any) => {
           // Handle HTTP redirects (301, 302, 307, 308)
           if (response.statusCode && response.statusCode >= 300 && response.statusCode < 400 && response.headers.location) {
-            return request(response.headers.location);
+            const redirectUrl = new URL(response.headers.location, currentUrl).toString();
+            return request(redirectUrl, redirectCount + 1);
           }
 
           if (response.statusCode !== 200) {
@@ -167,7 +176,7 @@ export class CloudflareService {
           const totalBytes = parseInt(response.headers['content-length'] || '0', 10);
           let receivedBytes = 0;
 
-          response.on('data', (chunk) => {
+          response.on('data', (chunk: Buffer) => {
             receivedBytes += chunk.length;
             if (totalBytes > 0 && onProgress) {
               const percent = Math.round((receivedBytes / totalBytes) * 100);
@@ -180,7 +189,7 @@ export class CloudflareService {
           file.on('finish', () => {
             file.close(() => resolve());
           });
-        }).on('error', (err) => {
+        }).on('error', (err: Error) => {
           file.close();
           fs.unlink(dest, () => {});
           reject(err);
@@ -341,7 +350,9 @@ export class CloudflareService {
         activeTunnel.logs.push(`[${new Date().toLocaleTimeString()}] ${cleaned}`);
         if (activeTunnel.logs.length > 200) activeTunnel.logs.shift();
 
-        if (cleaned.toLowerCase().includes('registered tunnel connection') || cleaned.toLowerCase().includes('connection established')) {
+        const isConnected =
+          /registered.*connection|connection.*registered|connection established|route propagation/i.test(cleaned);
+        if (isConnected && activeTunnel.status !== 'connected') {
           activeTunnel.status = 'connected';
           this.emitStatusUpdate(activeTunnel);
         }

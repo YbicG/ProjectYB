@@ -1,6 +1,7 @@
 import React, { Component, ErrorInfo, ReactNode } from 'react';
 import { AlertTriangle, RefreshCw } from 'lucide-react';
 import { Button } from '../ui/button';
+import { useNotificationStore } from '@renderer/stores/useNotificationStore';
 
 interface Props {
   children: ReactNode;
@@ -24,6 +25,14 @@ export class ErrorBoundary extends Component<Props, State> {
 
   public componentDidCatch(error: Error, errorInfo: ErrorInfo) {
     console.error('Uncaught error in component tree:', error, errorInfo);
+    try {
+      useNotificationStore.getState().notify({
+        title: this.props.fallbackTitle || 'UI Render Error Caught',
+        message: error.message || 'An unexpected error occurred in component tree',
+        type: 'error',
+        category: 'system'
+      });
+    } catch {}
   }
 
   private handleReset = () => {

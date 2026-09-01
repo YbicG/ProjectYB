@@ -58,7 +58,9 @@ export class ChangelogService {
     try {
       const { stdout } = await execAsync('git log ' + gitRange + ' --pretty=format:"%H|%h|%an|%ad|%s" --date=short', { cwd: projectPath });
       commitsRaw = stdout;
-    } catch {
+    } catch {}
+
+    if (!commitsRaw || !commitsRaw.trim()) {
       try {
         const { stdout } = await execAsync('git log -n 50 --pretty=format:"%H|%h|%an|%ad|%s" --date=short', { cwd: projectPath });
         commitsRaw = stdout;

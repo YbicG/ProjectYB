@@ -16,6 +16,7 @@ import { Button } from '../ui/button';
 import { Input } from '../ui/input';
 import { Badge } from '../ui/badge';
 import { Label } from '../ui/label';
+import { useGitStore } from '../../stores/useGitStore';
 import { toast } from 'sonner';
 
 interface ChangelogGeneratorModalProps {
@@ -31,6 +32,7 @@ export const ChangelogGeneratorModal: React.FC<ChangelogGeneratorModalProps> = (
   projectPath,
   projectName
 }) => {
+  const { selectedProjectId, fetchStatus, loadHistory } = useGitStore();
   const [isLoading, setIsLoading] = useState(false);
   const [isApplying, setIsApplying] = useState(false);
   const [changelogData, setChangelogData] = useState<any>(null);
@@ -74,6 +76,10 @@ export const ChangelogGeneratorModal: React.FC<ChangelogGeneratorModalProps> = (
       );
       if (res.success) {
         toast.success(res.message);
+        if (selectedProjectId) {
+          await fetchStatus(selectedProjectId, projectPath);
+        }
+        await loadHistory(projectPath);
         onOpenChange(false);
       } else {
         toast.error(res.message);

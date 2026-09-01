@@ -51,6 +51,20 @@ export const ModernHeader: React.FC = () => {
         return 'Git Studio';
       case 'services':
         return 'Background Services';
+      case 'database':
+        return 'Database Studio';
+      case 'pipelines':
+        return 'Developer Recipes';
+      case 'logstream':
+        return 'LogStream Studio';
+      case 'tunnels':
+        return 'Cloudflare Tunnels';
+      case 'proxy':
+        return 'Local HTTPS Proxy';
+      case 'mock-server':
+        return 'Mock Server & Webhooks';
+      case 'cron':
+        return 'Cron & Scheduled Tasks';
       case 'dependencies':
         return 'Dependencies Hub';
       case 'optimizer':
@@ -100,12 +114,12 @@ export const ModernHeader: React.FC = () => {
       {/* ── Center: Omnipresent Search Trigger (Ctrl+K) ── */}
       <div className="flex-1 max-w-md hidden md:block">
         <button
-          onClick={() => setSearchModalOpen(true)}
+          onClick={() => useAppStore.getState().setCommandPaletteOpen(true)}
           className="w-full h-8 px-3 rounded-lg bg-zinc-900/80 hover:bg-zinc-900 border border-zinc-800 hover:border-zinc-700 text-xs text-zinc-400 flex items-center justify-between transition-all group"
         >
           <div className="flex items-center gap-2">
             <Search className="w-3.5 h-3.5 text-zinc-500 group-hover:text-violet-400 transition-colors" />
-            <span className="truncate">Search files, symbols, projects...</span>
+            <span className="truncate">Search commands, projects, actions...</span>
           </div>
           <kbd className="text-[10px] font-mono text-zinc-500 bg-zinc-950 px-1.5 py-0.5 rounded border border-zinc-800 flex items-center gap-0.5">
             <Command className="w-2.5 h-2.5" /> K

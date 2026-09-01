@@ -191,6 +191,7 @@ export const ModernProjectWorkbench: React.FC = () => {
           projectId: project.id,
           projectName: project.name
         });
+        useThemeStore.getState().setTerminalDockOpen(true);
         toast.success('Spawned terminal for ' + scriptName);
       }
     } catch (err: any) {
@@ -218,6 +219,7 @@ export const ModernProjectWorkbench: React.FC = () => {
           projectId: project.id,
           projectName: project.name
         });
+        useThemeStore.getState().setTerminalDockOpen(true);
         toast.success('Running ' + scriptName + ' in ' + sub.name);
       }
     } catch (err: any) {
@@ -454,6 +456,7 @@ export const ModernProjectWorkbench: React.FC = () => {
                                 projectName: project.name
                               });
                             });
+                            useThemeStore.getState().setTerminalDockOpen(true);
                             toast.success('Triggered config: ' + cfg.name);
                           }}
                           className="h-7 text-xs bg-violet-600 hover:bg-violet-700 gap-1 px-2.5"

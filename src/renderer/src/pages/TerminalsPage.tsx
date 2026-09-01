@@ -5,6 +5,7 @@ import { TerminalSidebar } from '../components/terminal/TerminalSidebar';
 import { TerminalGrid } from '../components/terminal/TerminalGrid';
 import { TerminalView } from '../components/terminal/TerminalView';
 import { useTerminalStore } from '@renderer/stores/useTerminalStore';
+import { useAppStore } from '@renderer/stores/useAppStore';
 import { TerminalSquare, Plus } from 'lucide-react';
 import { Button } from '../components/ui/button';
 
@@ -24,7 +25,10 @@ export const TerminalsPage: React.FC = () => {
           </p>
         </div>
         <Button
-          onClick={() => createTerminal({ name: 'Terminal', cwd: 'D:\\Code' })}
+          onClick={() => {
+            const defaultCwd = useAppStore.getState().scanPaths[0] || 'D:\\Code';
+            createTerminal({ name: 'Terminal', cwd: defaultCwd });
+          }}
           className="bg-violet-600 hover:bg-violet-700 text-white text-xs gap-1.5 h-8 px-4"
         >
           <Plus className="w-3.5 h-3.5" />

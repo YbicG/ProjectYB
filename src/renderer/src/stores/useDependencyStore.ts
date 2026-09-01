@@ -83,12 +83,12 @@ export const useDependencyStore = create<DependencyState>((set, get) => ({
     if (!force) {
       const cached = outdatedCache.get(projectPath);
       if (cached && Date.now() - cached.time < CACHE_TTL_MS) {
-        set({ outdatedPackages: cached.data, selectedUpgradePackages: cached.data.map((p) => p.name) });
+        set({ outdatedPackages: cached.data, selectedUpgradePackages: cached.data.map((p) => p.name), isLoadingOutdated: false });
         return;
       }
     }
 
-    set({ isLoadingOutdated: true });
+    set({ isLoadingOutdated: true, outdatedPackages: [], selectedUpgradePackages: [] });
     try {
       const outdated = await window.api.dependencies.getOutdated(projectPath);
       const data = outdated || [];
@@ -107,12 +107,12 @@ export const useDependencyStore = create<DependencyState>((set, get) => ({
     if (!force) {
       const cached = auditCache.get(projectPath);
       if (cached && Date.now() - cached.time < CACHE_TTL_MS) {
-        set({ auditSummary: cached.data });
+        set({ auditSummary: cached.data, isLoadingAudit: false });
         return;
       }
     }
 
-    set({ isLoadingAudit: true });
+    set({ isLoadingAudit: true, auditSummary: null });
     try {
       const summary = await window.api.dependencies.getAudit(projectPath);
       const data = summary || null;
@@ -148,7 +148,9 @@ export const useDependencyStore = create<DependencyState>((set, get) => ({
       const res = await window.api.dependencies.upgrade({ projectPath, packageName, targetVersion, isDev });
       if (res.success) {
         toast.success(`Upgraded ${packageName} successfully!`);
-        get().loadAllForProject(projectPath);
+        outdatedCache.delete(projectPath);
+        auditCache.delete(projectPath);
+        await get().loadAllForProject(projectPath, true);
         return true;
       } else {
         toast.error(`Upgrade failed: ${res.output}`);
@@ -181,7 +183,9 @@ export const useDependencyStore = create<DependencyState>((set, get) => ({
         if (res?.success) successCount++;
       }
       toast.success(`Upgraded ${successCount} packages!`);
-      await get().loadAllForProject(projectPath);
+      outdatedCache.delete(projectPath);
+      auditCache.delete(projectPath);
+      await get().loadAllForProject(projectPath, true);
     } catch (err: any) {
       toast.error(`Batch upgrade error: ${err.message}`);
     } finally {
@@ -196,8 +200,10 @@ export const useDependencyStore = create<DependencyState>((set, get) => ({
       const res = await window.api.dependencies.fixAudit(projectPath);
       if (res.success) {
         toast.success('Security audit auto-fix applied!');
-        get().loadAudit(projectPath);
-        get().loadInstalled(projectPath);
+        outdatedCache.delete(projectPath);
+        auditCache.delete(projectPath);
+        await get().loadAudit(projectPath, true);
+        await get().loadInstalled(projectPath);
         return true;
       } else {
         toast.error(`Audit fix failed: ${res.output}`);
@@ -223,7 +229,9 @@ export const useDependencyStore = create<DependencyState>((set, get) => ({
           category: 'dependencies',
           actionTab: 'dependencies'
         });
-        get().loadAllForProject(projectPath);
+        outdatedCache.delete(projectPath);
+        auditCache.delete(projectPath);
+        await get().loadAllForProject(projectPath, true);
         return true;
       } else {
         useNotificationStore.getState().notify({
@@ -253,7 +261,9 @@ export const useDependencyStore = create<DependencyState>((set, get) => ({
           category: 'dependencies',
           actionTab: 'dependencies'
         });
-        get().loadAllForProject(projectPath);
+        outdatedCache.delete(projectPath);
+        auditCache.delete(projectPath);
+        await get().loadAllForProject(projectPath, true);
         return true;
       } else {
         useNotificationStore.getState().notify({

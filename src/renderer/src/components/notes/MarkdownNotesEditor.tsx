@@ -59,7 +59,7 @@ export const MarkdownNotesEditor: React.FC<MarkdownNotesEditorProps> = ({ projec
     const lines = currentNote.content.split('\n');
     const result: Array<{ lineIndex: number; text: string; completed: boolean }> = [];
     lines.forEach((line, index) => {
-      const match = line.match(/^(\s*)-\s*\[([ xX])\]\s*(.*)$/);
+      const match = line.match(/^(\s*)[-*]\s*\[([ xX])\]\s*(.*)$/);
       if (match) {
         result.push({
           lineIndex: index,
@@ -149,7 +149,7 @@ export const MarkdownNotesEditor: React.FC<MarkdownNotesEditorProps> = ({ projec
   }
 
   // Parse markdown into parsed elements (including fenced code blocks)
-  const parsedElements = (() => {
+  const parsedElements = React.useMemo(() => {
     if (!currentNote?.content) return [];
     const lines = currentNote.content.split('\n');
     const elements: Array<{ type: 'task' | 'h1' | 'h2' | 'h3' | 'list' | 'codeblock' | 'empty' | 'text'; content: string; codeLang?: string; rawLines?: string[]; lineIndex: number; completed?: boolean }> = [];
@@ -185,7 +185,7 @@ export const MarkdownNotesEditor: React.FC<MarkdownNotesEditorProps> = ({ projec
         return;
       }
 
-      const taskMatch = line.match(/^(\s*)-\s*\[([ xX])\]\s*(.*)$/);
+      const taskMatch = line.match(/^(\s*)[-*]\s*\[([ xX])\]\s*(.*)$/);
       if (taskMatch) {
         elements.push({
           type: 'task',
@@ -199,7 +199,7 @@ export const MarkdownNotesEditor: React.FC<MarkdownNotesEditorProps> = ({ projec
       if (line.startsWith('# ')) elements.push({ type: 'h1', content: line.replace('# ', ''), lineIndex: idx });
       else if (line.startsWith('## ')) elements.push({ type: 'h2', content: line.replace('## ', ''), lineIndex: idx });
       else if (line.startsWith('### ')) elements.push({ type: 'h3', content: line.replace('### ', ''), lineIndex: idx });
-      else if (line.startsWith('- ')) elements.push({ type: 'list', content: line.replace('- ', ''), lineIndex: idx });
+      else if (line.startsWith('- ') || line.startsWith('* ')) elements.push({ type: 'list', content: line.replace(/^[-*]\s+/, ''), lineIndex: idx });
       else if (!line.trim()) elements.push({ type: 'empty', content: '', lineIndex: idx });
       else elements.push({ type: 'text', content: line, lineIndex: idx });
     });
@@ -214,7 +214,7 @@ export const MarkdownNotesEditor: React.FC<MarkdownNotesEditorProps> = ({ projec
     }
 
     return elements;
-  })();
+  }, [currentNote?.content]);
 
   return (
     <div className="space-y-3">

@@ -18,6 +18,8 @@ export interface CloudVaultPayload {
     runConfigs?: any[];
     mockRoutes?: any[];
     customTheme?: any;
+    vaultSecrets?: any[];
+    benchmarks?: any[];
   };
 }
 
@@ -53,7 +55,9 @@ export class CloudSyncService {
         pipelines: (store.get('pipelines:data') as any[]) || [],
         snippets: (store.get('snippets') as any[]) || [],
         workspaceStacks: (store.get('workspaces:stacks') as any[]) || [],
-        mockRoutes: (store.get('mock:routes') as any[]) || []
+        mockRoutes: (store.get('mock:routes') as any[]) || [],
+        vaultSecrets: (store.get('vault:secrets') as any[]) || [],
+        benchmarks: (store.get('benchmarks:history') as any[]) || []
       }
     };
   }
@@ -134,6 +138,14 @@ export class CloudSyncService {
     }
     if (payload.data.mockRoutes) {
       store.set('mock:routes', payload.data.mockRoutes);
+      count++;
+    }
+    if (payload.data.vaultSecrets) {
+      store.set('vault:secrets', payload.data.vaultSecrets);
+      count++;
+    }
+    if (payload.data.benchmarks) {
+      store.set('benchmarks:history', payload.data.benchmarks);
       count++;
     }
 

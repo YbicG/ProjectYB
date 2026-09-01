@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { SecretVaultItem, SecretEnvironment } from '../types/secret';
+import { SecretVaultItem, SecretEnvironment, SecretCategory } from '../types/secret';
 import { toast } from 'sonner';
 
 interface SecretVaultState {
@@ -22,6 +22,7 @@ interface SecretVaultState {
   getSecretByKey: (key: string, env?: SecretEnvironment) => SecretVaultItem | undefined;
   bulkSyncToEnv: (envEntries: Array<{ key: string; value: string }>, targetEnv?: SecretEnvironment) => Record<string, string>;
   exportVaultToTemplate: () => string;
+  importSecretsFromTemplate: (templateContent: string, defaultCategory?: SecretCategory, defaultEnv?: SecretEnvironment) => Promise<number>;
 }
 
 export const useSecretVaultStore = create<SecretVaultState>((set, get) => ({
@@ -174,5 +175,77 @@ export const useSecretVaultStore = create<SecretVaultState>((set, get) => ({
     return secrets
       .map((s) => '# ' + (s.description || s.category.toUpperCase()) + ' (' + s.environment + ')\n' + s.key + '=' + s.value)
       .join('\n\n');
+  },
+
+  importSecretsFromTemplate: async (templateContent: string, defaultCategory: SecretCategory = 'custom', defaultEnv: SecretEnvironment = 'all') => {
+    const lines = templateContent.split(/\r?\n/);
+    const newItems: SecretVaultItem[] = [];
+    let currentComment = '';
+
+    for (const line of lines) {
+      const trimmed = line.trim();
+      if (!trimmed) {
+        currentComment = '';
+        continue;
+      }
+      if (trimmed.startsWith('#')) {
+        currentComment = trimmed.replace(/^#\s?/, '');
+        continue;
+      }
+
+      const eqIdx = trimmed.indexOf('=');
+      if (eqIdx !== -1) {
+        const key = trimmed.substring(0, eqIdx).trim().toUpperCase().replace(/[^A-Z0-9_]/g, '_');
+        let value = trimmed.substring(eqIdx + 1).trim();
+        if ((value.startsWith('"') && value.endsWith('"')) || (value.startsWith("'") && value.endsWith("'"))) {
+          value = value.slice(1, -1);
+        }
+
+        if (key && value) {
+          const category: SecretCategory =
+            key.includes('AI') || key.includes('OPENAI') || key.includes('CLAUDE') || key.includes('GEMINI') || key.includes('OLLAMA') ? 'ai' :
+            key.includes('DB') || key.includes('DATABASE') || key.includes('POSTGRES') || key.includes('MONGO') || key.includes('REDIS') ? 'database' :
+            key.includes('AUTH') || key.includes('JWT') || key.includes('SECRET') || key.includes('PASSWORD') ? 'auth' :
+            key.includes('AWS') || key.includes('S3') || key.includes('GCP') || key.includes('AZURE') || key.includes('CLOUDFLARE') ? 'cloud' :
+            key.includes('STRIPE') || key.includes('PAYPAL') || key.includes('BILLING') ? 'payments' :
+            key.includes('DOCKER') || key.includes('KUBE') || key.includes('CI') || key.includes('GITHUB') ? 'devops' :
+            defaultCategory;
+
+          newItems.push({
+            id: 'sec_' + Date.now() + '_' + Math.random().toString(36).substring(2, 7),
+            key,
+            value,
+            category,
+            environment: defaultEnv,
+            description: currentComment || undefined,
+            createdAt: Date.now(),
+            updatedAt: Date.now()
+          });
+          currentComment = '';
+        }
+      }
+    }
+
+    if (newItems.length === 0) {
+      toast.info('No valid KEY=VALUE pairs found to import');
+      return 0;
+    }
+
+    const existing = [...get().secrets];
+    for (const item of newItems) {
+      const idx = existing.findIndex((s) => s.key === item.key && s.environment === item.environment);
+      if (idx >= 0) {
+        existing[idx] = { ...existing[idx], ...item, updatedAt: Date.now() };
+      } else {
+        existing.unshift(item);
+      }
+    }
+
+    set({ secrets: existing });
+    if (window.api?.store) {
+      await window.api.store.set('vault:secrets', existing);
+    }
+    toast.success(`Imported ${newItems.length} secret(s) into vault`);
+    return newItems.length;
   }
 }));

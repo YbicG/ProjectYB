@@ -94,7 +94,81 @@ export const GitDiff: React.FC = () => {
     })
   }, [activeDiff?.diffText])
 
+  // Paired Split Rows for Side-by-Side Diff
+  interface SplitRow {
+    id: string;
+    type: 'hunk' | 'header' | 'pair';
+    rawHeader?: string;
+    left?: { num: string; text: string; type: 'del' | 'context' | 'empty' };
+    right?: { num: string; text: string; type: 'add' | 'context' | 'empty' };
+  }
+
+  const splitRows = useMemo<SplitRow[]>(() => {
+    if (!parsedDiff || parsedDiff.length === 0) return []
+    const rows: SplitRow[] = []
+    let i = 0
+
+    while (i < parsedDiff.length) {
+      const item = parsedDiff[i]
+
+      if (item.type === 'hunk' || item.type === 'header') {
+        rows.push({
+          id: `row-${i}`,
+          type: item.type,
+          rawHeader: item.line
+        })
+        i++
+        continue
+      }
+
+      if (item.type === 'context') {
+        rows.push({
+          id: `row-${i}`,
+          type: 'pair',
+          left: { num: item.oldNum, text: item.line, type: 'context' },
+          right: { num: item.newNum, text: item.line, type: 'context' }
+        })
+        i++
+        continue
+      }
+
+      // Collect consecutive del lines
+      const delGroup: typeof parsedDiff = []
+      while (i < parsedDiff.length && parsedDiff[i].type === 'del') {
+        delGroup.push(parsedDiff[i])
+        i++
+      }
+
+      // Collect consecutive add lines
+      const addGroup: typeof parsedDiff = []
+      while (i < parsedDiff.length && parsedDiff[i].type === 'add') {
+        addGroup.push(parsedDiff[i])
+        i++
+      }
+
+      const maxLen = Math.max(delGroup.length, addGroup.length)
+      for (let k = 0; k < maxLen; k++) {
+        const delItem = delGroup[k]
+        const addItem = addGroup[k]
+
+        rows.push({
+          id: `pair-${delItem?.id ?? 'x'}-${addItem?.id ?? 'y'}-${k}`,
+          type: 'pair',
+          left: delItem
+            ? { num: delItem.oldNum, text: delItem.line, type: 'del' }
+            : { num: '', text: '', type: 'empty' },
+          right: addItem
+            ? { num: addItem.newNum, text: addItem.line, type: 'add' }
+            : { num: '', text: '', type: 'empty' }
+        })
+      }
+    }
+
+    return rows
+  }, [parsedDiff])
+
   const visibleLines = showAllLines ? parsedDiff : parsedDiff.slice(0, MAX_INITIAL_LINES)
+  const visibleSplitRows = showAllLines ? splitRows : splitRows.slice(0, MAX_INITIAL_LINES)
 
   if (!selectedFile || !activeDiff) {
     return (
@@ -250,47 +324,81 @@ export const GitDiff: React.FC = () => {
             </div>
           ) : (
             /* Split Side-by-Side Mode */
-            <div className="font-mono text-xs divide-y divide-zinc-800/40">
-              {visibleLines.map((item) => (
-                <div key={item.id} className="grid grid-cols-2 divide-x divide-zinc-800">
-                  {/* Left (Old) */}
-                  <div
-                    className={cn(
-                      'flex items-start px-2 py-0.5 overflow-x-auto whitespace-pre',
-                      item.type === 'del' ? 'bg-rose-950/30 text-rose-300' : item.type === 'add' ? 'bg-zinc-950/40 opacity-30' : 'text-zinc-300'
-                    )}
-                  >
-                    <span className="w-7 text-zinc-600 select-none shrink-0 text-right pr-2">{item.oldNum}</span>
-                    <span className="flex-1">{item.type === 'del' || item.type === 'context' ? item.line : ''}</span>
-                  </div>
+            <div className="font-mono text-xs divide-y divide-zinc-850">
+              {visibleSplitRows.map((row) => {
+                if (row.type === 'hunk') {
+                  return (
+                    <div
+                      key={row.id}
+                      className="bg-violet-950/30 text-violet-300 font-semibold px-3 py-1 text-xs border-y border-violet-800/40 select-text"
+                    >
+                      {row.rawHeader}
+                    </div>
+                  )
+                }
 
-                  {/* Right (New) */}
-                  <div
-                    className={cn(
-                      'flex items-start px-2 py-0.5 overflow-x-auto whitespace-pre',
-                      item.type === 'add' ? 'bg-emerald-950/30 text-emerald-200' : item.type === 'del' ? 'bg-zinc-950/40 opacity-30' : 'text-zinc-300'
-                    )}
-                  >
-                    <span className="w-7 text-zinc-600 select-none shrink-0 text-right pr-2">{item.newNum}</span>
-                    <span className="flex-1">{item.type === 'add' || item.type === 'context' ? item.line : ''}</span>
+                if (row.type === 'header') {
+                  return (
+                    <div
+                      key={row.id}
+                      className="bg-zinc-900/80 text-zinc-400 px-3 py-0.5 text-[11px] select-text"
+                    >
+                      {row.rawHeader}
+                    </div>
+                  )
+                }
+
+                return (
+                  <div key={row.id} className="grid grid-cols-2 divide-x divide-zinc-800">
+                    {/* Left (Old) */}
+                    <div
+                      className={cn(
+                        'flex items-start px-2 py-0.5 overflow-x-auto whitespace-pre',
+                        row.left?.type === 'del' && 'bg-rose-950/35 text-rose-300',
+                        row.left?.type === 'context' && 'text-zinc-300 hover:bg-zinc-900/40',
+                        row.left?.type === 'empty' && 'bg-zinc-950/40 opacity-20'
+                      )}
+                    >
+                      <span className="w-7 text-zinc-600 select-none shrink-0 text-right pr-2">
+                        {row.left?.num}
+                      </span>
+                      <span className="flex-1 select-text">{row.left?.text}</span>
+                    </div>
+
+                    {/* Right (New) */}
+                    <div
+                      className={cn(
+                        'flex items-start px-2 py-0.5 overflow-x-auto whitespace-pre',
+                        row.right?.type === 'add' && 'bg-emerald-950/35 text-emerald-200',
+                        row.right?.type === 'context' && 'text-zinc-300 hover:bg-zinc-900/40',
+                        row.right?.type === 'empty' && 'bg-zinc-950/40 opacity-20'
+                      )}
+                    >
+                      <span className="w-7 text-zinc-600 select-none shrink-0 text-right pr-2">
+                        {row.right?.num}
+                      </span>
+                      <span className="flex-1 select-text">{row.right?.text}</span>
+                    </div>
                   </div>
-                </div>
-              ))}
+                )
+              })}
             </div>
           )}
 
-          {parsedDiff.length > MAX_INITIAL_LINES && !showAllLines && (
-            <div className="p-4 text-center">
-              <Button
-                variant="outline"
-                size="sm"
-                className="text-xs border-zinc-800 bg-zinc-900"
-                onClick={() => setShowAllLines(true)}
-              >
-                Show remaining {parsedDiff.length - MAX_INITIAL_LINES} lines
-              </Button>
-            </div>
-          )}
+          {((viewMode === 'unified' && parsedDiff.length > MAX_INITIAL_LINES) ||
+            (viewMode === 'split' && splitRows.length > MAX_INITIAL_LINES)) &&
+            !showAllLines && (
+              <div className="p-4 text-center">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="text-xs border-zinc-800 bg-zinc-900"
+                  onClick={() => setShowAllLines(true)}
+                >
+                  Show remaining {Math.max(parsedDiff.length, splitRows.length) - MAX_INITIAL_LINES} lines
+                </Button>
+              </div>
+            )}
         </ScrollArea>
       </CardContent>
     </Card>

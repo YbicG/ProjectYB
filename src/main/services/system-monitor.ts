@@ -127,7 +127,8 @@ class SystemMonitor {
   async getAllDeveloperProcesses(): Promise<DeveloperProcessInfo[]> {
     try {
       const terminals = terminalService.getAllTerminals();
-      const termMap = new Map(terminals.map((t) => [t.pid, t]));
+      const validTerminals = terminals.filter((t) => typeof t.pid === 'number' && t.pid > 0);
+      const termMap = new Map(validTerminals.map((t) => [t.pid, t]));
 
       const processesData = await si.processes();
       if (!processesData || !Array.isArray(processesData.list)) return [];
@@ -143,15 +144,15 @@ class SystemMonitor {
       }
 
       const results: DeveloperProcessInfo[] = [];
+      const visitedPids = new Set<number>();
 
       for (const [pid, term] of termMap) {
         const queue = [pid];
-        const visited = new Set<number>();
 
         while (queue.length > 0) {
           const curr = queue.shift()!;
-          if (visited.has(curr)) continue;
-          visited.add(curr);
+          if (visitedPids.has(curr)) continue;
+          visitedPids.add(curr);
 
           const p = procByPid.get(curr);
           if (p) {
@@ -171,6 +172,29 @@ class SystemMonitor {
           if (children) {
             for (const c of children) queue.push(c);
           }
+        }
+      }
+
+      // Also detect standalone external dev processes (e.g. node, python, bun, deno, cargo, go, vite, esbuild, redis, postgres)
+      const devProcessNames = new Set([
+        'node.exe', 'node', 'python.exe', 'python', 'python3', 'python3.exe',
+        'bun.exe', 'bun', 'deno.exe', 'deno', 'cargo.exe', 'cargo',
+        'go.exe', 'go', 'vite', 'esbuild.exe', 'esbuild', 'next-server',
+        'mysqld.exe', 'postgres.exe', 'redis-server.exe'
+      ]);
+
+      for (const p of procList) {
+        if (!visitedPids.has(p.pid) && p.pid > 4 && devProcessNames.has((p.name || '').toLowerCase())) {
+          visitedPids.add(p.pid);
+          results.push({
+            pid: p.pid,
+            parentPid: p.parentPid,
+            name: p.name || 'node',
+            command: p.command || '',
+            cpu: Math.round((p.cpu || 0) * 10) / 10,
+            memoryMb: Math.round((p.memRss || 0) / 1024),
+            terminalTitle: 'External Dev Process'
+          });
         }
       }
 

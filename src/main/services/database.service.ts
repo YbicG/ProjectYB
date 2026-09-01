@@ -60,13 +60,9 @@ export interface RedisKeyItem {
 
 function sanitizeConnectionString(uri: string): string {
   try {
-    const parsed = new URL(uri);
-    if (parsed.password) {
-      parsed.password = '••••';
-    }
-    return parsed.toString();
-  } catch {
     return uri.replace(/:([^:@]+)@/, ':••••@');
+  } catch {
+    return uri;
   }
 }
 
@@ -408,7 +404,15 @@ export class DatabaseService {
       if (isSelect) {
         const stmt = db.prepare(trimmed);
         const rows = stmt.all();
-        const columns = rows.length > 0 ? Object.keys(rows[0]) : [];
+        let columns: string[] = [];
+        if (typeof stmt.columns === 'function') {
+          try {
+            columns = stmt.columns().map((c: any) => c.name);
+          } catch {}
+        }
+        if (columns.length === 0 && rows.length > 0) {
+          columns = Object.keys(rows[0]);
+        }
         db.close();
         return { columns, rows, rowCount: rows.length, durationMs: Date.now() - start };
       } else {
@@ -443,7 +447,30 @@ export class DatabaseService {
         return { columns: ['status', 'message'], rows: [{ status: 'SUCCESS', message: 'Executed statement successfully' }], rowCount: 1, durationMs: Date.now() - start };
       }
     } catch (err: any) {
-      return { columns: ['error'], rows: [{ error: err.message }], rowCount: 0, durationMs: Date.now() - start, error: err.message };
+      // Tier 3: Python sqlite3 fallback
+      try {
+        const pyScript = `import sqlite3, json, sys
+conn = sqlite3.connect(sys.argv[1])
+conn.row_factory = sqlite3.Row
+cur = conn.cursor()
+cur.execute(sys.argv[2])
+if ${isSelect ? 'True' : 'False'}:
+    fetched = cur.fetchall()
+    rows = [dict(r) for r in fetched]
+    cols = [d[0] for d in cur.description] if cur.description else []
+    print(json.dumps({'cols': cols, 'rows': rows}))
+else:
+    conn.commit()
+    print(json.dumps({'cols': ['status', 'message'], 'rows': [{'status': 'SUCCESS', 'message': 'Executed statement successfully'}]}))
+conn.close()`;
+        const escapedPy = pyScript.replace(/"/g, '\\"');
+        const escapedQuery = trimmed.replace(/"/g, '""');
+        const { stdout: pyOut } = await execAsync(`python -c "${escapedPy}" "${conn.filePath}" "${escapedQuery}"`, { maxBuffer: 10 * 1024 * 1024 });
+        const parsed = JSON.parse(pyOut.trim());
+        return { columns: parsed.cols || [], rows: parsed.rows || [], rowCount: (parsed.rows || []).length, durationMs: Date.now() - start };
+      } catch {
+        return { columns: ['error'], rows: [{ error: err.message }], rowCount: 0, durationMs: Date.now() - start, error: err.message };
+      }
     }
   }
 
@@ -458,10 +485,10 @@ export class DatabaseService {
       const schema: TableSchema[] = [];
       for (const tbl of tables) {
         try {
-          const info = db.prepare("PRAGMA table_info('" + tbl.name + "')").all() as any[];
+          const info = db.prepare("PRAGMA table_info('" + tbl.name.replace(/'/g, "''") + "')").all() as any[];
           let rowCount = 0;
           try {
-            const cntRes = db.prepare("SELECT COUNT(*) as count FROM '" + tbl.name + "'").get() as any;
+            const cntRes = db.prepare("SELECT COUNT(*) as count FROM \"" + tbl.name.replace(/"/g, '""') + "\"").get() as any;
             rowCount = cntRes?.count ?? 0;
           } catch {}
           schema.push({
@@ -472,13 +499,13 @@ export class DatabaseService {
               name: c.name,
               type: c.type || 'TEXT',
               nullable: c.notnull === 0,
-              isPrimary: c.pk > 0
+              isPrimary: (c.pk || 0) > 0
             }))
           });
         } catch {}
       }
       db.close();
-      return schema;
+      if (schema.length > 0) return schema;
     } catch {
       // Fall through to Tier 2
     }
@@ -487,20 +514,23 @@ export class DatabaseService {
     try {
       const cmd = `sqlite3 -json "${filePath}" "SELECT name, type FROM sqlite_master WHERE type IN ('table', 'view') AND name NOT LIKE 'sqlite_%' ORDER BY name ASC;"`;
       const { stdout } = await execAsync(cmd);
-      const tables = stdout.trim() ? JSON.parse(stdout.trim()) : [];
+      let tables: any = stdout.trim() ? JSON.parse(stdout.trim()) : [];
+      if (!Array.isArray(tables)) tables = tables ? [tables] : [];
       const schema: TableSchema[] = [];
 
       for (const tbl of tables) {
         try {
-          const infoCmd = `sqlite3 -json "${filePath}" "PRAGMA table_info('${tbl.name}');"`;
+          const infoCmd = `sqlite3 -json "${filePath}" "PRAGMA table_info('${tbl.name.replace(/'/g, "''")}');"`;
           const { stdout: infoOut } = await execAsync(infoCmd);
-          const info = infoOut.trim() ? JSON.parse(infoOut.trim()) : [];
+          let info: any = infoOut.trim() ? JSON.parse(infoOut.trim()) : [];
+          if (!Array.isArray(info)) info = info ? [info] : [];
 
           let rowCount = 0;
           try {
-            const cntCmd = `sqlite3 -json "${filePath}" "SELECT COUNT(*) as count FROM '${tbl.name}';"`;
+            const cntCmd = `sqlite3 -json "${filePath}" "SELECT COUNT(*) as count FROM \\"${tbl.name.replace(/"/g, '""')}\\";"`;
             const { stdout: cntOut } = await execAsync(cntCmd);
-            const cntParsed = cntOut.trim() ? JSON.parse(cntOut.trim()) : [];
+            let cntParsed: any = cntOut.trim() ? JSON.parse(cntOut.trim()) : [];
+            if (!Array.isArray(cntParsed)) cntParsed = cntParsed ? [cntParsed] : [];
             rowCount = cntParsed[0]?.count ?? 0;
           } catch {}
 
@@ -517,7 +547,35 @@ export class DatabaseService {
           });
         } catch {}
       }
-      return schema;
+      if (schema.length > 0) return schema;
+    } catch (err: any) {
+      logger.warn('[DatabaseService] Tier 2 SQLite schema introspection failed for ' + filePath + ': ' + err.message);
+    }
+
+    // Tier 3: Python sqlite3 schema fallback
+    try {
+      const pyScript = `import sqlite3, json, sys
+conn = sqlite3.connect(sys.argv[1])
+cur = conn.cursor()
+cur.execute("SELECT name, type FROM sqlite_master WHERE type IN ('table', 'view') AND name NOT LIKE 'sqlite_%' ORDER BY name ASC;")
+tables = cur.fetchall()
+result = []
+for tname, ttype in tables:
+    cur.execute(f"PRAGMA table_info('{tname}')")
+    cols = cur.fetchall()
+    cnt = 0
+    try:
+        cur.execute(f'SELECT COUNT(*) FROM "{tname}"')
+        cnt = cur.fetchone()[0]
+    except:
+        pass
+    col_list = [{'name': c[1], 'type': c[2] or 'TEXT', 'nullable': c[3] == 0, 'isPrimary': c[5] > 0} for c in cols]
+    result.append({'name': tname, 'type': ttype, 'rowCount': cnt, 'columns': col_list})
+print(json.dumps(result))
+conn.close()`;
+      const escapedPy = pyScript.replace(/"/g, '\\"');
+      const { stdout: pyOut } = await execAsync(`python -c "${escapedPy}" "${filePath}"`);
+      return JSON.parse(pyOut.trim()) || [];
     } catch (err: any) {
       logger.warn('[DatabaseService] Failed to introspect SQLite schema for ' + filePath + ': ' + err.message);
       return [];
@@ -584,7 +642,7 @@ export class DatabaseService {
       socket.setTimeout(3000);
 
       socket.connect(port, host, () => {
-        const cmd = '*2\r\n$4\r\nKEYS\r\n$' + pattern.length + '\r\n' + pattern + '\r\n';
+        const cmd = '*2\r\n$4\r\nKEYS\r\n$' + Buffer.byteLength(pattern) + '\r\n' + pattern + '\r\n';
         socket.write(cmd);
       });
 
@@ -595,9 +653,10 @@ export class DatabaseService {
         const keys: RedisKeyItem[] = [];
 
         for (let i = 1; i < lines.length; i++) {
-          if (!lines[i].startsWith('$') && lines[i].length > 0 && !lines[i].startsWith('*')) {
+          const line = lines[i].trim();
+          if (line && !line.startsWith('$') && !line.startsWith('*')) {
             keys.push({
-              key: lines[i],
+              key: line,
               type: 'string',
               ttl: -1
             });
@@ -616,6 +675,36 @@ export class DatabaseService {
         resolve([]);
       });
     });
+  }
+
+  private decodeRespResponse(raw: string): string {
+    const trimmed = raw.trim();
+    if (trimmed.startsWith('+')) {
+      return trimmed.slice(1);
+    }
+    if (trimmed.startsWith('-')) {
+      return trimmed.slice(1);
+    }
+    if (trimmed.startsWith(':')) {
+      return trimmed.slice(1);
+    }
+    if (trimmed.startsWith('$')) {
+      if (trimmed.startsWith('$-1')) return '(nil)';
+      const parts = trimmed.split(/\r?\n/);
+      return parts.length > 1 ? parts.slice(1).join('\n') : trimmed;
+    }
+    if (trimmed.startsWith('*')) {
+      const lines = trimmed.split(/\r?\n/);
+      const items: string[] = [];
+      for (let i = 1; i < lines.length; i++) {
+        const l = lines[i];
+        if (l && !l.startsWith('$')) {
+          items.push(l);
+        }
+      }
+      return items.length > 0 ? items.join(', ') : '[]';
+    }
+    return trimmed;
   }
 
   private async executeRedisCommand(conn: DatabaseConnection, query: string, start: number): Promise<QueryResult> {
@@ -657,9 +746,10 @@ export class DatabaseService {
       socket.on('data', (data) => {
         socket.destroy();
         const raw = data.toString();
+        const decoded = this.decodeRespResponse(raw);
         resolve({
           columns: ['command', 'response'],
-          rows: [{ command: query, response: raw.trim() }],
+          rows: [{ command: query, response: decoded }],
           rowCount: 1,
           durationMs: Date.now() - start
         });

@@ -12,6 +12,7 @@ interface TerminalOptions {
   serviceId?: string
   isService?: boolean
   command?: string
+  shell?: string
 }
 
 interface TerminalState {
@@ -62,11 +63,19 @@ export const useTerminalStore = create<TerminalState>((set, get) => ({
     }))
 
     try {
+      let shellToUse = options.shell
+      if (!shellToUse && window.api?.store) {
+        try {
+          shellToUse = (await window.api.store.get('defaultShell')) as string | undefined
+        } catch {}
+      }
+
       const pid = await window.api.terminal.spawn({
         id,
         cwd,
         cols: 120,
         rows: 30,
+        shell: shellToUse,
         name: options.name,
         projectId: options.projectId,
         projectName: options.projectName,

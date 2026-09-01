@@ -107,6 +107,12 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
           p.path === folderPath || p.id === folderPath ? { ...p, name: newName.trim() } : p
         )
       }))
+      useNotificationStore.getState().notify({
+        title: 'Project Renamed',
+        message: `Project renamed to "${newName.trim()}"`,
+        type: 'info',
+        category: 'projects'
+      })
     } catch (error) {
       console.error('Failed to rename project:', error)
       throw error
@@ -139,6 +145,12 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
       if (!window.api?.projects) return
       const project = await window.api.projects.addManual(folderPath)
       if (project) {
+        if (window.api?.store) {
+          const manualList = ((await window.api.store.get('manualProjects')) as string[] | undefined) || []
+          if (!manualList.includes(folderPath)) {
+            await window.api.store.set('manualProjects', [...manualList, folderPath])
+          }
+        }
         set((state) => {
           const exists = state.projects.some((p) => p.id === project.id)
           if (exists) {
@@ -211,7 +223,7 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
 
     if (searchQuery) {
       const query = searchQuery.toLowerCase()
-      filtered = filtered.filter((p) => p.name.toLowerCase().includes(query))
+      filtered = filtered.filter((p) => (p.name || '').toLowerCase().includes(query))
     }
 
     if (activeFilters.type && activeFilters.type.length > 0) {
@@ -219,11 +231,11 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
     }
 
     if (activeFilters.category && activeFilters.category.length > 0) {
-      filtered = filtered.filter((p) => activeFilters.category!.includes(p.category))
+      filtered = filtered.filter((p) => p.category && activeFilters.category!.includes(p.category))
     }
 
     if (activeFilters.tags && activeFilters.tags.length > 0) {
-      filtered = filtered.filter((p) => p.tags.some((t) => activeFilters.tags!.includes(t)))
+      filtered = filtered.filter((p) => (p.tags || []).some((t) => activeFilters.tags!.includes(t)))
     }
 
     if (activeFilters.status && activeFilters.status.length > 0) {

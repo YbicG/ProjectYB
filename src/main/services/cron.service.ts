@@ -53,6 +53,13 @@ export class CronService extends EventEmitter {
           nextRun: this.calculateNextRun(job.schedule)
         });
       }
+
+      const savedHistory = store.get('cron:history', {}) as Record<string, CronRunHistoryItem[]>;
+      for (const [k, v] of Object.entries(savedHistory)) {
+        if (Array.isArray(v)) {
+          this.history.set(k, v);
+        }
+      }
     } catch {}
 
     // Start background ticker (checks every 30 seconds)
@@ -67,27 +74,50 @@ export class CronService extends EventEmitter {
     } catch {}
   }
 
+  private async persistHistory() {
+    try {
+      const store = await getStore();
+      const histObj: Record<string, CronRunHistoryItem[]> = {};
+      for (const [k, v] of this.history.entries()) {
+        histObj[k] = v;
+      }
+      store.set('cron:history', histObj);
+    } catch {}
+  }
+
   /**
-   * Parse next execution timestamp from standard 5-field cron or interval string
+   * Parse next execution timestamp from standard 5-field cron or human interval string
    */
   calculateNextRun(schedule: string): string {
     const now = new Date();
     const sched = schedule.trim().toLowerCase();
 
-    // Human interval: "every Xm", "every Xh", "daily"
-    const minMatch = sched.match(/every\s+(\d+)\s*m/);
+    // Human interval: "every Xs", "every Xm", "every Xh", "every Xd"
+    const secMatch = sched.match(/^every\s+(\d+)\s*s(?:ec(?:ond)?s?)?$/);
+    if (secMatch) {
+      const secs = parseInt(secMatch[1], 10);
+      return new Date(now.getTime() + secs * 1000).toISOString();
+    }
+
+    const minMatch = sched.match(/^every\s+(\d+)\s*m(?:in(?:ute)?s?)?$/);
     if (minMatch) {
       const mins = parseInt(minMatch[1], 10);
       return new Date(now.getTime() + mins * 60 * 1000).toISOString();
     }
 
-    const hourMatch = sched.match(/every\s+(\d+)\s*h/);
+    const hourMatch = sched.match(/^every\s+(\d+)\s*h(?:(?:ou)?rs?)?$/);
     if (hourMatch) {
       const hrs = parseInt(hourMatch[1], 10);
       return new Date(now.getTime() + hrs * 3600 * 1000).toISOString();
     }
 
-    if (sched === 'daily' || sched === '0 0 * * *') {
+    const dayMatch = sched.match(/^every\s+(\d+)\s*d(?:ays?)?$/);
+    if (dayMatch) {
+      const days = parseInt(dayMatch[1], 10);
+      return new Date(now.getTime() + days * 86400 * 1000).toISOString();
+    }
+
+    if (sched === 'daily' || sched === 'midnight' || sched === '0 0 * * *') {
       const next = new Date(now);
       next.setDate(next.getDate() + 1);
       next.setHours(0, 0, 0, 0);
@@ -108,9 +138,35 @@ export class CronService extends EventEmitter {
       const nextMin = Math.ceil((curMin + 1) / step) * step;
       const next = new Date(now);
       if (nextMin >= 60) {
-        next.setHours(next.getHours() + 1, nextMin % 60, 0, 0);
+        next.setHours(next.getHours() + Math.floor(nextMin / 60), nextMin % 60, 0, 0);
       } else {
         next.setMinutes(nextMin, 0, 0);
+      }
+      return next.toISOString();
+    }
+
+    // Cron exact minute pattern: M * * * * (e.g. 15 * * * *)
+    const exactMinMatch = sched.match(/^(\d{1,2})\s+\*\s+\*\s+\*\s+\*$/);
+    if (exactMinMatch) {
+      const targetMin = parseInt(exactMinMatch[1], 10);
+      const next = new Date(now);
+      if (now.getMinutes() >= targetMin) {
+        next.setHours(next.getHours() + 1, targetMin, 0, 0);
+      } else {
+        next.setMinutes(targetMin, 0, 0);
+      }
+      return next.toISOString();
+    }
+
+    // Cron exact minute & hour pattern: M H * * * (e.g. 30 14 * * *)
+    const exactTimeMatch = sched.match(/^(\d{1,2})\s+(\d{1,2})\s+\*\s+\*\s+\*$/);
+    if (exactTimeMatch) {
+      const targetMin = parseInt(exactTimeMatch[1], 10);
+      const targetHour = parseInt(exactTimeMatch[2], 10);
+      const next = new Date(now);
+      next.setHours(targetHour, targetMin, 0, 0);
+      if (next.getTime() <= now.getTime()) {
+        next.setDate(next.getDate() + 1);
       }
       return next.toISOString();
     }
@@ -182,6 +238,7 @@ export class CronService extends EventEmitter {
           this.history.set(job.id, list.slice(0, 50)); // Keep last 50 runs
 
           this.persistJobs();
+          this.persistHistory();
           this.emit('job:executed', { job, historyItem });
 
           const logLvl = status === 'success' ? 'info' : 'error';

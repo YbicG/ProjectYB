@@ -333,7 +333,7 @@ export const useDatabaseStore = create<DatabaseState>((set, get) => ({
       return;
     }
 
-    const headers = result.columns.join(',');
+    const headers = result.columns.map((col) => '"' + col.replace(/"/g, '""') + '"').join(',');
     const rows = result.rows.map((row) =>
       result.columns
         .map((col) => {

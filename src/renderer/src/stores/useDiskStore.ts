@@ -169,21 +169,54 @@ export const useDiskStore = create<DiskState>((set, get) => ({
         if (summary) {
           const updatedProjects = summary.projects.map(p => {
             if (p.projectId === projectId) {
-              const cleanedBytes = res.freedBytes;
+              const remainingItems = p.items.filter(
+                item => !res.cleanedPaths.includes(item.fullPath) && !res.cleanedPaths.includes(item.name)
+              );
+              let depBytes = 0;
+              let bldBytes = 0;
+              let cchBytes = 0;
+              for (const item of remainingItems) {
+                if (item.category === 'dependencies') depBytes += item.bytes;
+                else if (item.category === 'build') bldBytes += item.bytes;
+                else if (item.category === 'caches') cchBytes += item.bytes;
+              }
+              const reclaimable = depBytes + bldBytes + cchBytes;
+              const total = p.sourceBytes + reclaimable;
+
               return {
                 ...p,
-                totalBytes: Math.max(0, p.totalBytes - cleanedBytes),
-                reclaimableBytes: Math.max(0, p.reclaimableBytes - cleanedBytes),
-                items: p.items.filter(item => !res.cleanedPaths.includes(item.fullPath) && !res.cleanedPaths.includes(item.name))
+                totalBytes: total,
+                reclaimableBytes: reclaimable,
+                dependenciesBytes: depBytes,
+                buildBytes: bldBytes,
+                cachesBytes: cchBytes,
+                items: remainingItems
               };
             }
             return p;
           });
+
+          let totalAnalyzed = 0;
+          let totalReclaimable = 0;
+          let totalDep = 0;
+          let totalBld = 0;
+          let totalCch = 0;
+
+          for (const proj of updatedProjects) {
+            totalAnalyzed += proj.totalBytes;
+            totalReclaimable += proj.reclaimableBytes;
+            totalDep += proj.dependenciesBytes;
+            totalBld += proj.buildBytes;
+            totalCch += proj.cachesBytes;
+          }
+
           set({
             summary: {
-              ...summary,
-              totalAnalyzedBytes: Math.max(0, summary.totalAnalyzedBytes - res.freedBytes),
-              totalReclaimableBytes: Math.max(0, summary.totalReclaimableBytes - res.freedBytes),
+              totalAnalyzedBytes: totalAnalyzed,
+              totalReclaimableBytes: totalReclaimable,
+              dependenciesBytes: totalDep,
+              buildBytes: totalBld,
+              cachesBytes: totalCch,
               projects: updatedProjects
             }
           });
@@ -226,7 +259,8 @@ export const useDiskStore = create<DiskState>((set, get) => ({
 
       // Refresh disk analysis across projects
       await get().analyzeAllProjects(
-        summary.projects.map((p) => ({ id: p.projectId, name: p.projectName, path: p.projectPath }))
+        summary.projects.map((p) => ({ id: p.projectId, name: p.projectName, path: p.projectPath })),
+        true
       );
     } catch (err: any) {
       toast.error(`Batch clean error: ${err.message}`);
@@ -248,6 +282,7 @@ export const useDiskStore = create<DiskState>((set, get) => ({
           category: 'system',
           actionTab: 'optimizer'
         });
+        toast.success(`Successfully purged ${type.toUpperCase()} cache`);
         return true;
       } else {
         useNotificationStore.getState().notify({
@@ -257,6 +292,7 @@ export const useDiskStore = create<DiskState>((set, get) => ({
           category: 'system',
           actionTab: 'optimizer'
         });
+        toast.error(`Failed to clean ${type} cache: ${res.output || 'Unknown error'}`);
         return false;
       }
     } catch (e: any) {

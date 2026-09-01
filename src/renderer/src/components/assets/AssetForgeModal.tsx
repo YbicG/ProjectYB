@@ -133,8 +133,26 @@ export const AssetForgeModal: React.FC<AssetForgeModalProps> = ({
               value={sourceFile}
               onChange={(e) => setSourceFile(e.target.value)}
               placeholder="e.g. C:/logo.png or src/assets/logo.png"
-              className="h-8 text-xs font-mono bg-zinc-900 border-zinc-800 text-zinc-100"
+              className="h-8 text-xs font-mono bg-zinc-900 border-zinc-800 text-zinc-100 flex-1"
             />
+            <label className="cursor-pointer">
+              <input
+                type="file"
+                accept="image/png,image/jpeg,image/svg+xml,image/webp,image/x-icon"
+                className="hidden"
+                onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  if (file) {
+                    const filePath = (file as any).path || file.name;
+                    setSourceFile(filePath);
+                  }
+                }}
+              />
+              <span className="inline-flex items-center gap-1 h-8 px-2.5 rounded-md border border-zinc-800 bg-zinc-900 hover:bg-zinc-800 text-zinc-200 text-xs font-medium transition-colors">
+                <Upload className="w-3.5 h-3.5 text-violet-400" />
+                Browse
+              </span>
+            </label>
           </div>
         </div>
 

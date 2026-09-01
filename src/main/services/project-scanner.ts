@@ -44,7 +44,9 @@ export interface ProjectInfo {
   subprojects?: SubProjectInfo[];
   services?: any[];
   branch?: string;
+  gitBranch?: string;
   lastCommit?: string;
+  lastCommitTime?: string;
   isGitRepo?: boolean;
   ignored?: boolean;
   hasConfig?: boolean;
@@ -362,6 +364,21 @@ When making modifications in this repository:
     }
   }
 
+  private async getGitBranchFast(folderPath: string): Promise<string | undefined> {
+    try {
+      const headPath = path.join(folderPath, '.git', 'HEAD');
+      if (fs.existsSync(headPath)) {
+        const headContent = (await fs.promises.readFile(headPath, 'utf8')).trim();
+        if (headContent.startsWith('ref: refs/heads/')) {
+          return headContent.replace('ref: refs/heads/', '');
+        } else if (headContent.length >= 7) {
+          return headContent.slice(0, 7);
+        }
+      }
+    } catch {}
+    return undefined;
+  }
+
   async scanDirectory(rootPaths: string[], maxDepth: number = 4, mode: 'git' | 'all' = 'git'): Promise<ProjectInfo[]> {
     const projects: ProjectInfo[] = [];
     const seenPaths = new Set<string>();
@@ -499,6 +516,7 @@ When making modifications in this repository:
             const tags = config?.tags || [];
             const scripts = { ...selfInspect.scripts, ...mergedSubScripts, ...config?.scripts };
             const dependencies = selfInspect.dependencies;
+            const gitBranch = hasGit ? await this.getGitBranchFast(currentPath) : undefined;
 
             projects.push({
               id: currentPath,
@@ -513,6 +531,8 @@ When making modifications in this repository:
               subprojects: detectedSubprojects.length > 0 ? detectedSubprojects : undefined,
               runningServices: [],
               isGitRepo: hasGit,
+              branch: gitBranch,
+              gitBranch,
               ignored: false,
               hasConfig: Boolean(configPath)
             });
@@ -552,55 +572,70 @@ When making modifications in this repository:
       const detectedSubprojects: SubProjectInfo[] = [];
       const mergedSubScripts: Record<string, string> = {};
 
-      for (const subDir of dirEntries) {
-        const subFullPath = path.join(folderPath, subDir.name);
-        const subNameLower = subDir.name.toLowerCase();
-        const isGeneric = GENERIC_FOLDER_NAMES.has(subNameLower);
-        const isContainer = CONTAINER_FOLDER_NAMES.has(subNameLower);
+      if (config?.subprojects && Array.isArray(config.subprojects)) {
+        for (const sub of config.subprojects) {
+          const subFullPath = path.isAbsolute(sub.path) ? sub.path : path.join(folderPath, sub.path);
+          const subInspect = await this.inspectFolder(subFullPath);
+          detectedSubprojects.push({
+            id: sub.name,
+            name: sub.name,
+            relativePath: sub.path,
+            path: subFullPath,
+            type: sub.type || subInspect.type,
+            scripts: sub.scripts || subInspect.scripts
+          });
+        }
+      } else {
+        for (const subDir of dirEntries) {
+          const subFullPath = path.join(folderPath, subDir.name);
+          const subNameLower = subDir.name.toLowerCase();
+          const isGeneric = GENERIC_FOLDER_NAMES.has(subNameLower);
+          const isContainer = CONTAINER_FOLDER_NAMES.has(subNameLower);
 
-        if (isContainer) {
-          try {
-            const containerEntries = await fs.promises.readdir(subFullPath, { withFileTypes: true });
-            const nestedDirs = containerEntries.filter(e => e.isDirectory() && !this.skipDirs.has(e.name));
-            for (const nested of nestedDirs) {
-              const nestedFullPath = path.join(subFullPath, nested.name);
-              const nestedInspect = await this.inspectFolder(nestedFullPath);
-              if (nestedInspect.isProject) {
-                const subName = `${subDir.name}/${nested.name}`;
-                const relPath = path.join(subDir.name, nested.name).replace(/\\/g, '/');
-                detectedSubprojects.push({
-                  id: subName,
-                  name: subName,
-                  relativePath: relPath,
-                  path: nestedFullPath,
-                  type: nestedInspect.type,
-                  scripts: nestedInspect.scripts
-                });
-                if (nestedInspect.scripts) {
-                  for (const [sName, sCmd] of Object.entries(nestedInspect.scripts)) {
-                    mergedSubScripts[`${nested.name}:${sName}`] = sCmd;
+          if (isContainer) {
+            try {
+              const containerEntries = await fs.promises.readdir(subFullPath, { withFileTypes: true });
+              const nestedDirs = containerEntries.filter(e => e.isDirectory() && !this.skipDirs.has(e.name));
+              for (const nested of nestedDirs) {
+                const nestedFullPath = path.join(subFullPath, nested.name);
+                const nestedInspect = await this.inspectFolder(nestedFullPath);
+                if (nestedInspect.isProject) {
+                  const subName = `${subDir.name}/${nested.name}`;
+                  const relPath = path.join(subDir.name, nested.name).replace(/\\/g, '/');
+                  detectedSubprojects.push({
+                    id: subName,
+                    name: subName,
+                    relativePath: relPath,
+                    path: nestedFullPath,
+                    type: nestedInspect.type,
+                    scripts: nestedInspect.scripts
+                  });
+                  if (nestedInspect.scripts) {
+                    for (const [sName, sCmd] of Object.entries(nestedInspect.scripts)) {
+                      mergedSubScripts[`${nested.name}:${sName}`] = sCmd;
+                    }
                   }
                 }
               }
-            }
-          } catch {}
-        }
+            } catch {}
+          }
 
-        if (isGeneric) {
-          const subInspect = await this.inspectFolder(subFullPath);
-          if (subInspect.isProject) {
-            if (!detectedSubprojects.some(s => s.path === subFullPath)) {
-              detectedSubprojects.push({
-                id: subDir.name,
-                name: subDir.name,
-                relativePath: subDir.name,
-                path: subFullPath,
-                type: subInspect.type,
-                scripts: subInspect.scripts
-              });
-              if (subInspect.scripts) {
-                for (const [sName, sCmd] of Object.entries(subInspect.scripts)) {
-                  mergedSubScripts[`${subDir.name}:${sName}`] = sCmd;
+          if (isGeneric) {
+            const subInspect = await this.inspectFolder(subFullPath);
+            if (subInspect.isProject) {
+              if (!detectedSubprojects.some(s => s.path === subFullPath)) {
+                detectedSubprojects.push({
+                  id: subDir.name,
+                  name: subDir.name,
+                  relativePath: subDir.name,
+                  path: subFullPath,
+                  type: subInspect.type,
+                  scripts: subInspect.scripts
+                });
+                if (subInspect.scripts) {
+                  for (const [sName, sCmd] of Object.entries(subInspect.scripts)) {
+                    mergedSubScripts[`${subDir.name}:${sName}`] = sCmd;
+                  }
                 }
               }
             }
@@ -623,6 +658,7 @@ When making modifications in this repository:
       const type = config?.type || (detectedSubprojects.length > 0 ? (detectedSubprojects[0].type || 'node') : selfInspect.type);
       const scripts = { ...selfInspect.scripts, ...mergedSubScripts, ...config?.scripts };
       const projectServices = await this.readProjectServices(folderPath);
+      const gitBranch = selfInspect.isGit ? await this.getGitBranchFast(folderPath) : undefined;
 
       return {
         id: folderPath,
@@ -638,6 +674,8 @@ When making modifications in this repository:
         services: projectServices.length > 0 ? projectServices : undefined,
         runningServices: [],
         isGitRepo: selfInspect.isGit,
+        branch: gitBranch,
+        gitBranch,
         ignored: false,
         hasConfig: Boolean(configPath)
       };

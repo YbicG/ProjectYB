@@ -25,7 +25,7 @@ export const AiChatModal: React.FC = () => {
     config
   } = useAiStore();
 
-  const { setActiveTab } = useAppStore();
+  const { openSettingsTab } = useAppStore();
   const [input, setInput] = useState('');
 
   const handleSend = async (e: React.FormEvent) => {
@@ -38,7 +38,7 @@ export const AiChatModal: React.FC = () => {
 
   const handleOpenFullPage = () => {
     setChatModalOpen(false);
-    setActiveTab('settings');
+    openSettingsTab('ai');
   };
 
   return (

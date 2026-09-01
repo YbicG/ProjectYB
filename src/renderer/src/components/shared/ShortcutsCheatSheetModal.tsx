@@ -27,6 +27,7 @@ export const ShortcutsCheatSheetModal: React.FC = () => {
         { keys: ['Ctrl', 'Shift', 'M'], label: 'Mobile Remote Companion (PWA & Tunnel)' },
         { keys: ['Ctrl', 'Shift', 'F'], label: 'Global Cross-Project Search' },
         { keys: ['Ctrl', 'Shift', 'S'], label: 'Command Snippets Vault' },
+        { keys: ['Ctrl', 'Space'], label: 'AI Copilot Assistant Chat' },
         { keys: ['F11'], label: 'Toggle Fullscreen Wallboard Mode' },
         { keys: ['Ctrl', 'K'], label: 'Open Command Palette' },
         { keys: ['Ctrl', 'N'], label: 'Open Global Quick Scratchpad' },
@@ -36,9 +37,12 @@ export const ShortcutsCheatSheetModal: React.FC = () => {
     {
       title: 'Terminals & Workspaces',
       items: [
+        { keys: ['Ctrl', '`'], label: 'Toggle Universal Terminal Dock' },
+        { keys: ['Ctrl', 'B'], label: 'Toggle Activity Rail Sidebar' },
         { keys: ['Ctrl', 'T'], label: 'New Terminal in active workspace' },
         { keys: ['Ctrl', 'W'], label: 'Close Active Terminal' },
-        { keys: ['Ctrl', 'Shift', 'D'], label: 'Docker Compose Dashboard' },
+        { keys: ['Ctrl', 'Shift', 'D'], label: 'Services & Background Ports' },
+        { keys: ['Ctrl', 'Shift', 'P'], label: 'Dependencies & Security Hub' },
         { keys: ['Ctrl', 'Shift', 'O'], label: 'Disk Space Optimizer' }
       ]
     }

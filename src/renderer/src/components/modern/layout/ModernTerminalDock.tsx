@@ -39,11 +39,13 @@ export const ModernTerminalDock: React.FC = () => {
   const isDraggingRef = useRef(false);
   const startYRef = useRef(0);
   const startHeightRef = useRef(terminalDockHeight);
+  const currentHeightRef = useRef(terminalDockHeight);
 
   // Sync local height with store on external changes
   useEffect(() => {
     if (!isDraggingRef.current) {
       setLocalHeight(terminalDockHeight);
+      currentHeightRef.current = terminalDockHeight;
     }
   }, [terminalDockHeight]);
 
@@ -53,13 +55,14 @@ export const ModernTerminalDock: React.FC = () => {
       if (!isDraggingRef.current) return;
       const deltaY = startYRef.current - moveEvent.clientY;
       const newHeight = Math.max(160, Math.min(startHeightRef.current + deltaY, window.innerHeight - 100));
+      currentHeightRef.current = newHeight;
       setLocalHeight(newHeight);
     };
 
     const onMouseUp = () => {
       if (isDraggingRef.current) {
         isDraggingRef.current = false;
-        setTerminalDockHeight(localHeight);
+        setTerminalDockHeight(currentHeightRef.current);
       }
     };
 
@@ -70,16 +73,17 @@ export const ModernTerminalDock: React.FC = () => {
       window.removeEventListener('mousemove', onMouseMove);
       window.removeEventListener('mouseup', onMouseUp);
     };
-  }, [localHeight, setTerminalDockHeight]);
+  }, [setTerminalDockHeight]);
 
   const handleMouseDown = (e: React.MouseEvent) => {
     isDraggingRef.current = true;
     startYRef.current = e.clientY;
-    startHeightRef.current = localHeight;
+    startHeightRef.current = currentHeightRef.current;
   };
 
   const handleNewTerminal = async () => {
-    await createTerminal({ name: 'Terminal', cwd: 'D:\\Code' });
+    const defaultCwd = useAppStore.getState().scanPaths[0] || 'D:\\Code';
+    await createTerminal({ name: 'Terminal', cwd: defaultCwd });
   };
 
   const handleExpandToFullTab = () => {

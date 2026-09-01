@@ -21,8 +21,12 @@ export interface ImageConversionResult {
 
 export class AssetForgeService {
   async generateFaviconSuite(projectPath: string, sourceImagePath: string): Promise<FaviconSuiteResult> {
-    if (!fs.existsSync(sourceImagePath)) {
-      return { success: false, generatedFiles: [], targetDir: '', message: 'Source image file not found' };
+    const resolvedSource = path.isAbsolute(sourceImagePath)
+      ? sourceImagePath
+      : path.join(projectPath, sourceImagePath);
+
+    if (!fs.existsSync(resolvedSource)) {
+      return { success: false, generatedFiles: [], targetDir: '', message: 'Source image file not found: ' + sourceImagePath };
     }
 
     let targetDir = path.join(projectPath, 'public');
@@ -41,7 +45,7 @@ export class AssetForgeService {
     }
 
     try {
-      const img = nativeImage.createFromPath(sourceImagePath);
+      const img = nativeImage.createFromPath(resolvedSource);
       if (img.isEmpty()) {
         return { success: false, generatedFiles: [], targetDir, message: 'Invalid or unsupported image format' };
       }

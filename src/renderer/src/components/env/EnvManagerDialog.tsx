@@ -25,12 +25,14 @@ import {
   Save,
   Search,
   Key,
+  Shield,
+  KeyRound,
+  ArrowUpRight,
   HelpCircle
 } from 'lucide-react'
 import { useEnvStore } from '@renderer/stores/useEnvStore'
 import { useAppStore } from '@renderer/stores/useAppStore'
 import { useSecretVaultStore } from '@renderer/stores/useSecretVaultStore'
-import { Shield, KeyRound, ArrowUpRight } from 'lucide-react'
 import { EnvCompareDialog } from './EnvCompareDialog'
 import { cn } from '@renderer/lib/utils'
 import { toast } from 'sonner'
@@ -75,8 +77,74 @@ export const EnvManagerDialog: React.FC<EnvManagerDialogProps> = ({
   const [copiedKey, setCopiedKey] = useState<string | null>(null)
   const [compareDialogOpen, setCompareDialogOpen] = useState(false)
   const { secrets, getSecretByKey, bulkSyncToEnv, addSecret: addVaultSecret } = useSecretVaultStore()
-  const [vaultModalOpen, setVaultModalOpen] = useState(false)
-  const [vaultPopoverOpen, setVaultPopoverOpen] = useState(false)
+
+  // Format entries to raw string
+  const formatEntriesToRaw = (entries: EnvEntry[]): string => {
+    return entries
+      .map((e) => {
+        const comment = e.comment ? `# ${e.comment}\n` : ''
+        const val = /[\s#"'\n\r]/.test(e.value) || e.value === '' ? `"${e.value.replace(/"/g, '\\"')}"` : e.value
+        return `${comment}${e.key}=${val}`
+      })
+      .join('\n') + '\n'
+  }
+
+  // Parse raw string to entries
+  const parseRawToEntries = (raw: string): EnvEntry[] => {
+    const lines = raw.split(/\r?\n/)
+    const entries: EnvEntry[] = []
+    let currentComment: string[] = []
+
+    for (const line of lines) {
+      const trimmed = line.trim()
+      if (!trimmed) {
+        currentComment = []
+        continue
+      }
+      if (trimmed.startsWith('#')) {
+        currentComment.push(trimmed.replace(/^#\s?/, ''))
+        continue
+      }
+
+      const match = trimmed.match(/^(?:export\s+)?([A-Za-z_0-9.-]+)\s*=\s*(.*)$/)
+      if (match) {
+        const key = match[1]
+        let val = match[2]
+        let inlineComment: string | undefined
+        if (!val.startsWith('"') && !val.startsWith("'") && val.includes(' #')) {
+          const parts = val.split(' #')
+          val = parts[0].trim()
+          inlineComment = parts.slice(1).join(' #').trim()
+        }
+        if ((val.startsWith('"') && val.endsWith('"')) || (val.startsWith("'") && val.endsWith("'"))) {
+          val = val.slice(1, -1)
+        }
+        const commentParts = [...currentComment]
+        if (inlineComment) commentParts.push(inlineComment)
+
+        const isSecret = /secret|password|token|auth|key|jwt|database_url/i.test(key)
+        entries.push({
+          key,
+          value: val,
+          comment: commentParts.length > 0 ? commentParts.join(' | ') : undefined,
+          isSecret
+        })
+        currentComment = []
+      }
+    }
+    return entries
+  }
+
+  const handleTabSwitch = (tab: 'visual' | 'raw') => {
+    if (tab === 'raw' && activeTab === 'visual') {
+      const formatted = formatEntriesToRaw(activeEntries)
+      setRawContent(formatted)
+    } else if (tab === 'visual' && activeTab === 'raw') {
+      const parsed = parseRawToEntries(rawContent)
+      useEnvStore.setState({ activeEntries: parsed })
+    }
+    setActiveTab(tab)
+  }
 
   const handleBulkSyncFromVault = () => {
     const syncedMap = bulkSyncToEnv(activeEntries, 'all')

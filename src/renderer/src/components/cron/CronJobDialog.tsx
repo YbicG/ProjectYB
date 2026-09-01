@@ -40,11 +40,12 @@ export const CronJobDialog: React.FC = () => {
   }, [editingJob, isEditorOpen]);
 
   const presets = [
+    { label: 'Every 30s (Test)', value: 'every 30s' },
     { label: 'Every 5 Mins', value: '*/5 * * * *' },
     { label: 'Every 15 Mins', value: '*/15 * * * *' },
     { label: 'Hourly', value: '0 * * * *' },
     { label: 'Daily (Midnight)', value: '0 0 * * *' },
-    { label: 'Every 30s (Test)', value: 'every 1m' }
+    { label: 'Every 1 Hour', value: 'every 1h' }
   ];
 
   const handleSubmit = async (e: React.FormEvent) => {

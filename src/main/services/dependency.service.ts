@@ -173,7 +173,7 @@ class DependencyService {
         else if (pm === 'yarn') cmd = 'yarn outdated --json';
 
         try {
-          const { stdout } = await execAsync(cmd, { cwd: projectPath, timeout: 20000 });
+          const { stdout } = await execAsync(cmd, { cwd: projectPath, timeout: 30000, maxBuffer: 10 * 1024 * 1024 });
           if (stdout && stdout.trim()) {
             const data = JSON.parse(stdout);
             for (const [name, info] of Object.entries<any>(data)) {
@@ -221,7 +221,7 @@ class DependencyService {
         }
       } else if (ecosystem === 'pypi') {
         try {
-          const { stdout } = await execAsync('pip list --outdated --format json', { cwd: projectPath, timeout: 20000 });
+          const { stdout } = await execAsync('pip list --outdated --format json', { cwd: projectPath, timeout: 30000, maxBuffer: 10 * 1024 * 1024 });
           if (stdout) {
             const list = JSON.parse(stdout);
             for (const item of list) {
@@ -263,7 +263,7 @@ class DependencyService {
         if (pm === 'pnpm') cmd = 'pnpm audit --json';
 
         try {
-          const { stdout } = await execAsync(cmd, { cwd: projectPath, timeout: 25000 });
+          const { stdout } = await execAsync(cmd, { cwd: projectPath, timeout: 30000, maxBuffer: 10 * 1024 * 1024 });
           this.parseNpmAudit(stdout, vulns);
         } catch (auditErr: any) {
           // npm audit exits with code > 0 if vulnerabilities exist
@@ -296,20 +296,21 @@ class DependencyService {
       if (data.vulnerabilities) {
         for (const [name, info] of Object.entries<any>(data.vulnerabilities)) {
           const via = Array.isArray(info.via) ? info.via[0] : info.via;
-          const title = typeof via === 'object' ? via.title || via.name : (info.name || name);
-          const url = typeof via === 'object' ? via.url : undefined;
+          const isViaObj = typeof via === 'object' && via !== null;
+          const title = isViaObj ? via.title || via.name : (info.name || name);
+          const url = isViaObj ? via.url : undefined;
           const severity = (info.severity || 'low').toLowerCase() as any;
 
           output.push({
-            id: typeof via === 'object' && via.source ? String(via.source) : `${name}-${severity}`,
+            id: isViaObj && via.source ? String(via.source) : `${name}-${severity}-${output.length}`,
             name,
             severity: ['critical', 'high', 'moderate', 'low', 'info'].includes(severity) ? severity : 'low',
             title: title || `Vulnerability in ${name}`,
             url,
-            advisory: typeof via === 'object' ? via.advisory : undefined,
+            advisory: isViaObj ? via.advisory : undefined,
             fixAvailable: info.fixAvailable ? true : false,
             affectedVersions: info.range || undefined,
-            patchedVersions: typeof info.fixAvailable === 'object' ? info.fixAvailable.version : undefined,
+            patchedVersions: typeof info.fixAvailable === 'object' && info.fixAvailable !== null ? info.fixAvailable.version : undefined,
             ecosystem: 'npm'
           });
         }

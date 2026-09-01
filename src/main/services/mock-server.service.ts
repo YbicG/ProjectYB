@@ -136,12 +136,21 @@ export class MockServerService {
             }
 
             res.statusCode = matched.statusCode || 200;
-            res.setHeader('Content-Type', 'application/json; charset=utf-8');
-            res.end(matched.responseBody || JSON.stringify({ status: 'ok' }));
+            if (res.statusCode === 204) {
+              res.end();
+            } else {
+              const bodyStr = matched.responseBody ?? JSON.stringify({ status: 'ok' });
+              const trimmedBody = bodyStr.trim();
+              const isJson =
+                (trimmedBody.startsWith('{') && trimmedBody.endsWith('}')) ||
+                (trimmedBody.startsWith('[') && trimmedBody.endsWith(']'));
+              res.setHeader('Content-Type', isJson ? 'application/json; charset=utf-8' : 'text/plain; charset=utf-8');
+              res.end(bodyStr);
+            }
           } else {
             // Default Webhook receiver ack
             res.statusCode = 200;
-            res.setHeader('Content-Type', 'application/json');
+            res.setHeader('Content-Type', 'application/json; charset=utf-8');
             res.end(
               JSON.stringify({
                 status: 'received',

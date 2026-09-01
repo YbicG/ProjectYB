@@ -29,6 +29,8 @@ export interface Pipeline {
   targetProjectId?: string;
   targetProjectName?: string;
   targetProjectPath?: string;
+  executionMode?: 'sequential' | 'parallel';
+  stopOnError?: boolean;
   steps: PipelineStep[];
   cronExpression?: string;
   isCronActive?: boolean;

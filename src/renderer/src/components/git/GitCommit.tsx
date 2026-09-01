@@ -46,7 +46,17 @@ export const GitCommit: React.FC = () => {
       if (commitStyle === 'short') styleInstruction = 'short and concise one-liner summary without prefix'
       if (commitStyle === 'detailed') styleInstruction = 'conventional commit header followed by bullet points detailing key changes'
 
-      const promptText = `Project: ${project.name}\nStyle: ${styleInstruction}\nChanged Files:\n${summary || `Updated ${project.name}`}`
+      let diffSnippet = ''
+      if (window.api?.git?.diff && project.path) {
+        try {
+          const rawDiff = await window.api.git.diff(project.path, (status?.staged || []).length > 0)
+          if (rawDiff && typeof rawDiff === 'string' && rawDiff.trim()) {
+            diffSnippet = rawDiff.slice(0, 3000)
+          }
+        } catch {}
+      }
+
+      const promptText = `Project: ${project.name}\nStyle: ${styleInstruction}\nChanged Files:\n${summary || `Updated ${project.name}`}${diffSnippet ? `\n\nGit Diff:\n${diffSnippet}` : ''}`
       const msg = await generateCommitMessage(promptText)
       setCommitMessage(msg)
       toast.success('Generated commit message from diff!')

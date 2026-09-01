@@ -139,8 +139,8 @@ export const PackageInstallModal: React.FC<PackageInstallModalProps> = ({ open, 
 
                     {pkg.keywords && pkg.keywords.length > 0 && (
                       <div className="flex flex-wrap gap-1">
-                        {pkg.keywords.slice(0, 4).map((kw) => (
-                          <span key={kw} className="text-[9px] bg-zinc-900 border border-zinc-800 text-zinc-400 px-1.5 py-0.2 rounded flex items-center gap-0.5">
+                        {pkg.keywords.slice(0, 4).map((kw, kwIdx) => (
+                          <span key={`${kw}-${kwIdx}`} className="text-[9px] bg-zinc-900 border border-zinc-800 text-zinc-400 px-1.5 py-0.2 rounded flex items-center gap-0.5">
                             <Tag className="w-2 h-2 text-zinc-500" /> {kw}
                           </span>
                         ))}

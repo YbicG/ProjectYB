@@ -240,6 +240,9 @@ export class CloudflareApiService {
     tunnelId: string,
     config: CloudflareApiConfig
   ): Promise<CreateDnsResult> {
+    const trimmedSubdomain = subdomain.trim();
+    const cnameTarget = `${tunnelId}.cfargotunnel.com`;
+
     try {
       const res = await fetch(`${this.baseUrl}/zones/${zoneId}/dns_records`, {
         method: 'POST',
@@ -249,23 +252,67 @@ export class CloudflareApiService {
         },
         body: JSON.stringify({
           type: 'CNAME',
-          name: subdomain.trim(),
-          content: `${tunnelId}.cfargotunnel.com`,
+          name: trimmedSubdomain,
+          content: cnameTarget,
           proxied: true,
           ttl: 1 // Auto
         })
       });
 
       const data = (await res.json()) as any;
-      if (!data.success) {
-        return { success: false, error: data.errors?.[0]?.message || 'Failed to create CNAME DNS record' };
+      if (data.success) {
+        return {
+          success: true,
+          recordId: data.result?.id,
+          hostname: data.result?.name
+        };
       }
 
-      return {
-        success: true,
-        recordId: data.result?.id,
-        hostname: data.result?.name
-      };
+      // Check if error is due to record already existing -> find and update it
+      const alreadyExists =
+        data.errors?.some((e: any) => e.code === 81053 || String(e.message).toLowerCase().includes('already exists'));
+
+      if (alreadyExists) {
+        try {
+          const searchRes = await fetch(
+            `${this.baseUrl}/zones/${zoneId}/dns_records?name=${encodeURIComponent(trimmedSubdomain)}`,
+            {
+              headers: {
+                Authorization: `Bearer ${config.apiToken.trim()}`,
+                'Content-Type': 'application/json'
+              }
+            }
+          );
+          const searchData = (await searchRes.json()) as any;
+          if (searchData.success && searchData.result && searchData.result.length > 0) {
+            const existingRecord = searchData.result[0];
+            const updateRes = await fetch(`${this.baseUrl}/zones/${zoneId}/dns_records/${existingRecord.id}`, {
+              method: 'PUT',
+              headers: {
+                Authorization: `Bearer ${config.apiToken.trim()}`,
+                'Content-Type': 'application/json'
+              },
+              body: JSON.stringify({
+                type: 'CNAME',
+                name: trimmedSubdomain,
+                content: cnameTarget,
+                proxied: true,
+                ttl: 1
+              })
+            });
+            const updateData = (await updateRes.json()) as any;
+            if (updateData.success) {
+              return {
+                success: true,
+                recordId: updateData.result?.id,
+                hostname: updateData.result?.name
+              };
+            }
+          }
+        } catch {}
+      }
+
+      return { success: false, error: data.errors?.[0]?.message || 'Failed to create CNAME DNS record' };
     } catch (err: any) {
       logger.error(`Failed to create CNAME record in zone ${zoneId}`, err);
       return { success: false, error: err.message };

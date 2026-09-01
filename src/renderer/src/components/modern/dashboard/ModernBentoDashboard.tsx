@@ -45,6 +45,7 @@ import { useSystemStore } from '@renderer/stores/useSystemStore';
 import { useTerminalStore } from '@renderer/stores/useTerminalStore';
 import { useAppStore } from '@renderer/stores/useAppStore';
 import { useTemplateStore } from '@renderer/stores/useTemplateStore';
+import { useThemeStore } from '@renderer/stores/useThemeStore';
 import { ProjectConfigDialog } from '../../dashboard/ProjectConfigDialog';
 import { EnvManagerDialog } from '../../env/EnvManagerDialog';
 import { ProjectSnapshotDialog } from '../../dashboard/ProjectSnapshotDialog';
@@ -119,7 +120,8 @@ export const ModernBentoDashboard: React.FC = () => {
         !deferredSearch ||
         pName.toLowerCase().includes(deferredSearch.toLowerCase()) ||
         pCat.toLowerCase().includes(deferredSearch.toLowerCase()) ||
-        (Array.isArray(p.tags) && p.tags.some((t) => (t || '').toLowerCase().includes(deferredSearch.toLowerCase())));
+        (Array.isArray(p.tags) && p.tags.some((t) => (t || '').toLowerCase().includes(deferredSearch.toLowerCase()))) ||
+        (Array.isArray(p.subprojects) && p.subprojects.some((s) => (s.name || '').toLowerCase().includes(deferredSearch.toLowerCase())));
 
       const matchesType = selectedType === 'all' || p.type === selectedType;
       return matchesSearch && matchesType;
@@ -132,15 +134,18 @@ export const ModernBentoDashboard: React.FC = () => {
 
   const handleOpenTerminal = async (project: ProjectInfo) => {
     await createTerminal({ name: project.name, cwd: project.path, projectId: project.id });
-    setActiveTab('terminals');
+    useThemeStore.getState().setTerminalDockOpen(true);
+    toast.success(`Spawned terminal for ${project.name}`);
   };
 
-  const handleOpenVSCode = (path: string) => {
+  const handleOpenVSCode = (path: string, name?: string) => {
     window.api?.projects?.openInVSCode?.(path);
+    toast.success(`Opening ${name || 'project'} in VS Code...`);
   };
 
-  const handleOpenFolder = (path: string) => {
+  const handleOpenFolder = (path: string, name?: string) => {
     window.api?.projects?.openInExplorer?.(path);
+    toast.success(`Opening ${name || 'project'} in File Explorer...`);
   };
 
   const cpuUsage = metrics ? Math.round(metrics.cpu.usage) : 0;

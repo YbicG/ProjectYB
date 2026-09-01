@@ -106,12 +106,15 @@ export const ProjectCodePeekModal: React.FC<ProjectCodePeekModalProps> = ({
           setFileContent(res.raw);
           setOriginalContent(res.raw);
         } else {
-          setFileContent('// File not found or empty: ' + file.relativePath);
-          setOriginalContent('');
+          const placeholder = '// File not found or empty: ' + file.relativePath;
+          setFileContent(placeholder);
+          setOriginalContent(placeholder);
         }
       }
     } catch {
-      setFileContent('// Could not read ' + file.relativePath);
+      const errorMsg = '// Could not read ' + file.relativePath;
+      setFileContent(errorMsg);
+      setOriginalContent(errorMsg);
     } finally {
       setIsLoading(false);
     }

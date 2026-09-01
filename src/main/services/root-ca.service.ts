@@ -51,7 +51,7 @@ export class RootCaService {
         const psScript = `
           Get-ChildItem Cert:\\CurrentUser\\Root | 
             Where-Object { $_.Subject -like "*ProjectYB Local Development CA*" } | 
-            Select-Object -First 1 -Property Subject, NotAfter | 
+            Select-Object -First 1 -Property Subject, @{Name="NotAfter"; Expression={$_.NotAfter.ToString("yyyy-MM-dd HH:mm:ss")}} | 
             ConvertTo-Json
         `;
         const { stdout } = await this.runPowerShell(psScript);
@@ -78,12 +78,30 @@ export class RootCaService {
   }
 
   /**
+   * Clean old generated domain certificates from disk cache
+   */
+  private cleanDomainCertsOnDisk() {
+    try {
+      if (fs.existsSync(this.caDir)) {
+        const files = fs.readdirSync(this.caDir);
+        for (const file of files) {
+          if (file !== 'projectyb-root-ca.crt' && file !== 'projectyb-root-ca.key') {
+            try {
+              fs.unlinkSync(path.join(this.caDir, file));
+            } catch {}
+          }
+        }
+      }
+    } catch {}
+  }
+
+  /**
    * Create and Install the ProjectYB Root CA into Windows CurrentUser Certificate Store
    */
   async installRootCa(): Promise<{ success: boolean; message: string; error?: string }> {
     if (process.platform === 'win32') {
       try {
-        const outPath = this.caCertPath.replace(/\\/g, '\\\\');
+        const escapedCaPath = this.caCertPath.replace(/'/g, "''");
         
         // Step 1: Generate certificate in CurrentUser\My and export public .crt
         const psGenCommand = `
@@ -97,14 +115,14 @@ export class RootCaService {
           
           # Export public cert to user directory
           $certBytes = $cert.Export([System.Security.Cryptography.X509Certificates.X509ContentType]::Cert);
-          [System.IO.File]::WriteAllBytes("${outPath}", $certBytes);
+          [System.IO.File]::WriteAllBytes('${escapedCaPath}', $certBytes);
         `;
 
         await this.runPowerShell(psGenCommand);
 
         // Step 2: Try importing into CurrentUser\Root via interactive powershell or certutil
         try {
-          await this.runPowerShell(`Import-Certificate -FilePath "${outPath}" -CertStoreLocation Cert:\\CurrentUser\\Root;`, true);
+          await this.runPowerShell(`Import-Certificate -FilePath '${escapedCaPath}' -CertStoreLocation Cert:\\CurrentUser\\Root;`, true);
         } catch {
           // Fallback to certutil if Import-Certificate fails
           try {
@@ -113,6 +131,9 @@ export class RootCaService {
             logger.warn('[RootCA] Root store import prompt was dismissed or failed:', e2.message);
           }
         }
+
+        this.certCache.clear();
+        this.cleanDomainCertsOnDisk();
 
         logger.info('[RootCA] Successfully generated and exported ProjectYB Root CA');
         return {
@@ -144,6 +165,7 @@ export class RootCaService {
         `;
         await this.runPowerShell(psCommand);
         this.certCache.clear();
+        this.cleanDomainCertsOnDisk();
         return { success: true };
       } catch (err: any) {
         return { success: false, error: err.message };
@@ -162,8 +184,21 @@ export class RootCaService {
 
     if (process.platform === 'win32') {
       try {
-        const domainPfxPath = path.join(this.caDir, `${domain}.pfx`).replace(/\\/g, '\\\\');
-        const domainCerPath = path.join(this.caDir, `${domain}.crt`).replace(/\\/g, '\\\\');
+        const domainPfxPath = path.join(this.caDir, `${domain}.pfx`);
+        const domainCerPath = path.join(this.caDir, `${domain}.crt`);
+
+        // Check if cached on disk first for ultra-fast instant startup
+        if (fs.existsSync(domainPfxPath)) {
+          const pfxRaw = fs.readFileSync(domainPfxPath);
+          const certRaw = fs.existsSync(domainCerPath) ? fs.readFileSync(domainCerPath) : Buffer.from('');
+          const certPem = `-----BEGIN CERTIFICATE-----\n${certRaw.toString('base64').match(/.{1,64}/g)?.join('\n')}\n-----END CERTIFICATE-----`;
+          const pair = { pfx: pfxRaw, key: '', cert: certPem };
+          this.certCache.set(domain, pair);
+          return pair;
+        }
+
+        const escapedPfx = domainPfxPath.replace(/'/g, "''");
+        const escapedCer = domainCerPath.replace(/'/g, "''");
 
         const psCommand = `
           $ca = Get-ChildItem Cert:\\CurrentUser\\My | Where-Object { $_.Subject -like "*ProjectYB Local Development CA*" } | Select-Object -First 1;
@@ -176,11 +211,11 @@ export class RootCaService {
             
             # Export PFX with empty password
             $pfxBytes = $domainCert.Export([System.Security.Cryptography.X509Certificates.X509ContentType]::Pfx, "");
-            [System.IO.File]::WriteAllBytes("${domainPfxPath}", $pfxBytes);
+            [System.IO.File]::WriteAllBytes('${escapedPfx}', $pfxBytes);
 
             # Export CER
             $cerBytes = $domainCert.Export([System.Security.Cryptography.X509Certificates.X509ContentType]::Cert);
-            [System.IO.File]::WriteAllBytes("${domainCerPath}", $cerBytes);
+            [System.IO.File]::WriteAllBytes('${escapedCer}', $cerBytes);
           }
         `;
 

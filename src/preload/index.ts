@@ -119,6 +119,7 @@ const api = {
     getMetrics: () => ipcRenderer.invoke('system:getMetrics'),
     getProcessStats: (pids: number[]) => ipcRenderer.invoke('system:getProcessStats', pids),
     getDeveloperProcesses: () => ipcRenderer.invoke('system:getDeveloperProcesses'),
+    selectDirectory: () => ipcRenderer.invoke('system:selectDirectory'),
     showNotification: (title: string, body: string) =>
       ipcRenderer.invoke('system:showNotification', { title, body }),
     onMetrics: (callback: (metrics: any) => void) => {

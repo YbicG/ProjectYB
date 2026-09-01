@@ -17,6 +17,8 @@ export const TerminalView: React.FC<TerminalViewProps> = ({ terminalId, cwd, isA
   const fitAddonRef = useRef<FitAddon | null>(null);
   const webglAddonRef = useRef<WebglAddon | null>(null);
   const readyRef = useRef(false);
+  const safeFitRef = useRef<(() => void) | null>(null);
+  const resizeDebounceTimerRef = useRef<NodeJS.Timeout | null>(null);
 
   const {
     terminalFontFamily,
@@ -83,7 +85,6 @@ export const TerminalView: React.FC<TerminalViewProps> = ({ terminalId, cwd, isA
     xtermRef.current = term;
     fitAddonRef.current = fitAddon;
 
-    let resizeDebounceTimer: NodeJS.Timeout | null = null;
     const safeFit = () => {
       if (isCancelled || !container || container.clientWidth <= 0 || container.clientHeight <= 0) return;
       try {
@@ -97,10 +98,11 @@ export const TerminalView: React.FC<TerminalViewProps> = ({ terminalId, cwd, isA
         }
       } catch {}
     };
+    safeFitRef.current = safeFit;
 
     const debouncedFit = () => {
-      if (resizeDebounceTimer) clearTimeout(resizeDebounceTimer);
-      resizeDebounceTimer = setTimeout(() => {
+      if (resizeDebounceTimerRef.current) clearTimeout(resizeDebounceTimerRef.current);
+      resizeDebounceTimerRef.current = setTimeout(() => {
         requestAnimationFrame(safeFit);
       }, 60);
     };
@@ -141,7 +143,8 @@ export const TerminalView: React.FC<TerminalViewProps> = ({ terminalId, cwd, isA
     return () => {
       isCancelled = true;
       readyRef.current = false;
-      if (resizeDebounceTimer) clearTimeout(resizeDebounceTimer);
+      safeFitRef.current = null;
+      if (resizeDebounceTimerRef.current) clearTimeout(resizeDebounceTimerRef.current);
       resizeObserver.disconnect();
       if (cleanupOnData) cleanupOnData();
       try {
@@ -167,6 +170,7 @@ export const TerminalView: React.FC<TerminalViewProps> = ({ terminalId, cwd, isA
           try {
             if (xtermRef.current?.element?.isConnected) {
               fitAddonRef.current?.fit();
+              safeFitRef.current?.();
               xtermRef.current?.refresh(0, (xtermRef.current?.rows ?? 24) - 1);
             }
           } catch {}
@@ -182,7 +186,7 @@ export const TerminalView: React.FC<TerminalViewProps> = ({ terminalId, cwd, isA
       xtermRef.current.options.fontSize = terminalFontSize || 13;
       xtermRef.current.options.cursorStyle = terminalCursorStyle || 'block';
       xtermRef.current.options.cursorBlink = terminalCursorBlink ?? true;
-      fitAddonRef.current?.fit();
+      safeFitRef.current?.();
     }
   }, [terminalFontFamily, terminalFontSize, terminalCursorStyle, terminalCursorBlink]);
 

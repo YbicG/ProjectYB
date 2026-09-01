@@ -102,9 +102,9 @@ export const useNotesStore = create<NotesState>((set, get) => ({
 
     const targetLine = lines[lineIndex];
     if (completed) {
-      lines[lineIndex] = targetLine.replace(/- \[[ xX]\]/, '- [x]');
+      lines[lineIndex] = targetLine.replace(/([-*])\s*\[([ xX])\]/, '$1 [x]');
     } else {
-      lines[lineIndex] = targetLine.replace(/- \[[ xX]\]/, '- [ ]');
+      lines[lineIndex] = targetLine.replace(/([-*])\s*\[([ xX])\]/, '$1 [ ]');
     }
 
     const updatedContent = lines.join('\n');

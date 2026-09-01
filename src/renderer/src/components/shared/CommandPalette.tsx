@@ -90,7 +90,8 @@ export const CommandPalette: React.FC = () => {
 
   const handleOpenNewTerminal = () => {
     runCommand(async () => {
-      await createTerminal({ name: 'Local', cwd: 'D:\\Code' });
+      const defaultCwd = useAppStore.getState().scanPaths[0] || 'D:\\Code';
+      await createTerminal({ name: 'Local', cwd: defaultCwd });
       setActiveTab('terminals');
     });
   };

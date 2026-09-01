@@ -2,6 +2,7 @@ import React from 'react';
 import { Plus, Edit2, Trash2, Server, Terminal as TerminalIcon, MoreVertical, Eraser } from 'lucide-react';
 import { useTerminalStore } from '@renderer/stores/useTerminalStore';
 import { useProjectStore } from '@renderer/stores/useProjectStore';
+import { useAppStore } from '@renderer/stores/useAppStore';
 import { StatusDot } from '../shared/StatusDot';
 import { Button } from '../ui/button';
 import { ScrollArea } from '../ui/scroll-area';
@@ -191,7 +192,10 @@ export const TerminalSidebar: React.FC = () => {
         <Button 
           variant="outline" 
           className="w-full justify-start text-zinc-300 h-8 text-xs"
-          onClick={() => createTerminal({ name: 'Local Shell', cwd: 'D:\\Code', isService: false })}
+          onClick={() => {
+            const defaultCwd = useAppStore.getState().scanPaths[0] || 'D:\\Code';
+            createTerminal({ name: 'Local Shell', cwd: defaultCwd, isService: false });
+          }}
         >
           <Plus className="w-3.5 h-3.5 mr-2" />
           New Shell

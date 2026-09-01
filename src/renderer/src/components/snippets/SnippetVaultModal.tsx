@@ -100,7 +100,8 @@ export const SnippetVaultModal: React.FC = () => {
       setActiveSnippetToRun(null);
       setActiveTab('terminals');
     } else {
-      await createTerminal({ name: 'Command Runner', cwd: 'D:\\Code' });
+      const defaultCwd = useAppStore.getState().scanPaths[0] || 'D:\\Code';
+      await createTerminal({ name: 'Command Runner', cwd: defaultCwd });
       // Give terminal a brief moment to initialize before writing
       setTimeout(() => {
         const latestId = useTerminalStore.getState().activeTerminalId;

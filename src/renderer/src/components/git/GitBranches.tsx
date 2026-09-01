@@ -26,6 +26,7 @@ import {
 import { cn } from '@renderer/lib/utils'
 import { useGitStore } from '@renderer/stores/useGitStore'
 import { useProjectStore } from '@renderer/stores/useProjectStore'
+import { GitConflictResolverModal } from './GitConflictResolverModal'
 import { toast } from 'sonner'
 
 interface Branch {
@@ -43,6 +44,7 @@ export const GitBranches: React.FC = () => {
   const [selectedMergeBranch, setSelectedMergeBranch] = useState('')
   const [isMerging, setIsMerging] = useState(false)
   const [mergeConflicts, setMergeConflicts] = useState<string[]>([])
+  const [conflictResolverOpen, setConflictResolverOpen] = useState(false)
 
   const { selectedProjectId, mergeBranch, fetchStatus } = useGitStore()
   const { projects } = useProjectStore()
@@ -330,9 +332,22 @@ export const GitBranches: React.FC = () => {
             </div>
 
             {mergeConflicts.length > 0 && (
-              <div className="p-3 bg-rose-950/40 border border-rose-800/60 rounded text-xs space-y-1 text-rose-300">
-                <div className="flex items-center gap-1.5 font-semibold text-rose-400">
-                  <AlertTriangle className="w-4 h-4" /> Merge Conflicts Detected
+              <div className="p-3 bg-rose-950/40 border border-rose-800/60 rounded text-xs space-y-2 text-rose-300">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-1.5 font-semibold text-rose-400">
+                    <AlertTriangle className="w-4 h-4" /> Merge Conflicts Detected
+                  </div>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => {
+                      setMergeDialogOpen(false);
+                      setConflictResolverOpen(true);
+                    }}
+                    className="h-6 text-[11px] border-amber-600 bg-amber-950/30 text-amber-300 hover:bg-amber-900/40"
+                  >
+                    Open Conflict Resolver
+                  </Button>
                 </div>
                 <p>The following files contain conflicts that require resolution:</p>
                 <ul className="list-disc list-inside font-mono text-[11px] pt-1">
@@ -374,6 +389,11 @@ export const GitBranches: React.FC = () => {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <GitConflictResolverModal
+        open={conflictResolverOpen}
+        onOpenChange={setConflictResolverOpen}
+      />
     </div>
   )
 }

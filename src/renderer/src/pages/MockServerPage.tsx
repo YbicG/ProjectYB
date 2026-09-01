@@ -62,10 +62,17 @@ export const MockServerPage: React.FC = () => {
   const [delayMs, setDelayMs] = useState('0');
 
   const [copiedPayload, setCopiedPayload] = useState(false);
+  const [copiedCurlId, setCopiedCurlId] = useState<string | null>(null);
+  const [activeInspectorTab, setActiveInspectorTab] = useState<'body' | 'headers' | 'query' | 'meta'>('body');
+  const [customPort, setCustomPort] = useState<string>(serverPort.toString());
 
   useEffect(() => {
     loadServerState();
   }, []);
+
+  useEffect(() => {
+    setCustomPort(serverPort.toString());
+  }, [serverPort]);
 
   useEffect(() => {
     if (editingRoute) {
@@ -75,24 +82,33 @@ export const MockServerPage: React.FC = () => {
       setStatusCode(editingRoute.statusCode.toString());
       setResponseBody(editingRoute.responseBody);
       setDelayMs((editingRoute.delayMs || 0).toString());
+    } else {
+      setName('');
+      setPath('/api/v1/resource');
+      setMethod('GET');
+      setStatusCode('200');
+      setResponseBody(JSON.stringify({ message: 'Hello from ProjectYB Mock API' }, null, 2));
+      setDelayMs('0');
     }
-  }, [editingRoute]);
+  }, [editingRoute, routeEditorOpen]);
 
   const handleToggleServer = () => {
     if (status.running) {
       stopServer();
     } else {
-      startServer(serverPort);
+      const portNum = parseInt(customPort, 10) || 4100;
+      startServer(portNum);
     }
   };
 
   const handleExposeTunnel = async () => {
     if (!status.running) {
-      await startServer(serverPort);
+      const portNum = parseInt(customPort, 10) || 4100;
+      await startServer(portNum);
     }
     const res = await startQuickTunnel({
-      localPort: serverPort,
-      name: `Mock Server & Webhook Catcher (Port ${serverPort})`
+      localPort: status.port || parseInt(customPort, 10) || 4100,
+      name: `Mock Server & Webhook Catcher (Port ${status.port || customPort})`
     });
     if (res) {
       setActiveTab('tunnels');
@@ -128,6 +144,17 @@ export const MockServerPage: React.FC = () => {
     setTimeout(() => setCopiedPayload(false), 2000);
   };
 
+  const handleCopyCurl = (route: MockRoute) => {
+    const port = status.running ? status.port : parseInt(customPort, 10) || 4100;
+    const url = `http://localhost:${port}${route.path}`;
+    const m = route.method === 'ALL' ? 'GET' : route.method;
+    const curl = `curl -X ${m} "${url}" -H "Content-Type: application/json"`;
+    navigator.clipboard.writeText(curl);
+    setCopiedCurlId(route.id);
+    toast.success('Copied cURL command');
+    setTimeout(() => setCopiedCurlId(null), 2000);
+  };
+
   return (
     <div className="flex-1 flex flex-col h-full overflow-hidden bg-zinc-950 text-zinc-100 p-6 space-y-6">
       {/* ── Header & Server Controls ── */}
@@ -160,6 +187,18 @@ export const MockServerPage: React.FC = () => {
         </div>
 
         <div className="flex items-center gap-2">
+          {/* Port configuration input */}
+          <div className="flex items-center gap-1 bg-zinc-900 px-2 py-1 rounded-md border border-zinc-800">
+            <span className="text-[11px] font-mono text-zinc-500">Port:</span>
+            <input
+              type="number"
+              disabled={status.running}
+              value={customPort}
+              onChange={(e) => setCustomPort(e.target.value)}
+              className="w-14 bg-transparent text-xs font-mono text-zinc-200 focus:outline-none disabled:opacity-60"
+            />
+          </div>
+
           <Button
             variant="outline"
             size="sm"
@@ -203,7 +242,7 @@ export const MockServerPage: React.FC = () => {
             <Button
               size="sm"
               onClick={() => openRouteEditor()}
-              className="h-7 text-xs bg-cyan-600 hover:bg-cyan-500 text-white gap-1"
+              className="h-7 text-xs bg-cyan-600 hover:bg-cyan-500 text-white gap-1 font-semibold"
             >
               <Plus className="w-3 h-3" />
               Add Endpoint
@@ -245,13 +284,23 @@ export const MockServerPage: React.FC = () => {
                       HTTP {route.statusCode}
                     </Badge>
                     {route.delayMs && route.delayMs > 0 ? (
-                      <span className="text-[10px] font-mono text-zinc-500">{route.delayMs}ms</span>
+                      <span className="text-[10px] font-mono text-zinc-500">{route.delayMs}ms delay</span>
                     ) : null}
                     <Button
                       variant="ghost"
                       size="icon"
                       className="h-7 w-7 text-zinc-400 hover:text-zinc-100"
+                      onClick={() => handleCopyCurl(route)}
+                      title="Copy cURL command"
+                    >
+                      {copiedCurlId === route.id ? <Check className="w-3 h-3 text-emerald-400" /> : <Copy className="w-3 h-3" />}
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-7 w-7 text-zinc-400 hover:text-zinc-100"
                       onClick={() => openRouteEditor(route)}
+                      title="Edit endpoint"
                     >
                       <Edit2 className="w-3 h-3" />
                     </Button>
@@ -260,6 +309,7 @@ export const MockServerPage: React.FC = () => {
                       size="icon"
                       className="h-7 w-7 text-zinc-500 hover:text-red-400"
                       onClick={() => deleteRoute(route.id)}
+                      title="Delete endpoint"
                     >
                       <Trash2 className="w-3 h-3" />
                     </Button>
@@ -303,7 +353,7 @@ export const MockServerPage: React.FC = () => {
             <div className="border border-zinc-800 rounded-lg overflow-y-auto bg-zinc-900/30 divide-y divide-zinc-850">
               {webhooks.length === 0 ? (
                 <div className="p-8 text-center text-xs text-zinc-500 italic">
-                  Listening for incoming webhook payloads...
+                  Listening for incoming webhook payloads on port {status.running ? status.port : customPort}...
                 </div>
               ) : (
                 webhooks.map((evt) => {
@@ -341,32 +391,119 @@ export const MockServerPage: React.FC = () => {
               )}
             </div>
 
-            {/* Selected Webhook Payload Details */}
+            {/* Selected Webhook Payload Details with Tabs */}
             <div className="border border-zinc-800 rounded-lg bg-zinc-950 p-3 flex flex-col overflow-hidden">
               {selectedWebhook ? (
                 <div className="flex-1 flex flex-col overflow-hidden space-y-2">
-                  <div className="flex items-center justify-between pb-1 border-b border-zinc-850">
-                    <span className="text-xs font-mono font-semibold text-zinc-300">
-                      Payload: {selectedWebhook.method} {selectedWebhook.path}
-                    </span>
+                  <div className="flex items-center justify-between pb-1 border-b border-zinc-850 gap-2">
+                    <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar">
+                      <button
+                        onClick={() => setActiveInspectorTab('body')}
+                        className={cn(
+                          'px-2 py-0.5 rounded text-[11px] font-mono transition-colors',
+                          activeInspectorTab === 'body' ? 'bg-zinc-800 text-zinc-100 font-bold' : 'text-zinc-500 hover:text-zinc-300'
+                        )}
+                      >
+                        Body
+                      </button>
+                      <button
+                        onClick={() => setActiveInspectorTab('headers')}
+                        className={cn(
+                          'px-2 py-0.5 rounded text-[11px] font-mono transition-colors',
+                          activeInspectorTab === 'headers' ? 'bg-zinc-800 text-zinc-100 font-bold' : 'text-zinc-500 hover:text-zinc-300'
+                        )}
+                      >
+                        Headers ({Object.keys(selectedWebhook.headers || {}).length})
+                      </button>
+                      <button
+                        onClick={() => setActiveInspectorTab('query')}
+                        className={cn(
+                          'px-2 py-0.5 rounded text-[11px] font-mono transition-colors',
+                          activeInspectorTab === 'query' ? 'bg-zinc-800 text-zinc-100 font-bold' : 'text-zinc-500 hover:text-zinc-300'
+                        )}
+                      >
+                        Query ({Object.keys(selectedWebhook.query || {}).length})
+                      </button>
+                      <button
+                        onClick={() => setActiveInspectorTab('meta')}
+                        className={cn(
+                          'px-2 py-0.5 rounded text-[11px] font-mono transition-colors',
+                          activeInspectorTab === 'meta' ? 'bg-zinc-800 text-zinc-100 font-bold' : 'text-zinc-500 hover:text-zinc-300'
+                        )}
+                      >
+                        Metadata
+                      </button>
+                    </div>
+
                     <Button
                       variant="outline"
                       size="sm"
                       onClick={handleCopyPayload}
-                      className="h-6 text-[10px] border-zinc-800 gap-1 text-zinc-300"
+                      className="h-6 text-[10px] border-zinc-800 gap-1 text-zinc-300 shrink-0"
                     >
                       {copiedPayload ? <Check className="w-3 h-3 text-emerald-400" /> : <Copy className="w-3 h-3" />}
                       {copiedPayload ? 'Copied' : 'Copy'}
                     </Button>
                   </div>
 
-                  <div className="flex-1 overflow-y-auto bg-black/60 rounded p-2 font-mono text-xs text-zinc-300 leading-relaxed whitespace-pre-wrap break-all">
-                    {selectedWebhook.body || '(Empty body)'}
+                  <div className="flex-1 overflow-y-auto bg-black/60 rounded p-2.5 font-mono text-xs text-zinc-300 leading-relaxed">
+                    {activeInspectorTab === 'body' ? (
+                      <pre className="whitespace-pre-wrap break-all text-[11px]">
+                        {selectedWebhook.body || '(Empty body)'}
+                      </pre>
+                    ) : activeInspectorTab === 'headers' ? (
+                      <div className="space-y-1 text-[11px]">
+                        {Object.entries(selectedWebhook.headers || {}).map(([k, v]) => (
+                          <div key={k} className="flex items-start justify-between gap-2 border-b border-zinc-850/60 pb-1">
+                            <span className="text-zinc-400 font-semibold">{k}:</span>
+                            <span className="text-zinc-200 break-all text-right">{v}</span>
+                          </div>
+                        ))}
+                      </div>
+                    ) : activeInspectorTab === 'query' ? (
+                      Object.keys(selectedWebhook.query || {}).length === 0 ? (
+                        <div className="text-zinc-500 italic text-center py-4">No query parameters</div>
+                      ) : (
+                        <div className="space-y-1 text-[11px]">
+                          {Object.entries(selectedWebhook.query || {}).map(([k, v]) => (
+                            <div key={k} className="flex items-center justify-between gap-2 border-b border-zinc-850/60 pb-1">
+                              <span className="text-cyan-400 font-semibold">{k}:</span>
+                              <span className="text-zinc-200">{v}</span>
+                            </div>
+                          ))}
+                        </div>
+                      )
+                    ) : (
+                      <div className="space-y-1.5 text-[11px]">
+                        <div className="flex justify-between border-b border-zinc-850/60 pb-1">
+                          <span className="text-zinc-500">Timestamp:</span>
+                          <span>{new Date(selectedWebhook.timestamp).toISOString()}</span>
+                        </div>
+                        <div className="flex justify-between border-b border-zinc-850/60 pb-1">
+                          <span className="text-zinc-500">Client IP:</span>
+                          <span>{selectedWebhook.ip}</span>
+                        </div>
+                        <div className="flex justify-between border-b border-zinc-850/60 pb-1">
+                          <span className="text-zinc-500">Method:</span>
+                          <span>{selectedWebhook.method}</span>
+                        </div>
+                        <div className="flex justify-between border-b border-zinc-850/60 pb-1">
+                          <span className="text-zinc-500">Path:</span>
+                          <span>{selectedWebhook.path}</span>
+                        </div>
+                        {selectedWebhook.matchedRoute && (
+                          <div className="flex justify-between">
+                            <span className="text-zinc-500">Matched Mock Route:</span>
+                            <span className="text-emerald-400">{selectedWebhook.matchedRoute}</span>
+                          </div>
+                        )}
+                      </div>
+                    )}
                   </div>
                 </div>
               ) : (
                 <div className="flex-1 flex items-center justify-center text-xs text-zinc-600 italic">
-                  Select a webhook request above to inspect its headers and payload
+                  Select a webhook request above to inspect its headers, query parameters, and payload
                 </div>
               )}
             </div>

@@ -11,6 +11,7 @@ export interface ConflictBlock {
   type: 'conflict' | 'clean';
   currentContent: string;  // Ours (HEAD)
   incomingContent: string; // Theirs
+  baseContent?: string;    // Common ancestor (diff3)
   mergedContent?: string;
   startLine: number;
 }
@@ -61,9 +62,11 @@ export class GitConflictService {
 
       const blocks: ConflictBlock[] = [];
       let inConflict = false;
+      let inBase = false;
       let inTheirs = false;
 
       let currentLines: string[] = [];
+      let baseLines: string[] = [];
       let incomingLines: string[] = [];
       let cleanLines: string[] = [];
       let blockStartLine = 1;
@@ -84,29 +87,41 @@ export class GitConflictService {
             cleanLines = [];
           }
           inConflict = true;
+          inBase = false;
           inTheirs = false;
           currentLines = [];
+          baseLines = [];
           incomingLines = [];
           blockStartLine = i + 1;
+        } else if (inConflict && line.startsWith('|||||||')) {
+          // diff3 base ancestor marker
+          inBase = true;
+          inTheirs = false;
         } else if (inConflict && line.startsWith('=======')) {
+          inBase = false;
           inTheirs = true;
         } else if (inConflict && line.startsWith('>>>>>>>')) {
           inConflict = false;
+          inBase = false;
           inTheirs = false;
           blocks.push({
             id: `block-conflict-${blockIndex++}`,
             type: 'conflict',
             currentContent: currentLines.join('\n'),
             incomingContent: incomingLines.join('\n'),
+            baseContent: baseLines.length > 0 ? baseLines.join('\n') : undefined,
             startLine: blockStartLine
           });
           currentLines = [];
+          baseLines = [];
           incomingLines = [];
           blockStartLine = i + 2;
         } else {
           if (inConflict) {
             if (inTheirs) {
               incomingLines.push(line);
+            } else if (inBase) {
+              baseLines.push(line);
             } else {
               currentLines.push(line);
             }

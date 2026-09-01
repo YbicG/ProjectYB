@@ -72,7 +72,7 @@ export const ModernSidebar: React.FC = () => {
 
   // Count uncommitted git projects
   const dirtyGitCount = Array.from(statuses?.values?.() || []).filter(
-    (s) => (s?.staged?.length || 0) + (s?.unstaged?.length || 0) > 0
+    (s) => (s?.staged?.length || 0) + (s?.unstaged?.length || 0) + (s?.untracked?.length || 0) > 0
   ).length;
 
   const navItems: NavItem[] = [
@@ -308,7 +308,7 @@ export const ModernSidebar: React.FC = () => {
               variant="ghost"
               size="icon"
               onClick={() => setScratchpadModalOpen(true)}
-              title="Global Scratchpad (Ctrl+Shift+N)"
+              title="Global Scratchpad (Ctrl+N)"
               className="h-7 w-full text-zinc-400 hover:text-zinc-100 hover:bg-zinc-900"
             >
               <FileText className="w-3.5 h-3.5" />
@@ -318,7 +318,7 @@ export const ModernSidebar: React.FC = () => {
               variant="ghost"
               size="icon"
               onClick={() => setHealthModalOpen(true)}
-              title="Project Health Radar (Ctrl+Shift+H)"
+              title="Project Health Radar"
               className="h-7 w-full text-zinc-400 hover:text-zinc-100 hover:bg-zinc-900"
             >
               <Activity className="w-3.5 h-3.5" />
@@ -328,7 +328,7 @@ export const ModernSidebar: React.FC = () => {
               variant="ghost"
               size="icon"
               onClick={() => setSnippetModalOpen(true)}
-              title="Snippets Vault (Ctrl+Shift+V)"
+              title="Snippets Vault (Ctrl+Shift+S)"
               className="h-7 w-full text-zinc-400 hover:text-zinc-100 hover:bg-zinc-900"
             >
               <Code2 className="w-3.5 h-3.5" />

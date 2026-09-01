@@ -17,11 +17,15 @@ export class ServiceKillerService {
    * Find PIDs listening on a specific port
    */
   async findPidsOnPort(port: number): Promise<number[]> {
+    if (!port || typeof port !== 'number' || isNaN(port) || port <= 0 || port > 65535) {
+      return [];
+    }
+
     const pids: Set<number> = new Set();
     if (process.platform === 'win32') {
       try {
         const { stdout } = await execAsync(`netstat -ano | findstr :${port}`);
-        const lines = stdout.trim().split('\n');
+        const lines = stdout.trim().split(/\r?\n/);
         for (const line of lines) {
           const parts = line.trim().split(/\s+/);
           // Format: TCP 0.0.0.0:3000 0.0.0.0:0 LISTENING 12345
@@ -38,7 +42,7 @@ export class ServiceKillerService {
     } else {
       try {
         const { stdout } = await execAsync(`lsof -ti :${port}`);
-        const lines = stdout.trim().split('\n');
+        const lines = stdout.trim().split(/\r?\n/);
         for (const line of lines) {
           const pid = parseInt(line.trim(), 10);
           if (!isNaN(pid) && pid > 0 && pid !== process.pid) {
@@ -61,8 +65,12 @@ export class ServiceKillerService {
     const killedPids: Set<number> = new Set();
 
     try {
-      // 1. Kill terminal session if terminalId provided
+      // 1. If terminalId provided, get terminal PID first then kill terminal session
       if (options.terminalId) {
+        const termPid = terminalService.getPid(options.terminalId);
+        if (termPid && termPid > 0 && termPid !== process.pid) {
+          killedPids.add(termPid);
+        }
         try {
           terminalService.kill(options.terminalId);
         } catch {}
@@ -85,12 +93,16 @@ export class ServiceKillerService {
       for (const pid of killedPids) {
         try {
           if (process.platform === 'win32') {
-            await execAsync(`taskkill /pid ${pid} /T /F`);
+            await execAsync(`taskkill /F /T /PID ${pid}`);
           } else {
+            // Deep process tree kill on Unix/macOS: kill child processes first, then the parent
+            try {
+              await execAsync(`pkill -9 -P ${pid}`);
+            } catch {}
             await execAsync(`kill -9 ${pid}`);
           }
         } catch (err: any) {
-          // If already dead, ignore
+          // If process already dead, ignore
           logger.warn(`[ServiceKiller] taskkill error for PID ${pid}: ${err.message}`);
         }
       }

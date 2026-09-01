@@ -138,32 +138,39 @@ export const GitPage: React.FC = () => {
         <div className="flex items-center gap-2">
           {status && (
             <div className="flex items-center gap-1.5 mr-2">
-              {status.ahead > 0 && (
-                <Button
-                  size="sm"
-                  variant="outline"
-                  className="h-7 text-xs px-2 gap-1 border-zinc-700 text-emerald-400 hover:text-emerald-300"
-                  onClick={handlePush}
-                  disabled={isLoading}
-                  title="Push commits to upstream"
-                >
-                  <UploadCloud className="w-3.5 h-3.5" />
-                  Push ({status.ahead})
-                </Button>
-              )}
-              {status.behind > 0 && (
-                <Button
-                  size="sm"
-                  variant="outline"
-                  className="h-7 text-xs px-2 gap-1 border-zinc-700 text-amber-400 hover:text-amber-300"
-                  onClick={handlePull}
-                  disabled={isLoading}
-                  title="Pull commits from upstream"
-                >
-                  <DownloadCloud className="w-3.5 h-3.5" />
-                  Pull ({status.behind})
-                </Button>
-              )}
+              <Button
+                size="sm"
+                variant="outline"
+                className={cn(
+                  'h-7 text-xs px-2 gap-1 border-zinc-700',
+                  status.ahead > 0
+                    ? 'text-emerald-400 hover:text-emerald-300 font-semibold border-emerald-800/60 bg-emerald-950/20'
+                    : 'text-zinc-300 hover:text-white'
+                )}
+                onClick={handlePush}
+                disabled={isLoading}
+                title={status.ahead > 0 ? `Push ${status.ahead} local commit(s) to upstream` : 'Push commits to upstream'}
+              >
+                <UploadCloud className="w-3.5 h-3.5" />
+                Push{status.ahead > 0 ? ` (${status.ahead})` : ''}
+              </Button>
+
+              <Button
+                size="sm"
+                variant="outline"
+                className={cn(
+                  'h-7 text-xs px-2 gap-1 border-zinc-700',
+                  status.behind > 0
+                    ? 'text-amber-400 hover:text-amber-300 font-semibold border-amber-800/60 bg-amber-950/20'
+                    : 'text-zinc-300 hover:text-white'
+                )}
+                onClick={handlePull}
+                disabled={isLoading}
+                title={status.behind > 0 ? `Pull ${status.behind} remote commit(s) from upstream` : 'Pull latest changes from upstream'}
+              >
+                <DownloadCloud className="w-3.5 h-3.5" />
+                Pull{status.behind > 0 ? ` (${status.behind})` : ''}
+              </Button>
               <Button
                 size="sm"
                 variant="outline"

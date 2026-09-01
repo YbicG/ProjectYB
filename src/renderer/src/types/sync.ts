@@ -12,6 +12,8 @@ export interface CloudVaultPayload {
     runConfigs?: any[];
     mockRoutes?: any[];
     customTheme?: any;
+    vaultSecrets?: any[];
+    benchmarks?: any[];
   };
 }
 

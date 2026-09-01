@@ -115,7 +115,27 @@ export const GitBranchGraph: React.FC = () => {
               {commits.map((commit, idx) => {
                 const isHead = idx === 0;
                 const isSelected = selectedCommit?.hash === commit.hash;
-                const matchingBranches = branches.filter((b: Branch) => b.current && isHead);
+                
+                // Parse refs from git log (e.g. "HEAD -> main, origin/main, tag: v1.0.0, feat/branch")
+                const refBadges: Array<{ name: string; type: 'head' | 'branch' | 'tag' | 'remote' }> = [];
+                if (isHead) {
+                  refBadges.push({ name: 'HEAD', type: 'head' });
+                }
+                if (commit.refs) {
+                  const parts = commit.refs.split(',').map((r) => r.trim());
+                  for (const part of parts) {
+                    if (!part) continue;
+                    if (part.startsWith('tag: ')) {
+                      refBadges.push({ name: part.replace('tag: ', ''), type: 'tag' });
+                    } else if (part.startsWith('HEAD -> ')) {
+                      refBadges.push({ name: part.replace('HEAD -> ', ''), type: 'branch' });
+                    } else if (part.includes('/')) {
+                      refBadges.push({ name: part, type: 'remote' });
+                    } else if (part !== 'HEAD') {
+                      refBadges.push({ name: part, type: 'branch' });
+                    }
+                  }
+                }
 
                 return (
                   <div
@@ -144,21 +164,31 @@ export const GitBranchGraph: React.FC = () => {
 
                     {/* Commit Meta */}
                     <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 flex-wrap">
+                      <div className="flex items-center gap-1.5 flex-wrap">
                         <span className="font-mono text-[11px] font-semibold text-violet-400 bg-violet-950/40 px-1.5 py-0.2 rounded border border-violet-800/40">
                           {commit.hashShort || commit.hash?.slice(0, 7)}
                         </span>
 
-                        {isHead && (
-                          <Badge className="text-[9px] h-4 bg-emerald-950 text-emerald-300 border-emerald-700/60 font-mono">
-                            HEAD
-                          </Badge>
-                        )}
-
-                        {matchingBranches.map((b: Branch) => (
-                          <Badge key={b.name} variant="outline" className="text-[9px] h-4 bg-zinc-900 text-zinc-300 border-zinc-700 font-mono flex items-center gap-1">
-                            <GitBranch className="w-2.5 h-2.5 text-violet-400" />
-                            {b.name}
+                        {refBadges.map((badge, bIdx) => (
+                          <Badge
+                            key={`${badge.name}-${bIdx}`}
+                            variant="outline"
+                            className={cn(
+                              'text-[9px] h-4 font-mono flex items-center gap-1 px-1.5',
+                              badge.type === 'head' && 'bg-emerald-950 text-emerald-300 border-emerald-700/60 font-bold',
+                              badge.type === 'branch' && 'bg-violet-950/50 text-violet-300 border-violet-700',
+                              badge.type === 'tag' && 'bg-amber-950/50 text-amber-300 border-amber-700',
+                              badge.type === 'remote' && 'bg-zinc-900 text-zinc-400 border-zinc-700'
+                            )}
+                          >
+                            {badge.type === 'tag' ? (
+                              <Tag className="w-2.5 h-2.5 text-amber-400" />
+                            ) : badge.type === 'remote' ? (
+                              <ArrowRight className="w-2.5 h-2.5 text-zinc-400" />
+                            ) : badge.type !== 'head' ? (
+                              <GitBranch className="w-2.5 h-2.5 text-violet-400" />
+                            ) : null}
+                            {badge.name}
                           </Badge>
                         ))}
 
@@ -215,17 +245,33 @@ export const GitBranchGraph: React.FC = () => {
                   </div>
                 </div>
 
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => {
-                    navigator.clipboard.writeText(selectedCommit.hash);
-                    toast.success('Commit SHA copied to clipboard');
-                  }}
-                  className="w-full text-xs h-7 border-zinc-800 hover:bg-zinc-900 text-zinc-300"
-                >
-                  Copy Full SHA
-                </Button>
+                <div className="flex gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      navigator.clipboard.writeText(selectedCommit.hash);
+                      toast.success('Commit SHA copied to clipboard');
+                    }}
+                    className="flex-1 text-xs h-7 border-zinc-800 hover:bg-zinc-900 text-zinc-300"
+                  >
+                    Copy SHA
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      const store = useGitStore.getState();
+                      if (project?.path) {
+                        store.loadCommitDiff(project.path, selectedCommit.hash);
+                        store.setActiveSubTab('history');
+                      }
+                    }}
+                    className="flex-1 text-xs h-7 border-violet-800/60 text-violet-300 hover:bg-violet-950/40"
+                  >
+                    View Diff
+                  </Button>
+                </div>
               </>
             ) : (
               <div className="text-center py-6 text-zinc-600 text-xs">
