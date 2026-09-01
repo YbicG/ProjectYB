@@ -257,11 +257,12 @@ class DiskCleanerService {
   /**
    * Clean specific categories from a project
    */
-  async cleanProject(projectPath: string, categories: CleanCategory[]): Promise<{ freedBytes: number; cleanedPaths: string[] }> {
+  async cleanProject(projectPath: string, categories: CleanCategory[]): Promise<{ success: boolean; freedBytes: number; cleanedPaths: string[] }> {
     const cleanedPaths: string[] = [];
     let freedBytes = 0;
 
     try {
+      this.isCancelled = false;
       const usage = await this.analyzeProject('tmp', 'tmp', projectPath);
       const targets = usage.items.filter((item) => categories.includes(item.category));
 
@@ -278,17 +279,17 @@ class DiskCleanerService {
         }
       }
       this.dirCache.delete(projectPath);
+      return { success: true, freedBytes, cleanedPaths };
     } catch (err) {
       logger.error('Failed to clean project at ' + projectPath, err);
+      return { success: false, freedBytes, cleanedPaths };
     }
-
-    return { freedBytes, cleanedPaths };
   }
 
   /**
    * Clean global package manager caches
    */
-  async cleanGlobalCache(type: 'pnpm' | 'npm' | 'cargo' | 'pip'): Promise<{ success: boolean; message: string }> {
+  async cleanGlobalCache(type: 'pnpm' | 'npm' | 'cargo' | 'pip'): Promise<{ success: boolean; output: string }> {
     try {
       let cmd = '';
       switch (type) {
@@ -307,9 +308,9 @@ class DiskCleanerService {
       }
 
       await execAsync(cmd);
-      return { success: true, message: 'Successfully cleaned ' + type + ' cache' };
+      return { success: true, output: 'Successfully cleaned ' + type + ' cache' };
     } catch (err: any) {
-      return { success: false, message: err.message || 'Failed to clean global cache' };
+      return { success: false, output: err.message || 'Failed to clean global cache' };
     }
   }
 }

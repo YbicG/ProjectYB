@@ -73,8 +73,7 @@ export const OptimizerPage: React.FC = () => {
               </Button>
             </div>
           )}
-
-          {summary && summary.totalReclaimableBytes > 0 && (
+          {summary && ((summary.buildBytes || 0) + (summary.cachesBytes || 0)) > 0 && (
             <Button
               size="sm"
               className="bg-amber-600 hover:bg-amber-700 text-xs h-8 gap-1.5 font-semibold"
@@ -82,7 +81,7 @@ export const OptimizerPage: React.FC = () => {
               onClick={() => cleanAllReclaimable()}
             >
               <Sparkles className="w-3.5 h-3.5" />
-              Reclaim All Build & Cache (~{formatSize(summary.totalReclaimableBytes)})
+              Reclaim All Build & Cache (~{formatSize((summary.buildBytes || 0) + (summary.cachesBytes || 0))})
             </Button>
           )}
 
@@ -99,74 +98,103 @@ export const OptimizerPage: React.FC = () => {
         </div>
       </div>
 
-      {/* ── Summary Stats Row ── */}
-      <div className="grid grid-cols-4 gap-4">
-        <Card className="bg-zinc-950 border-zinc-800 p-3.5">
-          <p className="text-[11px] text-zinc-500 font-medium">Total Storage Used</p>
-          <p className="text-lg font-bold text-zinc-100 mt-0.5">
+      {/* ── Summary Stats Bento Grid ── */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+        <Card className="bg-zinc-950 border-zinc-800 p-3.5 space-y-1">
+          <div className="flex items-center justify-between text-xs text-zinc-400">
+            <span>Total Storage</span>
+            <Layers className="w-3.5 h-3.5 text-violet-400" />
+          </div>
+          <p className="text-xl font-bold font-mono text-zinc-100">
             {formatSize(summary?.totalAnalyzedBytes || 0)}
           </p>
-          <span className="text-[10px] text-zinc-500">{projects.length} scanned repositories</span>
+          <span className="text-[10px] text-zinc-500 font-mono">
+            {summary?.projects.length || 0} projects
+          </span>
         </Card>
 
-        <Card className="bg-zinc-950 border-zinc-800 p-3.5">
-          <p className="text-[11px] text-amber-400/80 font-medium">Reclaimable Space</p>
-          <p className="text-lg font-bold text-amber-400 mt-0.5">
+        <Card className="bg-zinc-950 border-zinc-800 p-3.5 space-y-1">
+          <div className="flex items-center justify-between text-xs text-zinc-400">
+            <span>Reclaimable Space</span>
+            <Trash2 className="w-3.5 h-3.5 text-amber-400" />
+          </div>
+          <p className="text-xl font-bold font-mono text-amber-400">
             {formatSize(summary?.totalReclaimableBytes || 0)}
           </p>
-          <span className="text-[10px] text-zinc-500">Build artifacts & caches</span>
+          <span className="text-[10px] text-zinc-500 font-mono">Builds, caches, node_modules</span>
         </Card>
 
-        <Card className="bg-zinc-950 border-zinc-800 p-3.5">
-          <p className="text-[11px] text-violet-400/80 font-medium">Total Dependencies</p>
-          <p className="text-lg font-bold text-violet-300 mt-0.5">
+        <Card className="bg-zinc-950 border-zinc-800 p-3.5 space-y-1">
+          <div className="flex items-center justify-between text-xs text-zinc-400">
+            <span>Dependencies</span>
+            <HardDrive className="w-3.5 h-3.5 text-violet-400" />
+          </div>
+          <p className="text-xl font-bold font-mono text-violet-300">
             {formatSize(summary?.dependenciesBytes || 0)}
           </p>
-          <span className="text-[10px] text-zinc-500">node_modules & .venv</span>
+          <span className="text-[10px] text-zinc-500 font-mono">node_modules, venv</span>
         </Card>
 
-        <Card className="bg-zinc-950 border-zinc-800 p-3.5">
-          <p className="text-[11px] text-cyan-400/80 font-medium">Build & Caches</p>
-          <p className="text-lg font-bold text-cyan-300 mt-0.5">
+        <Card className="bg-zinc-950 border-zinc-800 p-3.5 space-y-1">
+          <div className="flex items-center justify-between text-xs text-zinc-400">
+            <span>Build & Caches</span>
+            <Sparkles className="w-3.5 h-3.5 text-cyan-400" />
+          </div>
+          <p className="text-xl font-bold font-mono text-cyan-300">
             {formatSize((summary?.buildBytes || 0) + (summary?.cachesBytes || 0))}
           </p>
-          <span className="text-[10px] text-zinc-500">dist, target, .turbo, .vite</span>
+          <span className="text-[10px] text-zinc-500 font-mono">dist, target, .next, .cache</span>
         </Card>
       </div>
 
-      {/* ── Global Cache Cleaner Row ── */}
+      {/* ── Global Cache Cleaner (pnpm, npm, cargo, pip) ── */}
       <GlobalCacheCleaner />
 
-      {/* ── Project Filter Bar & Project List ── */}
-      <div className="flex items-center justify-between pt-1">
-        <div className="flex items-center gap-3">
-          <div className="bg-zinc-900 border border-zinc-800 rounded p-0.5 flex text-xs">
+      {/* ── Filter Bar & Search ── */}
+      <div className="flex items-center justify-between gap-3 pt-2">
+        <div className="flex items-center gap-2">
+          <div className="flex items-center bg-zinc-900 border border-zinc-800 rounded-lg p-0.5 text-xs">
             <button
               onClick={() => setFilter('all')}
-              className={cn('px-2.5 py-1 rounded font-medium', activeFilter === 'all' ? 'bg-zinc-800 text-white' : 'text-zinc-400')}
+              className={cn(
+                'px-2.5 py-1 rounded-md transition-colors',
+                activeFilter === 'all'
+                  ? 'bg-zinc-800 text-zinc-100 font-medium'
+                  : 'text-zinc-400 hover:text-zinc-200'
+              )}
             >
-              All Projects ({summary?.projects.length || 0})
-            </button>
-            <button
-              onClick={() => setFilter('reclaimable')}
-              className={cn('px-2.5 py-1 rounded font-medium', activeFilter === 'reclaimable' ? 'bg-zinc-800 text-white' : 'text-zinc-400')}
-            >
-              Reclaimable Space Only
+              All ({summary?.projects.length || 0})
             </button>
             <button
               onClick={() => setFilter('large')}
-              className={cn('px-2.5 py-1 rounded font-medium', activeFilter === 'large' ? 'bg-zinc-800 text-white' : 'text-zinc-400')}
+              className={cn(
+                'px-2.5 py-1 rounded-md transition-colors',
+                activeFilter === 'large'
+                  ? 'bg-zinc-800 text-zinc-100 font-medium'
+                  : 'text-zinc-400 hover:text-zinc-200'
+              )}
             >
-              Large (&gt; 500 MB)
+              Large &gt; 500MB
+            </button>
+            <button
+              onClick={() => setFilter('reclaimable')}
+              className={cn(
+                'px-2.5 py-1 rounded-md transition-colors',
+                activeFilter === 'reclaimable'
+                  ? 'bg-zinc-800 text-zinc-100 font-medium'
+                  : 'text-zinc-400 hover:text-zinc-200'
+              )}
+            >
+              Has Reclaimable
             </button>
           </div>
 
-          <div className="relative w-52">
+          <div className="relative w-64">
             <Search className="w-3.5 h-3.5 absolute left-2.5 top-2.5 text-zinc-500" />
             <Input
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              placeholder="Filter by project..."
+              placeholder="Search projects..."
               className="pl-8 h-8 bg-zinc-900 border-zinc-800 text-xs"
             />
           </div>
@@ -179,7 +207,7 @@ export const OptimizerPage: React.FC = () => {
 
       <div className="flex-1 min-h-0 overflow-hidden">
         <ScrollArea className="h-full">
-          {isAnalyzing ? (
+          {isAnalyzing && filteredProjects.length === 0 ? (
             <div className="p-12 text-center text-xs text-zinc-500 flex flex-col items-center gap-2">
               <RefreshCw className="w-5 h-5 animate-spin text-amber-400" />
               Analyzing project directories and computing storage breakdown…

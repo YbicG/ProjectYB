@@ -45,7 +45,7 @@ export const ProjectDiskCard: React.FC<ProjectDiskCardProps> = ({ usage }) => {
         </div>
 
         <div className="flex items-center gap-1.5 shrink-0">
-          {usage.reclaimableBytes > 0 && (
+          {(usage.buildBytes + usage.cachesBytes) > 0 && (
             <Button
               size="sm"
               variant="outline"

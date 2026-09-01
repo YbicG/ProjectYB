@@ -174,7 +174,7 @@ export const useDiskStore = create<DiskState>((set, get) => ({
                 ...p,
                 totalBytes: Math.max(0, p.totalBytes - cleanedBytes),
                 reclaimableBytes: Math.max(0, p.reclaimableBytes - cleanedBytes),
-                items: p.items.filter(item => !res.cleanedPaths.includes(item.name))
+                items: p.items.filter(item => !res.cleanedPaths.includes(item.fullPath) && !res.cleanedPaths.includes(item.name))
               };
             }
             return p;
