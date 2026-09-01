@@ -20,7 +20,8 @@ import {
   Workflow,
   Bot,
   Clock,
-  Smartphone
+  Smartphone,
+  ShieldCheck
 } from 'lucide-react';
 import { useAppStore, TabType } from '@renderer/stores/useAppStore';
 import { cn } from '@renderer/lib/utils';
@@ -162,6 +163,17 @@ export const TopNav: React.FC = () => {
           title="Command Snippets Vault (Ctrl+Shift+S)"
         >
           <Code2 className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+        </Button>
+
+        {/* Global Secrets Vault */}
+        <Button
+          variant="ghost"
+          size="icon"
+          className="h-7 w-7 sm:h-8 sm:w-8 text-zinc-400 hover:text-violet-300"
+          onClick={() => useAppStore.getState().setSecretVaultModalOpen(true)}
+          title="Global Secrets & Credentials Vault (AES-256)"
+        >
+          <ShieldCheck className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-violet-400" />
         </Button>
 
         {/* Scratchpad (Ctrl+N) */}

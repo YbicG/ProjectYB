@@ -22,7 +22,8 @@ import {
   Database,
   Workflow,
   Clock,
-  Smartphone
+  Smartphone,
+  ShieldCheck
 } from 'lucide-react';
 import logoUrl from '@renderer/assets/logo.png';
 
@@ -43,11 +44,12 @@ import { Button } from '../../ui/button';
 import { Badge } from '../../ui/badge';
 
 interface NavItem {
-  id: TabType;
+  id: TabType | 'secrets';
   label: string;
   icon: React.ComponentType<{ className?: string }>;
   badge?: () => React.ReactNode;
   category: 'core' | 'dev' | 'network' | 'system';
+  onClick?: () => void;
 }
 
 export const ModernSidebar: React.FC = () => {
@@ -142,6 +144,13 @@ export const ModernSidebar: React.FC = () => {
     // 4. System & Health Hub
     { id: 'dependencies', label: 'Dependencies', icon: Package, category: 'system' },
     { id: 'optimizer', label: 'Disk Optimizer', icon: HardDrive, category: 'system' },
+    {
+      id: 'secrets',
+      label: 'Secrets Vault',
+      icon: ShieldCheck,
+      category: 'system',
+      onClick: () => useAppStore.getState().setSecretVaultModalOpen(true)
+    },
     { id: 'settings', label: 'Settings', icon: Settings, category: 'system' }
   ];
 
@@ -224,7 +233,13 @@ export const ModernSidebar: React.FC = () => {
                   return (
                     <button
                       key={item.id}
-                      onClick={() => setActiveTab(item.id)}
+                      onClick={() => {
+                        if (item.onClick) {
+                          item.onClick();
+                        } else {
+                          setActiveTab(item.id as TabType);
+                        }
+                      }}
                       title={isSidebarCollapsed ? item.label : undefined}
                       className={cn(
                         'w-full flex items-center gap-3 px-2.5 py-1.5 rounded-lg text-xs font-medium transition-all group relative',

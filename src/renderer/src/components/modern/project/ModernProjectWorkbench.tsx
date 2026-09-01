@@ -350,6 +350,17 @@ export const ModernProjectWorkbench: React.FC = () => {
           <Button
             variant="outline"
             size="sm"
+            onClick={() => useAppStore.getState().setAssetForgeModalOpen(true)}
+            className="h-7 text-xs border-cyan-800/60 bg-cyan-950/20 text-cyan-300 hover:bg-cyan-900/40 gap-1.5 font-semibold"
+            title="Open Developer Asset Forge & Favicon Suite"
+          >
+            <Sparkles className="w-3.5 h-3.5 text-cyan-400" />
+            <span>Asset Forge</span>
+          </Button>
+
+          <Button
+            variant="outline"
+            size="sm"
             onClick={() => setSnapshotDialogOpen(true)}
             className="h-7 text-xs border-zinc-800 hover:bg-zinc-900 text-zinc-300 gap-1.5"
             title="Create clean ZIP snapshot"
@@ -618,6 +629,15 @@ export const ModernProjectWorkbench: React.FC = () => {
                             title="Open in VS Code"
                           >
                             <Code className="w-3.5 h-3.5" />
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => useAppStore.getState().setAssetForgeModalOpen(true)}
+                            className="h-7 w-7 p-0 border-zinc-800 bg-zinc-950 hover:bg-zinc-900 text-cyan-400 hover:text-cyan-300"
+                            title="Generate Favicon Suite / Assets"
+                          >
+                            <Sparkles className="w-3.5 h-3.5" />
                           </Button>
                         </div>
                       </div>
