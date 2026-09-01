@@ -73,6 +73,82 @@ export const MarkdownNotesEditor: React.FC<MarkdownNotesEditorProps> = ({ projec
 
   const completedTasksCount = tasks.filter((t) => t.completed).length;
 
+  // Parse markdown into parsed elements (including fenced code blocks)
+  const parsedElements = React.useMemo(() => {
+    if (!currentNote?.content) return [];
+    const lines = currentNote.content.split('\n');
+    const elements: Array<{
+      type: 'task' | 'h1' | 'h2' | 'h3' | 'list' | 'codeblock' | 'empty' | 'text';
+      content: string;
+      codeLang?: string;
+      rawLines?: string[];
+      lineIndex: number;
+      completed?: boolean;
+    }> = [];
+
+    let inCode = false;
+    let codeLang = '';
+    let codeLines: string[] = [];
+    let codeStartIdx = 0;
+
+    lines.forEach((line, idx) => {
+      if (line.startsWith('```')) {
+        if (inCode) {
+          elements.push({
+            type: 'codeblock',
+            content: codeLines.join('\n'),
+            codeLang: codeLang || 'bash',
+            lineIndex: codeStartIdx
+          });
+          inCode = false;
+          codeLines = [];
+          codeLang = '';
+        } else {
+          inCode = true;
+          codeLang = line.replace('```', '').trim().toLowerCase();
+          codeStartIdx = idx;
+          codeLines = [];
+        }
+        return;
+      }
+
+      if (inCode) {
+        codeLines.push(line);
+        return;
+      }
+
+      const taskMatch = line.match(/^(\s*)[-*]\s*\[([ xX])\]\s*(.*)$/);
+      if (taskMatch) {
+        elements.push({
+          type: 'task',
+          content: taskMatch[3],
+          completed: taskMatch[2].toLowerCase() === 'x',
+          lineIndex: idx
+        });
+        return;
+      }
+
+      if (line.startsWith('# ')) elements.push({ type: 'h1', content: line.replace('# ', ''), lineIndex: idx });
+      else if (line.startsWith('## ')) elements.push({ type: 'h2', content: line.replace('## ', ''), lineIndex: idx });
+      else if (line.startsWith('### ')) elements.push({ type: 'h3', content: line.replace('### ', ''), lineIndex: idx });
+      else if (line.startsWith('- ') || line.startsWith('* '))
+        elements.push({ type: 'list', content: line.replace(/^[-*]\s+/, ''), lineIndex: idx });
+      else if (!line.trim()) elements.push({ type: 'empty', content: '', lineIndex: idx });
+      else elements.push({ type: 'text', content: line, lineIndex: idx });
+    });
+
+    if (inCode) {
+      elements.push({
+        type: 'codeblock',
+        content: codeLines.join('\n'),
+        codeLang: codeLang || 'bash',
+        lineIndex: codeStartIdx
+      });
+    }
+
+    return elements;
+  }, [currentNote?.content]);
+
   const handleInsert = (textToInsert: string) => {
     const textarea = textareaRef.current;
     if (!textarea || !currentNote) return;
@@ -147,74 +223,6 @@ export const MarkdownNotesEditor: React.FC<MarkdownNotesEditorProps> = ({ projec
       </div>
     );
   }
-
-  // Parse markdown into parsed elements (including fenced code blocks)
-  const parsedElements = React.useMemo(() => {
-    if (!currentNote?.content) return [];
-    const lines = currentNote.content.split('\n');
-    const elements: Array<{ type: 'task' | 'h1' | 'h2' | 'h3' | 'list' | 'codeblock' | 'empty' | 'text'; content: string; codeLang?: string; rawLines?: string[]; lineIndex: number; completed?: boolean }> = [];
-
-    let inCode = false;
-    let codeLang = '';
-    let codeLines: string[] = [];
-    let codeStartIdx = 0;
-
-    lines.forEach((line, idx) => {
-      if (line.startsWith('```')) {
-        if (inCode) {
-          elements.push({
-            type: 'codeblock',
-            content: codeLines.join('\n'),
-            codeLang: codeLang || 'bash',
-            lineIndex: codeStartIdx
-          });
-          inCode = false;
-          codeLines = [];
-          codeLang = '';
-        } else {
-          inCode = true;
-          codeLang = line.replace('```', '').trim().toLowerCase();
-          codeStartIdx = idx;
-          codeLines = [];
-        }
-        return;
-      }
-
-      if (inCode) {
-        codeLines.push(line);
-        return;
-      }
-
-      const taskMatch = line.match(/^(\s*)[-*]\s*\[([ xX])\]\s*(.*)$/);
-      if (taskMatch) {
-        elements.push({
-          type: 'task',
-          content: taskMatch[3],
-          completed: taskMatch[2].toLowerCase() === 'x',
-          lineIndex: idx
-        });
-        return;
-      }
-
-      if (line.startsWith('# ')) elements.push({ type: 'h1', content: line.replace('# ', ''), lineIndex: idx });
-      else if (line.startsWith('## ')) elements.push({ type: 'h2', content: line.replace('## ', ''), lineIndex: idx });
-      else if (line.startsWith('### ')) elements.push({ type: 'h3', content: line.replace('### ', ''), lineIndex: idx });
-      else if (line.startsWith('- ') || line.startsWith('* ')) elements.push({ type: 'list', content: line.replace(/^[-*]\s+/, ''), lineIndex: idx });
-      else if (!line.trim()) elements.push({ type: 'empty', content: '', lineIndex: idx });
-      else elements.push({ type: 'text', content: line, lineIndex: idx });
-    });
-
-    if (inCode) {
-      elements.push({
-        type: 'codeblock',
-        content: codeLines.join('\n'),
-        codeLang: codeLang || 'bash',
-        lineIndex: codeStartIdx
-      });
-    }
-
-    return elements;
-  }, [currentNote?.content]);
 
   return (
     <div className="space-y-3">
