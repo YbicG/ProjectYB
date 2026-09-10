@@ -25,6 +25,9 @@ export const CreateTunnelDialog: React.FC = () => {
     startQuickTunnel,
     startNamedTunnel,
     autoCreateAndLaunchNamedTunnel,
+    launchRemoteTunnel,
+    remoteTunnels,
+    loadRemoteTunnels,
     binaryStatus,
     checkBinaryStatus,
     installBinary,
@@ -48,10 +51,13 @@ export const CreateTunnelDialog: React.FC = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Auto Named Tunnel (1-Click Cloudflare API)
+  const [autoSubMode, setAutoSubMode] = useState<'existing' | 'new'>('existing');
+  const [selectedRemoteTunnelId, setSelectedRemoteTunnelId] = useState<string>('');
   const [autoName, setAutoName] = useState<string>('');
   const [autoPort, setAutoPort] = useState<string>('3000');
   const [autoSubdomain, setAutoSubdomain] = useState<string>('');
   const [selectedZoneId, setSelectedZoneId] = useState<string>('');
+  const [manualCustomHostname, setManualCustomHostname] = useState<string>('');
 
   // Manual Named Tunnel (Token)
   const [manualName, setManualName] = useState<string>('');
@@ -69,6 +75,7 @@ export const CreateTunnelDialog: React.FC = () => {
   useEffect(() => {
     if (createModalOpen && config.apiToken && config.accountId) {
       fetchZones();
+      loadRemoteTunnels();
     }
   }, [createModalOpen, config.apiToken, config.accountId]);
 
@@ -77,6 +84,12 @@ export const CreateTunnelDialog: React.FC = () => {
       setSelectedZoneId(zones[0].id);
     }
   }, [zones]);
+
+  useEffect(() => {
+    if (remoteTunnels.length > 0 && !selectedRemoteTunnelId) {
+      setSelectedRemoteTunnelId(remoteTunnels[0].id);
+    }
+  }, [remoteTunnels, selectedRemoteTunnelId]);
 
   const handleLaunch = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -119,25 +132,45 @@ export const CreateTunnelDialog: React.FC = () => {
 
         const portNum = parseInt(autoPort, 10);
         if (isNaN(portNum) || portNum <= 0 || portNum > 65535) {
-          toast.error('Please enter a valid port number');
+          toast.error('Please enter a valid port number (1 - 65535)');
           setIsSubmitting(false);
           return;
         }
 
-        const selectedZone = zones.find((z) => z.id === selectedZoneId);
-        const fullHostname = autoSubdomain.trim() && selectedZone
-          ? `${autoSubdomain.trim()}.${selectedZone.name}`
-          : undefined;
+        if (autoSubMode === 'existing') {
+          if (!selectedRemoteTunnelId) {
+            toast.error('Please select a Cloudflare Zero Trust Named Tunnel');
+            setIsSubmitting(false);
+            return;
+          }
+          const selectedTunnel = remoteTunnels.find((t) => t.id === selectedRemoteTunnelId);
+          const res = await launchRemoteTunnel(
+            selectedRemoteTunnelId,
+            selectedTunnel?.name,
+            portNum
+          );
+          if (res) {
+            setCreateModalOpen(false);
+          }
+        } else {
+          const selectedZone = zones.find((z) => z.id === selectedZoneId);
+          let fullHostname: string | undefined = undefined;
+          if (selectedZone && autoSubdomain.trim()) {
+            fullHostname = `${autoSubdomain.trim()}.${selectedZone.name}`;
+          } else if (manualCustomHostname.trim()) {
+            fullHostname = manualCustomHostname.trim();
+          }
 
-        const res = await autoCreateAndLaunchNamedTunnel({
-          name: autoName.trim() || `tunnel-port-${portNum}`,
-          localPort: portNum,
-          customHostname: fullHostname,
-          zoneId: selectedZoneId || undefined
-        });
+          const res = await autoCreateAndLaunchNamedTunnel({
+            name: autoName.trim() || `tunnel-port-${portNum}`,
+            localPort: portNum,
+            customHostname: fullHostname,
+            zoneId: selectedZoneId && !selectedZoneId.startsWith('discovered_') ? selectedZoneId : undefined
+          });
 
-        if (res.success) {
-          setCreateModalOpen(false);
+          if (res.success) {
+            setCreateModalOpen(false);
+          }
         }
       } else {
         if (!tunnelToken.trim()) {
@@ -349,78 +382,217 @@ export const CreateTunnelDialog: React.FC = () => {
                 </div>
               ) : (
                 <>
-                  <div className="grid grid-cols-2 gap-3">
-                    <div className="space-y-1.5">
-                      <Label htmlFor="auto-name" className="text-xs text-zinc-300">
-                        Tunnel Name
-                      </Label>
-                      <Input
-                        id="auto-name"
-                        type="text"
-                        value={autoName}
-                        onChange={(e) => setAutoName(e.target.value)}
-                        placeholder="e.g. project-api-tunnel"
-                        required
-                        className="bg-zinc-900 border-zinc-800 text-xs text-zinc-100"
-                      />
-                    </div>
-
-                    <div className="space-y-1.5">
-                      <Label htmlFor="auto-port" className="text-xs text-zinc-300">
-                        Local Port
-                      </Label>
-                      <Input
-                        id="auto-port"
-                        type="number"
-                        value={autoPort}
-                        onChange={(e) => setAutoPort(e.target.value)}
-                        placeholder="3000"
-                        required
-                        className="bg-zinc-900 border-zinc-800 font-mono text-xs text-zinc-100"
-                      />
-                    </div>
-                  </div>
-
-                  {/* Optional Custom Domain / DNS */}
-                  <div className="space-y-1.5 pt-1">
-                    <Label className="text-xs text-zinc-300 flex items-center justify-between">
-                      <span>Custom Domain Routing (Optional)</span>
-                      <span className="text-[10px] text-zinc-500 font-normal">Auto CNAME & Ingress</span>
-                    </Label>
-
-                    <div className="grid grid-cols-2 gap-2">
-                      <Input
-                        type="text"
-                        value={autoSubdomain}
-                        onChange={(e) => setAutoSubdomain(e.target.value)}
-                        placeholder="Subdomain (e.g. api, app)"
-                        className="bg-zinc-900 border-zinc-800 text-xs text-zinc-100"
-                      />
-
-                      <select
-                        value={selectedZoneId}
-                        onChange={(e) => setSelectedZoneId(e.target.value)}
-                        className="h-9 rounded-md bg-zinc-900 border border-zinc-800 px-3 text-xs text-zinc-100 focus:outline-none focus:ring-1 focus:ring-orange-500"
+                  {/* Sub-mode selector if remote tunnels exist */}
+                  {remoteTunnels.length > 0 && (
+                    <div className="flex items-center gap-1.5 p-1 bg-zinc-900 rounded-lg border border-zinc-800">
+                      <button
+                        type="button"
+                        onClick={() => setAutoSubMode('existing')}
+                        className={cn(
+                          'flex-1 py-1.5 px-2 rounded-md text-xs font-semibold transition-all flex items-center justify-center gap-1.5',
+                          autoSubMode === 'existing'
+                            ? 'bg-zinc-800 text-orange-400 border border-orange-500/30 shadow-sm'
+                            : 'text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800/50'
+                        )}
                       >
-                        <option value="">No Custom Domain</option>
-                        {zones.map((z) => (
-                          <option key={z.id} value={z.id}>
-                            .{z.name}
-                          </option>
-                        ))}
-                      </select>
+                        <CloudLightning className="w-3.5 h-3.5 text-orange-400" />
+                        Existing Zero Trust ({remoteTunnels.length})
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setAutoSubMode('new')}
+                        className={cn(
+                          'flex-1 py-1.5 px-2 rounded-md text-xs font-semibold transition-all flex items-center justify-center gap-1.5',
+                          autoSubMode === 'new'
+                            ? 'bg-zinc-800 text-orange-400 border border-orange-500/30 shadow-sm'
+                            : 'text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800/50'
+                        )}
+                      >
+                        <Zap className="w-3.5 h-3.5 text-amber-300" />
+                        New Tunnel
+                      </button>
                     </div>
+                  )}
 
-                    {previewHostname && (
-                      <p className="text-[10px] text-emerald-400 font-mono flex items-center gap-1 mt-1">
-                        <Globe className="w-3 h-3" /> Will route: <strong>https://{previewHostname}</strong> ➔ localhost:{autoPort}
-                      </p>
-                    )}
-                  </div>
+                  {autoSubMode === 'existing' && remoteTunnels.length > 0 ? (
+                    <div className="space-y-3">
+                      <div className="space-y-1.5">
+                        <Label htmlFor="existing-tunnel" className="text-xs text-zinc-300">
+                          Select Cloudflare Zero Trust Named Tunnel
+                        </Label>
+                        <select
+                          id="existing-tunnel"
+                          value={selectedRemoteTunnelId}
+                          onChange={(e) => setSelectedRemoteTunnelId(e.target.value)}
+                          className="w-full h-9 rounded-md bg-zinc-900 border border-zinc-800 px-3 text-xs text-zinc-100 focus:outline-none focus:ring-1 focus:ring-orange-500"
+                        >
+                          {remoteTunnels.map((t) => (
+                            <option key={t.id} value={t.id}>
+                              {t.name} {t.hostname ? `(${t.hostname})` : ''} [{t.status.toUpperCase()}]
+                            </option>
+                          ))}
+                        </select>
+                      </div>
 
-                  <div className="p-3 bg-emerald-950/20 border border-emerald-800/30 rounded-lg text-[11px] text-emerald-300/90 leading-relaxed">
-                    ✨ <strong>Automated Zero-Dashboard Flow:</strong> ProjectYB will create the named tunnel on your Cloudflare account, resolve the secure token, configure ingress rules, and start the daemon in 1 click.
-                  </div>
+                      {/* Selected Tunnel Details Banner */}
+                      {(() => {
+                        const sel = remoteTunnels.find((t) => t.id === selectedRemoteTunnelId);
+                        if (!sel) return null;
+                        return (
+                          <div className="p-3 bg-zinc-900/90 border border-zinc-800 rounded-lg space-y-1.5">
+                            <div className="flex items-center justify-between text-xs">
+                              <span className="text-zinc-400">Tunnel Name:</span>
+                              <span className="font-semibold text-zinc-100">{sel.name}</span>
+                            </div>
+                            <div className="flex items-center justify-between text-xs">
+                              <span className="text-zinc-400">Public Domain / Ingress:</span>
+                              {sel.hostname ? (
+                                <span className="font-mono text-emerald-400 font-medium flex items-center gap-1">
+                                  <Globe className="w-3 h-3 text-emerald-400" />
+                                  https://{sel.hostname}
+                                </span>
+                              ) : (
+                                <span className="text-zinc-500 italic">No public domain configured (Port Proxy)</span>
+                              )}
+                            </div>
+                          </div>
+                        );
+                      })()}
+
+                      {/* Local Port */}
+                      <div className="space-y-1.5">
+                        <Label htmlFor="auto-existing-port" className="text-xs text-zinc-300">
+                          Local Service Port to Route To
+                        </Label>
+                        <Input
+                          id="auto-existing-port"
+                          type="number"
+                          value={autoPort}
+                          onChange={(e) => setAutoPort(e.target.value)}
+                          placeholder="3000"
+                          required
+                          className="bg-zinc-900 border-zinc-800 font-mono text-xs text-zinc-100"
+                        />
+                      </div>
+
+                      {/* Quick target chips */}
+                      {(runningServices.length > 0 || ports.length > 0) && (
+                        <div>
+                          <Label className="text-[11px] uppercase tracking-wider text-zinc-400 mb-1.5 block">
+                            Active Local Services
+                          </Label>
+                          <div className="flex flex-wrap gap-1.5 max-h-20 overflow-y-auto no-scrollbar">
+                            {runningServices.map((svc) => (
+                              <button
+                                key={svc.id}
+                                type="button"
+                                onClick={() => {
+                                  if (svc.port) setAutoPort(svc.port.toString());
+                                }}
+                                className="px-2 py-0.5 rounded bg-zinc-900 border border-zinc-800 hover:border-orange-500/50 text-[11px] text-zinc-300 flex items-center gap-1.5 transition-colors"
+                              >
+                                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
+                                <span>{svc.projectName}: {svc.name}</span>
+                                {svc.port && <span className="text-zinc-400 font-mono">:{svc.port}</span>}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  ) : (
+                    <div className="space-y-3">
+                      <div className="grid grid-cols-2 gap-3">
+                        <div className="space-y-1.5">
+                          <Label htmlFor="auto-name" className="text-xs text-zinc-300">
+                            Tunnel Name
+                          </Label>
+                          <Input
+                            id="auto-name"
+                            type="text"
+                            value={autoName}
+                            onChange={(e) => setAutoName(e.target.value)}
+                            placeholder="e.g. project-api-tunnel"
+                            required
+                            className="bg-zinc-900 border-zinc-800 text-xs text-zinc-100"
+                          />
+                        </div>
+
+                        <div className="space-y-1.5">
+                          <Label htmlFor="auto-port" className="text-xs text-zinc-300">
+                            Local Port
+                          </Label>
+                          <Input
+                            id="auto-port"
+                            type="number"
+                            value={autoPort}
+                            onChange={(e) => setAutoPort(e.target.value)}
+                            placeholder="3000"
+                            required
+                            className="bg-zinc-900 border-zinc-800 font-mono text-xs text-zinc-100"
+                          />
+                        </div>
+                      </div>
+
+                      {/* Optional Custom Domain / DNS */}
+                      <div className="space-y-1.5 pt-1">
+                        <Label className="text-xs text-zinc-300 flex items-center justify-between">
+                          <span>Custom Domain Routing (Optional)</span>
+                          <span className="text-[10px] text-zinc-500 font-normal">Auto CNAME & Ingress</span>
+                        </Label>
+
+                        {zones.length > 0 ? (
+                          <div className="space-y-2">
+                            <div className="grid grid-cols-2 gap-2">
+                              <Input
+                                type="text"
+                                value={autoSubdomain}
+                                onChange={(e) => setAutoSubdomain(e.target.value)}
+                                placeholder="Subdomain (e.g. api, app)"
+                                className="bg-zinc-900 border-zinc-800 text-xs text-zinc-100"
+                              />
+
+                              <select
+                                value={selectedZoneId}
+                                onChange={(e) => setSelectedZoneId(e.target.value)}
+                                className="h-9 rounded-md bg-zinc-900 border border-zinc-800 px-3 text-xs text-zinc-100 focus:outline-none focus:ring-1 focus:ring-orange-500"
+                              >
+                                <option value="">No Custom Domain</option>
+                                {zones.map((z) => (
+                                  <option key={z.id} value={z.id}>
+                                    .{z.name}
+                                  </option>
+                                ))}
+                              </select>
+                            </div>
+
+                            {previewHostname && (
+                              <p className="text-[10px] text-emerald-400 font-mono flex items-center gap-1">
+                                <Globe className="w-3 h-3" /> Will route: <strong>https://{previewHostname}</strong> ➔ localhost:{autoPort}
+                              </p>
+                            )}
+                          </div>
+                        ) : (
+                          <div className="space-y-1.5">
+                            <Input
+                              type="text"
+                              value={manualCustomHostname}
+                              onChange={(e) => setManualCustomHostname(e.target.value)}
+                              placeholder="e.g. dev.yourdomain.com (Optional)"
+                              className="bg-zinc-900 border-zinc-800 text-xs text-zinc-100 font-mono"
+                            />
+                            <p className="text-[10px] text-zinc-400">
+                              API Token has Tunnel scope. You can specify your domain here or configure hostnames in Cloudflare Zero Trust.
+                            </p>
+                          </div>
+                        )}
+                      </div>
+
+                      <div className="p-3 bg-emerald-950/20 border border-emerald-800/30 rounded-lg text-[11px] text-emerald-300/90 leading-relaxed">
+                        ✨ <strong>Automated Zero-Dashboard Flow:</strong> ProjectYB will create the named tunnel on your Cloudflare account, resolve the secure token, configure ingress rules, and start the daemon in 1 click.
+                      </div>
+                    </div>
+                  )}
                 </>
               )}
             </div>
@@ -516,7 +688,13 @@ export const CreateTunnelDialog: React.FC = () => {
                 'Downloading CLI...'
               ) : (
                 <>
-                  <span>{mode === 'auto' ? 'Provision & Launch' : 'Start Tunnel'}</span>
+                  <span>
+                    {mode === 'auto'
+                      ? autoSubMode === 'existing' && remoteTunnels.length > 0
+                        ? 'Launch Tunnel'
+                        : 'Provision & Launch'
+                      : 'Start Tunnel'}
+                  </span>
                   <ArrowRight className="w-3.5 h-3.5" />
                 </>
               )}

@@ -81,15 +81,66 @@ export class CloudflareApiService {
       });
 
       const data = (await res.json()) as any;
-      if (!data.success) {
-        return { success: false, zones: [], error: data.errors?.[0]?.message || 'Failed to list zones' };
+      let zones: CloudflareZone[] = [];
+      if (data.success && Array.isArray(data.result) && data.result.length > 0) {
+        zones = data.result.map((z: any) => ({
+          id: z.id,
+          name: z.name,
+          status: z.status
+        }));
       }
 
-      const zones: CloudflareZone[] = (data.result || []).map((z: any) => ({
-        id: z.id,
-        name: z.name,
-        status: z.status
-      }));
+      // Fallback: If API token has no Zone:Read permissions or returns 0 zones, discover base domains from existing tunnels
+      if (zones.length === 0 && config.accountId) {
+        try {
+          const tunRes = await fetch(
+            `${this.baseUrl}/accounts/${config.accountId}/cfd_tunnel?is_deleted=false&per_page=20`,
+            {
+              headers: {
+                Authorization: `Bearer ${config.apiToken.trim()}`,
+                'Content-Type': 'application/json'
+              }
+            }
+          );
+          const tunData = (await tunRes.json()) as any;
+          if (tunData.success && Array.isArray(tunData.result)) {
+            const discoveredNames = new Set<string>();
+            await Promise.all(
+              tunData.result.slice(0, 10).map(async (tun: any) => {
+                try {
+                  const cfgRes = await fetch(
+                    `${this.baseUrl}/accounts/${config.accountId}/cfd_tunnel/${tun.id}/configurations`,
+                    {
+                      headers: {
+                        Authorization: `Bearer ${config.apiToken.trim()}`,
+                        'Content-Type': 'application/json'
+                      }
+                    }
+                  );
+                  const cfg = (await cfgRes.json()) as any;
+                  if (cfg.success && cfg.result?.config?.ingress) {
+                    for (const rule of cfg.result.config.ingress) {
+                      if (rule.hostname && typeof rule.hostname === 'string') {
+                        const parts = rule.hostname.split('.');
+                        const baseDomain = parts.length >= 2 ? parts.slice(-2).join('.') : rule.hostname;
+                        discoveredNames.add(baseDomain);
+                      }
+                    }
+                  }
+                } catch {}
+              })
+            );
+
+            for (const domain of discoveredNames) {
+              zones.push({
+                id: `discovered_${domain.replace(/\./g, '_')}`,
+                name: domain,
+                status: 'active'
+              });
+            }
+          }
+        } catch {}
+      }
 
       return { success: true, zones };
     } catch (err: any) {

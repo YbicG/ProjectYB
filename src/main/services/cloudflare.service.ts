@@ -445,7 +445,8 @@ export class CloudflareService {
     this.activeTunnels.set(tunnelId, activeTunnel);
 
     // Args for token-based tunnel run
-    const args = ['tunnel', 'run', '--token', options.tunnelToken, '--no-autoupdate'];
+    // Note: --no-autoupdate is a tunnel option and must precede the 'run' subcommand
+    const args = ['tunnel', '--no-autoupdate', 'run', '--token', options.tunnelToken];
     if (options.localPort) {
       args.push('--url', `http://localhost:${options.localPort}`);
     }

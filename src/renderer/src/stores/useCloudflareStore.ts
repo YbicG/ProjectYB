@@ -445,6 +445,9 @@ export const useCloudflareStore = create<CloudflareState>((set, get) => ({
     try {
       const list = await window.api.cloudflare.listRemoteTunnels(config.apiToken, config.accountId);
       set({ remoteTunnels: list || [] });
+      if (get().zones.length === 0) {
+        get().fetchZones();
+      }
     } catch {
       set({ remoteTunnels: [] });
     }
