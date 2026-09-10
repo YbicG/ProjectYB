@@ -300,5 +300,5 @@ Control desktop background services, monitor hardware telemetry, run shell comma
 ---
 
 <div align="center">
-  <sub>ProjectYB User Guide • Version 1.0.0 • Maintained by YBicG</sub>
+  <sub>ProjectYB User Guide • Version 1.1.0 • Maintained by YBicG</sub>
 </div>

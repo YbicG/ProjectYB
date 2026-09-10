@@ -4,7 +4,7 @@
 
 ### *Developer Command Center and Workspace Management Engine*
 
-[![Version](https://img.shields.io/badge/version-1.0.0-8b5cf6?style=flat-square&logo=semver&logoColor=white)](https://github.com/YbicG/ProjectYB/releases/tag/v1.0.0)
+[![Version](https://img.shields.io/badge/version-1.1.0-8b5cf6?style=flat-square&logo=semver&logoColor=white)](https://github.com/YbicG/ProjectYB/releases/tag/v1.1.0)
 [![Electron](https://img.shields.io/badge/Electron-34.2.0-47848F?style=flat-square&logo=electron&logoColor=white)](https://www.electronjs.org/)
 [![React](https://img.shields.io/badge/React-19.0.0-61DAFB?style=flat-square&logo=react&logoColor=black)](https://react.dev/)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.7.3-3178C6?style=flat-square&logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
