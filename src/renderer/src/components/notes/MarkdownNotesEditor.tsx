@@ -19,7 +19,8 @@ import {
   ChevronDown,
   ChevronRight,
   CheckCircle2,
-  XCircle
+  XCircle,
+  Shield
 } from 'lucide-react';
 import { Button } from '../ui/button';
 import { Badge } from '../ui/badge';
@@ -43,7 +44,7 @@ interface ExecutedBlockState {
 
 export const MarkdownNotesEditor: React.FC<MarkdownNotesEditorProps> = ({ projectPath, projectName }) => {
   const { currentNote, isLoading, isSaving, loadNotes, updateContent, saveCurrentNotes, toggleTask } = useNotesStore();
-  const { createTerminal } = useTerminalStore();
+  const { createTerminal, openAdminTerminal } = useTerminalStore();
   const [viewMode, setViewMode] = useState<'split' | 'edit' | 'preview'>('split');
   const [copied, setCopied] = useState(false);
   const [copiedCodeIdx, setCopiedCodeIdx] = useState<number | null>(null);
@@ -185,6 +186,20 @@ export const MarkdownNotesEditor: React.FC<MarkdownNotesEditorProps> = ({ projec
       toast.success('Running command in Universal Bottom Dock');
     } catch (err: any) {
       toast.error('Failed to run in terminal: ' + err.message);
+    }
+  };
+
+  const handleRunAdmin = async (code: string) => {
+    try {
+      await openAdminTerminal({
+        name: projectName + ' [Admin Runbook]',
+        cwd: projectPath,
+        command: code.trim()
+      });
+      useThemeStore.getState().setTerminalDockOpen(true);
+      toast.success('Running command as Administrator');
+    } catch (err: any) {
+      toast.error('Failed to run as admin: ' + err.message);
     }
   };
 
@@ -436,6 +451,15 @@ export const MarkdownNotesEditor: React.FC<MarkdownNotesEditorProps> = ({ projec
                             title="Run in Bottom Terminal Dock"
                           >
                             <Terminal className="w-2.5 h-2.5 text-violet-400" /> Dock
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handleRunAdmin(el.content)}
+                            className="h-6 px-2 text-[10px] border-amber-500/30 bg-amber-950/20 hover:bg-amber-900/40 text-amber-300 gap-1 font-medium"
+                            title="Run as Administrator in Bottom Terminal Dock"
+                          >
+                            <Shield className="w-2.5 h-2.5 text-amber-400" /> Admin
                           </Button>
                           <Button
                             variant="outline"

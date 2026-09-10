@@ -1,6 +1,9 @@
-import { ipcMain, BrowserWindow, Notification, dialog } from 'electron';
+import { ipcMain, BrowserWindow, Notification, dialog, app } from 'electron';
+import { exec } from 'child_process';
 import { systemMonitor } from '../services/system-monitor';
 import { trayService } from '../services/tray.service';
+import { isProcessElevated } from '../services/terminal.service';
+import { logger } from '../utils/logger';
 
 export function setupSystemIpc(mainWindow: BrowserWindow) {
   systemMonitor.startMonitoring(mainWindow);
@@ -28,6 +31,36 @@ export function setupSystemIpc(mainWindow: BrowserWindow) {
   
   ipcMain.handle('system:getProcessStats', (_, pids: number[]) => systemMonitor.getProcessStats(pids));
   ipcMain.handle('system:getDeveloperProcesses', () => systemMonitor.getAllDeveloperProcesses());
+
+  ipcMain.handle('system:isElevated', () => {
+    return isProcessElevated();
+  });
+
+  ipcMain.handle('system:relaunchElevated', () => {
+    try {
+      if (process.platform === 'win32') {
+        const exePath = process.execPath;
+        const args = process.argv.slice(1).map((a) => `\\"${a.replace(/"/g, '`"')}\\"`).join(', ');
+        const argList = args.length > 0 ? `-ArgumentList ${args}` : '';
+        const cmd = `Start-Process \\"${exePath}\\" ${argList} -Verb RunAs`;
+
+        exec(`powershell -NoProfile -Command "${cmd}"`, (err) => {
+          if (err) {
+            logger.error('[SystemIPC] Failed to relaunch elevated:', err);
+          } else {
+            logger.info('[SystemIPC] Successfully spawned elevated process, quitting current instance...');
+            setTimeout(() => app.quit(), 400);
+          }
+        });
+        return { success: true };
+      } else {
+        return { success: false, error: 'Administrator elevation relaunch is only supported on Windows.' };
+      }
+    } catch (err: any) {
+      logger.error('[SystemIPC] Error in relaunchElevated:', err);
+      return { success: false, error: err.message };
+    }
+  });
 
   ipcMain.handle('system:showNotification', (_, { title, body }: { title: string; body: string }) => {
     if (Notification.isSupported()) {

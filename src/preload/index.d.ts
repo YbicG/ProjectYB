@@ -29,9 +29,12 @@ export interface IElectronAPI {
       projectName?: string;
       serviceId?: string;
       isService?: boolean;
+      isAdmin?: boolean;
       command?: string;
       port?: number;
     }): Promise<boolean>
+    openElevated(options: { cwd?: string; command?: string; name?: string }): Promise<{ success: boolean; pid?: number; error?: string }>
+    isElevated(): Promise<boolean>
     write(id: string, data: string): void
     resize(id: string, cols: number, rows: number): void
     kill(id: string): void
@@ -96,6 +99,8 @@ export interface IElectronAPI {
     getMetrics(): Promise<SystemMetrics>
     getProcessStats(pids: number[]): Promise<ProcessStats[]>
     getDeveloperProcesses(): Promise<any[]>
+    isElevated(): Promise<boolean>
+    relaunchElevated(): Promise<{ success: boolean; error?: string }>
     showNotification(title: string, body: string): Promise<boolean>
     onMetrics(callback: (metrics: SystemMetrics) => void): () => void
     onServiceStats(callback: (stats: Record<string, { cpu: number; memory: number }>) => void): () => void
@@ -241,6 +246,9 @@ export interface IElectronAPI {
       localPort: number
       localHost?: string
       protocol?: 'http' | 'https' | 'tcp'
+      serviceId?: string
+      serviceName?: string
+      projectName?: string
     }): Promise<any>
     startNamedTunnel(options: {
       id?: string
@@ -252,7 +260,7 @@ export interface IElectronAPI {
     stopTunnel(tunnelId: string): Promise<boolean>
     listActiveTunnels(): Promise<any[]>
     getTunnelLogs(tunnelId: string): Promise<string[]>
-    testApiToken(apiToken: string): Promise<{ success: boolean; message: string; user?: any }>
+    testApiToken(apiToken: string, accountId?: string): Promise<{ success: boolean; message: string; user?: any }>
     listAccounts(apiToken: string): Promise<Array<{ id: string; name: string }>>
     listRemoteTunnels(apiToken: string, accountId: string): Promise<any[]>
     createRemoteTunnel(
@@ -260,6 +268,11 @@ export interface IElectronAPI {
       accountId: string,
       name: string
     ): Promise<{ success: boolean; tunnel?: any; token?: string; error?: string }>
+    getRemoteTunnelToken(
+      apiToken: string,
+      accountId: string,
+      tunnelId: string
+    ): Promise<{ success: boolean; token?: string; error?: string }>
     deleteRemoteTunnel(apiToken: string, accountId: string, tunnelId: string): Promise<boolean>
     onDownloadProgress(callback: (percent: number) => void): () => void
     onStatusUpdate(callback: (tunnel: any) => void): () => void
@@ -271,6 +284,7 @@ export interface IElectronAPI {
       getTunnelToken(tunnelId: string, config: { apiToken: string; accountId: string }): Promise<{ success: boolean; token?: string; error?: string }>
       configureIngress(tunnelId: string, hostname: string, localPort: number, config: { apiToken: string; accountId: string }): Promise<{ success: boolean; hostname?: string; error?: string }>
       createDnsCname(zoneId: string, subdomain: string, tunnelId: string, config: { apiToken: string; accountId: string }): Promise<{ success: boolean; recordId?: string; hostname?: string; error?: string }>
+      getConfiguration(tunnelId: string, config: { apiToken: string; accountId: string }): Promise<{ success: boolean; config?: any; error?: string }>
     }
   }
   proxy: {

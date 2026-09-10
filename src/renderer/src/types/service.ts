@@ -8,6 +8,7 @@ export interface ServiceConfig {
   port?: number
   env?: Record<string, string>
   autoRestart?: boolean
+  isAdmin?: boolean
 }
 
 export interface RunningService {
@@ -24,6 +25,7 @@ export interface RunningService {
   cpuUsage?: number
   memoryUsage?: number
   autoRestart: boolean
+  isAdmin?: boolean
 }
 
 export interface StartupProfile {

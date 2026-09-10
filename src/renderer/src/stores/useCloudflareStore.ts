@@ -47,6 +47,7 @@ interface CloudflareState {
     projectName?: string;
   }) => Promise<ActiveTunnel | null>;
   startNamedTunnel: (options: {
+    id?: string;
     name: string;
     tunnelToken: string;
     localPort?: number;
@@ -69,11 +70,16 @@ interface CloudflareState {
 
   loadConfig: () => Promise<void>;
   saveConfig: (config: Partial<CloudflareConfig>) => Promise<void>;
-  testToken: (token: string) => Promise<boolean>;
+  testToken: (token: string, accountId?: string) => Promise<boolean>;
   loadRemoteTunnels: () => Promise<void>;
   createRemoteNamedTunnel: (
     name: string
   ) => Promise<{ success: boolean; tunnel?: RemoteTunnelInfo; token?: string; error?: string }>;
+  launchRemoteTunnel: (
+    tunnelId: string,
+    name?: string,
+    localPort?: number
+  ) => Promise<ActiveTunnel | null>;
   deleteRemoteNamedTunnel: (tunnelId: string) => Promise<boolean>;
 }
 
@@ -167,12 +173,18 @@ export const useCloudflareStore = create<CloudflareState>((set, get) => ({
   startQuickTunnel: async (options) => {
     if (!window.api?.cloudflare) return null;
 
+    const toastId = `cf-quick-${options.localPort}-${Date.now()}`;
+    toast.loading(`Starting Cloudflare Quick Tunnel for port ${options.localPort}...`, { id: toastId });
+
     try {
       const tunnel = await window.api.cloudflare.startQuickTunnel({
         localPort: options.localPort,
         localHost: options.localHost || 'localhost',
         protocol: options.protocol || 'http',
-        name: options.name || `Local Port ${options.localPort}`
+        name: options.name || `Local Port ${options.localPort}`,
+        serviceId: options.serviceId,
+        serviceName: options.name,
+        projectName: options.projectName
       });
 
       // Merge extra metadata
@@ -187,10 +199,14 @@ export const useCloudflareStore = create<CloudflareState>((set, get) => ({
         return { activeTunnels: [...filtered, enrichedTunnel] };
       });
 
-      toast.info(`Starting tunnel on port ${options.localPort}...`);
+      if (enrichedTunnel.publicUrl) {
+        toast.success(`Cloudflare tunnel live: ${enrichedTunnel.publicUrl}`, { id: toastId });
+      } else {
+        toast.success(`Cloudflare tunnel started on port ${options.localPort}`, { id: toastId });
+      }
       return enrichedTunnel;
     } catch (err: any) {
-      toast.error(`Failed to start tunnel: ${err.message}`);
+      toast.error(`Failed to start tunnel: ${err.message}`, { id: toastId });
       useNotificationStore.getState().notify({
         title: 'Tunnel Launch Failed',
         message: err.message || 'Could not spawn cloudflared tunnel',
@@ -211,7 +227,11 @@ export const useCloudflareStore = create<CloudflareState>((set, get) => ({
         return { activeTunnels: [...filtered, tunnel] };
       });
 
-      toast.info(`Starting named tunnel "${options.name}"...`);
+      if (tunnel.publicUrl) {
+        toast.success(`Named tunnel live: ${tunnel.publicUrl}`);
+      } else {
+        toast.info(`Starting named tunnel "${options.name}"...`);
+      }
       return tunnel;
     } catch (err: any) {
       toast.error(`Failed to start named tunnel: ${err.message}`);
@@ -285,19 +305,23 @@ export const useCloudflareStore = create<CloudflareState>((set, get) => ({
         // Step 3 (Optional): Create CNAME DNS record if zone provided
         if (options.zoneId) {
           toast.loading(`Creating DNS CNAME for ${options.customHostname}...`, { id: 'cf-create' });
-          await window.api.cloudflare.api.createDnsCname(
+          const dnsRes = await window.api.cloudflare.api.createDnsCname(
             options.zoneId,
             options.customHostname,
             tunnelId,
             { apiToken: config.apiToken, accountId: config.accountId }
           );
+          if (!dnsRes.success) {
+            console.warn('DNS CNAME creation warning:', dnsRes.error);
+          }
         }
       }
 
       toast.loading(`Launching tunnel daemon for "${options.name}"...`, { id: 'cf-create' });
 
-      // Step 4: Spawn tunnel runner with token
+      // Step 4: Spawn tunnel runner with token and matching ID
       const launchedTunnel = await get().startNamedTunnel({
+        id: tunnelId,
         name: options.name,
         tunnelToken: token,
         localPort: options.localPort,
@@ -390,11 +414,12 @@ export const useCloudflareStore = create<CloudflareState>((set, get) => ({
     } catch {}
   },
 
-  testToken: async (token) => {
+  testToken: async (token, accountId) => {
     if (!window.api?.cloudflare || !token) return false;
     set({ isTestingToken: true });
+    const accId = accountId || get().config.accountId;
     try {
-      const res = await window.api.cloudflare.testApiToken(token);
+      const res = await window.api.cloudflare.testApiToken(token, accId);
       if (res.success) {
         set({ tokenVerified: true, isTestingToken: false });
         const accounts = await window.api.cloudflare.listAccounts(token);
@@ -445,6 +470,45 @@ export const useCloudflareStore = create<CloudflareState>((set, get) => ({
     }
   },
 
+  launchRemoteTunnel: async (tunnelId, name, localPort = 3000) => {
+    const { config } = get();
+    if (!window.api?.cloudflare) return null;
+    if (!config.apiToken || !config.accountId) {
+      toast.error('Cloudflare API Token & Account ID required to run remote tunnel');
+      return null;
+    }
+
+    try {
+      toast.loading('Fetching run token for tunnel...', { id: `cf-run-${tunnelId}` });
+      const tokenRes = await window.api.cloudflare.getRemoteTunnelToken(config.apiToken, config.accountId, tunnelId);
+      if (!tokenRes.success || !tokenRes.token) {
+        toast.error(`Failed to get run token: ${tokenRes.error || 'Token not found'}`, { id: `cf-run-${tunnelId}` });
+        return null;
+      }
+
+      toast.loading('Starting tunnel daemon...', { id: `cf-run-${tunnelId}` });
+      const tunnelName = name || `remote-${tunnelId.substring(0, 8)}`;
+      const remoteTun = get().remoteTunnels.find((t) => t.id === tunnelId);
+      const customHostname = remoteTun?.hostname;
+
+      const launched = await get().startNamedTunnel({
+        id: tunnelId,
+        name: tunnelName,
+        tunnelToken: tokenRes.token,
+        localPort,
+        customHostname
+      });
+
+      if (launched) {
+        toast.success(`Tunnel "${tunnelName}" is running!`, { id: `cf-run-${tunnelId}` });
+      }
+      return launched;
+    } catch (err: any) {
+      toast.error(`Failed to launch remote tunnel: ${err.message}`, { id: `cf-run-${tunnelId}` });
+      return null;
+    }
+  },
+
   deleteRemoteNamedTunnel: async (tunnelId) => {
     const { config } = get();
     if (!window.api?.cloudflare || !config.apiToken || !config.accountId) return false;
@@ -465,3 +529,50 @@ export const useCloudflareStore = create<CloudflareState>((set, get) => ({
     }
   }
 }));
+
+// Initialize IPC event listeners once
+let cloudflareListenersInitialized = false;
+export function initCloudflareListeners() {
+  if (cloudflareListenersInitialized || typeof window === 'undefined' || !window.api?.cloudflare) return;
+  cloudflareListenersInitialized = true;
+
+  window.api.cloudflare.onStatusUpdate((updatedTunnel: ActiveTunnel) => {
+    useCloudflareStore.setState((state) => {
+      const existing = state.activeTunnels.find((t) => t.id === updatedTunnel.id);
+      if (!existing) {
+        return { activeTunnels: [...state.activeTunnels, updatedTunnel] };
+      }
+      return {
+        activeTunnels: state.activeTunnels.map((t) =>
+          t.id === updatedTunnel.id
+            ? { ...t, ...updatedTunnel, serviceId: t.serviceId, projectName: t.projectName }
+            : t
+        )
+      };
+    });
+  });
+
+  window.api.cloudflare.onLogLine(({ tunnelId, line }: { tunnelId: string; line: string }) => {
+    useCloudflareStore.setState((state) => {
+      const currentLogs = state.tunnelLogs[tunnelId] || [];
+      const updatedLogs = [...currentLogs, `[${new Date().toLocaleTimeString()}] ${line}`];
+      if (updatedLogs.length > 250) updatedLogs.shift();
+      return {
+        tunnelLogs: {
+          ...state.tunnelLogs,
+          [tunnelId]: updatedLogs
+        }
+      };
+    });
+  });
+
+  // Auto-check binary and load config on startup
+  useCloudflareStore.getState().checkBinaryStatus();
+  useCloudflareStore.getState().loadConfig();
+  useCloudflareStore.getState().loadActiveTunnels();
+}
+
+// Auto-initialize when store is loaded
+if (typeof window !== 'undefined') {
+  initCloudflareListeners();
+}

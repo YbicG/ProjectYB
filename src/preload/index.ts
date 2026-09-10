@@ -13,9 +13,13 @@ const api = {
       projectName?: string;
       serviceId?: string;
       isService?: boolean;
+      isAdmin?: boolean;
       command?: string;
       port?: number;
     }) => ipcRenderer.invoke('terminal:spawn', options),
+    openElevated: (options: { cwd?: string; command?: string; name?: string }) =>
+      ipcRenderer.invoke('terminal:openElevated', options),
+    isElevated: () => ipcRenderer.invoke('terminal:isElevated'),
     write: (id: string, data: string) => ipcRenderer.send('terminal:write', id, data),
     resize: (id: string, cols: number, rows: number) =>
       ipcRenderer.send('terminal:resize', id, cols, rows),
@@ -120,6 +124,8 @@ const api = {
     getProcessStats: (pids: number[]) => ipcRenderer.invoke('system:getProcessStats', pids),
     getDeveloperProcesses: () => ipcRenderer.invoke('system:getDeveloperProcesses'),
     selectDirectory: () => ipcRenderer.invoke('system:selectDirectory'),
+    isElevated: () => ipcRenderer.invoke('system:isElevated'),
+    relaunchElevated: () => ipcRenderer.invoke('system:relaunchElevated'),
     showNotification: (title: string, body: string) =>
       ipcRenderer.invoke('system:showNotification', { title, body }),
     onMetrics: (callback: (metrics: any) => void) => {
@@ -269,12 +275,14 @@ const api = {
     stopTunnel: (tunnelId: string) => ipcRenderer.invoke('cloudflare:stopTunnel', tunnelId),
     listActiveTunnels: () => ipcRenderer.invoke('cloudflare:listActiveTunnels'),
     getTunnelLogs: (tunnelId: string) => ipcRenderer.invoke('cloudflare:getTunnelLogs', tunnelId),
-    testApiToken: (apiToken: string) => ipcRenderer.invoke('cloudflare:testApiToken', apiToken),
+    testApiToken: (apiToken: string, accountId?: string) => ipcRenderer.invoke('cloudflare:testApiToken', apiToken, accountId),
     listAccounts: (apiToken: string) => ipcRenderer.invoke('cloudflare:listAccounts', apiToken),
     listRemoteTunnels: (apiToken: string, accountId: string) =>
       ipcRenderer.invoke('cloudflare:listRemoteTunnels', apiToken, accountId),
     createRemoteTunnel: (apiToken: string, accountId: string, name: string) =>
       ipcRenderer.invoke('cloudflare:createRemoteTunnel', apiToken, accountId, name),
+    getRemoteTunnelToken: (apiToken: string, accountId: string, tunnelId: string) =>
+      ipcRenderer.invoke('cloudflare:getRemoteTunnelToken', apiToken, accountId, tunnelId),
     deleteRemoteTunnel: (apiToken: string, accountId: string, tunnelId: string) =>
       ipcRenderer.invoke('cloudflare:deleteRemoteTunnel', apiToken, accountId, tunnelId),
     onDownloadProgress: (callback: (percent: number) => void) => {
@@ -306,7 +314,9 @@ const api = {
       configureIngress: (tunnelId: string, hostname: string, localPort: number, config: any) =>
         ipcRenderer.invoke('cloudflare:api:configureIngress', tunnelId, hostname, localPort, config),
       createDnsCname: (zoneId: string, subdomain: string, tunnelId: string, config: any) =>
-        ipcRenderer.invoke('cloudflare:api:createDnsCname', zoneId, subdomain, tunnelId, config)
+        ipcRenderer.invoke('cloudflare:api:createDnsCname', zoneId, subdomain, tunnelId, config),
+      getConfiguration: (tunnelId: string, config: any) =>
+        ipcRenderer.invoke('cloudflare:api:getConfiguration', tunnelId, config)
     }
   },
   proxy: {

@@ -1,5 +1,5 @@
 import React from 'react';
-import { Plus, Edit2, Trash2, Server, Terminal as TerminalIcon, MoreVertical, Eraser } from 'lucide-react';
+import { Plus, Edit2, Trash2, Server, Terminal as TerminalIcon, MoreVertical, Eraser, Shield } from 'lucide-react';
 import { useTerminalStore } from '@renderer/stores/useTerminalStore';
 import { useProjectStore } from '@renderer/stores/useProjectStore';
 import { useAppStore } from '@renderer/stores/useAppStore';
@@ -15,6 +15,7 @@ export const TerminalSidebar: React.FC = () => {
     activeTerminalId,
     setActiveTerminal,
     createTerminal,
+    openAdminTerminal,
     removeTerminal,
     renameTerminal,
     filter,
@@ -127,6 +128,11 @@ export const TerminalSidebar: React.FC = () => {
                           <TerminalIcon className="w-3 h-3 text-cyan-400 shrink-0" />
                         )}
                         <StatusDot status={term.status} size="sm" />
+                        {term.isAdmin && (
+                          <span title="Administrator Terminal">
+                            <Shield className="w-3 h-3 text-amber-400 shrink-0" />
+                          </span>
+                        )}
                         <span className="text-xs font-medium truncate font-mono">{term.name}</span>
                       </div>
                       <span className="text-[10px] font-mono text-zinc-500 truncate pl-5">
@@ -188,17 +194,28 @@ export const TerminalSidebar: React.FC = () => {
         </div>
       </ScrollArea>
       
-      <div className="p-3 border-t border-zinc-800">
+      <div className="p-3 border-t border-zinc-800 space-y-1.5">
         <Button 
           variant="outline" 
-          className="w-full justify-start text-zinc-300 h-8 text-xs"
+          className="w-full justify-start text-zinc-300 h-8 text-xs border-zinc-800 hover:border-zinc-700"
           onClick={() => {
             const defaultCwd = useAppStore.getState().scanPaths[0] || 'D:\\Code';
             createTerminal({ name: 'Local Shell', cwd: defaultCwd, isService: false });
           }}
         >
-          <Plus className="w-3.5 h-3.5 mr-2" />
+          <Plus className="w-3.5 h-3.5 mr-2 text-zinc-400" />
           New Shell
+        </Button>
+        <Button 
+          variant="outline" 
+          className="w-full justify-start text-amber-400 hover:text-amber-300 bg-amber-950/20 border-amber-500/30 hover:border-amber-400 h-8 text-xs"
+          onClick={() => {
+            const defaultCwd = useAppStore.getState().scanPaths[0] || 'D:\\Code';
+            openAdminTerminal({ cwd: defaultCwd, name: 'Admin Shell' });
+          }}
+        >
+          <Shield className="w-3.5 h-3.5 mr-2 text-amber-400" />
+          New Admin Shell
         </Button>
       </div>
     </div>

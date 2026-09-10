@@ -6,7 +6,8 @@ import {
   Maximize2,
   Minimize2,
   RotateCw,
-  ChevronUp
+  ChevronUp,
+  Shield
 } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { useThemeStore } from '@renderer/stores/useThemeStore';
@@ -29,6 +30,7 @@ export const ModernTerminalDock: React.FC = () => {
     activeTerminalId,
     setActiveTerminal,
     createTerminal,
+    openAdminTerminal,
     removeTerminal,
     restartTerminal
   } = useTerminalStore();
@@ -86,6 +88,11 @@ export const ModernTerminalDock: React.FC = () => {
     await createTerminal({ name: 'Terminal', cwd: defaultCwd });
   };
 
+  const handleNewAdminTerminal = async () => {
+    const defaultCwd = useAppStore.getState().scanPaths[0] || 'D:\\Code';
+    await openAdminTerminal({ cwd: defaultCwd, name: 'Admin Terminal' });
+  };
+
   const handleExpandToFullTab = () => {
     setTerminalDockOpen(false);
     setActiveTab('terminals');
@@ -131,7 +138,7 @@ export const ModernTerminalDock: React.FC = () => {
                 key={t.id}
                 onClick={() => setActiveTerminal(t.id)}
                 className={cn(
-                  'flex items-center gap-2 px-2.5 py-1 rounded-md text-xs font-mono transition-all shrink-0 group',
+                  'flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-mono transition-all shrink-0 group',
                   isActive
                     ? 'bg-zinc-800 text-zinc-100 font-semibold border border-zinc-700'
                     : 'bg-zinc-900/60 text-zinc-400 hover:text-zinc-200 border border-zinc-850'
@@ -143,6 +150,11 @@ export const ModernTerminalDock: React.FC = () => {
                     t.status === 'running' ? 'bg-emerald-400' : 'bg-zinc-500'
                   )}
                 />
+                {t.isAdmin && (
+                  <span title="Administrator Terminal">
+                    <Shield className="w-3 h-3 text-amber-400 shrink-0" />
+                  </span>
+                )}
                 <span className="truncate max-w-[120px]">{t.name}</span>
                 <span
                   onClick={(e) => {
@@ -157,15 +169,28 @@ export const ModernTerminalDock: React.FC = () => {
             );
           })}
 
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-6 w-6 text-zinc-400 hover:text-zinc-100 rounded shrink-0"
-            onClick={handleNewTerminal}
-            title="New Terminal"
-          >
-            <Plus className="w-3.5 h-3.5" />
-          </Button>
+          <div className="flex items-center gap-1 shrink-0 ml-1">
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-6 w-6 text-zinc-400 hover:text-zinc-100 rounded"
+              onClick={handleNewTerminal}
+              title="New Terminal"
+            >
+              <Plus className="w-3.5 h-3.5" />
+            </Button>
+
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-6 px-1.5 text-[10px] font-mono text-amber-400 hover:text-amber-300 hover:bg-amber-950/30 rounded gap-1 border border-amber-500/20"
+              onClick={handleNewAdminTerminal}
+              title="Open Administrator Terminal"
+            >
+              <Shield className="w-2.5 h-2.5" />
+              <span>+ Admin</span>
+            </Button>
+          </div>
         </div>
 
         {/* Right: Window Controls */}

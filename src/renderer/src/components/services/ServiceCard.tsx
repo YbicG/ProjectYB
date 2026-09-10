@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Play, Square, RotateCw, TerminalSquare, ExternalLink, Maximize2, Terminal, CloudLightning, Flame } from 'lucide-react';
+import { Play, Square, RotateCw, TerminalSquare, ExternalLink, Maximize2, Terminal, CloudLightning, Flame, Shield } from 'lucide-react';
 import { Card, CardContent } from '../ui/card';
 import { Button } from '../ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../ui/dialog';
@@ -77,7 +77,15 @@ export const ServiceCard: React.FC<ServiceCardProps> = ({ service }) => {
             <div className="flex items-center gap-2.5 min-w-0">
               <StatusDot status={service.status === 'crashed' ? 'error' : service.status === 'restarting' ? 'starting' : service.status} />
               <div className="min-w-0">
-                <h4 className="font-semibold text-sm text-zinc-100 truncate">{service.name}</h4>
+                <div className="flex items-center gap-1.5">
+                  <h4 className="font-semibold text-sm text-zinc-100 truncate">{service.name}</h4>
+                  {service.isAdmin && (
+                    <span className="px-1.5 py-0.5 rounded text-[9px] font-mono font-bold bg-amber-950/40 text-amber-400 border border-amber-500/30 flex items-center gap-0.5 shrink-0" title="Running with Administrator Privileges">
+                      <Shield className="w-2.5 h-2.5" />
+                      ADMIN
+                    </span>
+                  )}
+                </div>
                 <p className="text-[11px] text-zinc-400 truncate">
                   {service.projectName}
                 </p>

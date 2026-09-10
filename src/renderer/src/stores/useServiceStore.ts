@@ -52,6 +52,7 @@ export const useServiceStore = create<ServiceState>((set, get) => ({
       projectName,
       serviceId: id,
       isService: true,
+      isAdmin: config.isAdmin,
       command: config.command
     })
     
@@ -68,7 +69,8 @@ export const useServiceStore = create<ServiceState>((set, get) => ({
       port: config.port,
       status: 'running',
       startedAt: Date.now(),
-      autoRestart: config.autoRestart ?? false
+      autoRestart: config.autoRestart ?? false,
+      isAdmin: config.isAdmin ?? term?.isAdmin ?? false
     }
     
     set((state) => {
@@ -160,7 +162,8 @@ export const useServiceStore = create<ServiceState>((set, get) => ({
         command: service.command,
         cwd: project?.path,
         port: service.port,
-        autoRestart: service.autoRestart
+        autoRestart: service.autoRestart,
+        isAdmin: service.isAdmin
       })
 
       useNotificationStore.getState().notify({

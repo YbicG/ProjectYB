@@ -8,7 +8,8 @@ import {
   Activity,
   Keyboard,
   Sparkles,
-  Command
+  Command,
+  Shield
 } from 'lucide-react';
 import { useAppStore } from '@renderer/stores/useAppStore';
 import { useProjectStore } from '@renderer/stores/useProjectStore';
@@ -17,6 +18,7 @@ import { useServiceStore } from '@renderer/stores/useServiceStore';
 import { usePortStore } from '@renderer/stores/usePortStore';
 import { useSearchStore } from '@renderer/stores/useSearchStore';
 import { useThemeStore } from '@renderer/stores/useThemeStore';
+import { useTerminalStore } from '@renderer/stores/useTerminalStore';
 import { useWorkspaceProjects } from '@renderer/hooks/useWorkspaceProjects';
 import { NotificationCenter } from '../../shared/NotificationCenter';
 import { ProcessActivityRadarModal } from '../../overview/ProcessActivityRadarModal';
@@ -33,7 +35,12 @@ export const ModernHeader: React.FC = () => {
   const { ports } = usePortStore();
   const { setModalOpen: setSearchModalOpen } = useSearchStore();
   const { setShortcutsModalOpen } = useThemeStore();
+  const { isAppElevated, checkElevation, relaunchAsAdmin } = useTerminalStore();
   const [radarOpen, setRadarOpen] = React.useState(false);
+
+  React.useEffect(() => {
+    checkElevation();
+  }, []);
 
   const selectedProject = projects.find((p) => p.id === selectedProjectId);
 
@@ -165,6 +172,29 @@ export const ModernHeader: React.FC = () => {
             <span className="text-zinc-300 group-hover:text-white transition-colors">{ports.length}</span>
           </div>
         </div>
+
+        {/* Elevation Status / Relaunch as Admin */}
+        {isAppElevated ? (
+          <Badge
+            variant="outline"
+            className="h-7 px-2 text-[10px] font-mono font-bold border-amber-500/40 text-amber-400 bg-amber-950/30 flex items-center gap-1 cursor-default select-none shadow-sm"
+            title="ProjectYB is running with native Administrator privileges"
+          >
+            <Shield className="w-3 h-3 text-amber-400 fill-amber-400/20" />
+            <span className="hidden sm:inline">ADMIN</span>
+          </Badge>
+        ) : (
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => relaunchAsAdmin()}
+            className="h-7 px-2 text-[11px] font-mono text-zinc-400 hover:text-amber-400 hover:bg-amber-950/20 gap-1 border border-transparent hover:border-amber-500/30 transition-all"
+            title="Relaunch ProjectYB with Administrator privileges (UAC prompt)"
+          >
+            <Shield className="w-3.5 h-3.5 text-zinc-500" />
+            <span className="hidden xl:inline">Elevate</span>
+          </Button>
+        )}
 
         {/* Shortcuts Helper */}
         <Button

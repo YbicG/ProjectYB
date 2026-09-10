@@ -1,5 +1,5 @@
 import React from 'react';
-import { Plus, PanelRight, PanelBottom, Trash, RotateCw, Eraser, LayoutGrid, List, Columns } from 'lucide-react';
+import { Plus, PanelRight, PanelBottom, Trash, RotateCw, Eraser, LayoutGrid, List, Columns, Shield } from 'lucide-react';
 import { Button } from '../ui/button';
 import { Separator } from '../ui/separator';
 import { useTerminalStore } from '@renderer/stores/useTerminalStore';
@@ -8,7 +8,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '../ui/
 import { cn } from '@renderer/lib/utils';
 
 export const TerminalToolbar: React.FC = () => {
-  const { layout, setLayout, createTerminal, removeTerminal, restartTerminal, activeTerminalId } = useTerminalStore();
+  const { layout, setLayout, createTerminal, openAdminTerminal, removeTerminal, restartTerminal, activeTerminalId } = useTerminalStore();
 
   return (
     <div className="h-10 flex items-center px-2 bg-zinc-950 border-b border-zinc-800 gap-1">
@@ -28,6 +28,23 @@ export const TerminalToolbar: React.FC = () => {
             </Button>
           </TooltipTrigger>
           <TooltipContent>New Terminal</TooltipContent>
+        </Tooltip>
+
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8 text-amber-400 hover:text-amber-300 hover:bg-amber-950/30"
+              onClick={() => {
+                const defaultCwd = useAppStore.getState().scanPaths[0] || 'D:\\Code';
+                openAdminTerminal({ cwd: defaultCwd, name: 'Admin Shell' });
+              }}
+            >
+              <Shield className="w-4 h-4" />
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent>New Administrator Terminal</TooltipContent>
         </Tooltip>
 
         <Separator orientation="vertical" className="h-6 mx-1 bg-zinc-800" />

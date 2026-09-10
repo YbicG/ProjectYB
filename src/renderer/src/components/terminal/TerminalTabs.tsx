@@ -10,7 +10,9 @@ import {
   Eraser,
   PanelRight,
   PanelBottom,
+  Filter,
   Columns,
+  Shield,
   LayoutGrid,
   List
 } from 'lucide-react';
@@ -36,6 +38,7 @@ export const TerminalTabs: React.FC = () => {
     setActiveTerminal,
     removeTerminal,
     createTerminal,
+    openAdminTerminal,
     renameTerminal,
     restartTerminal,
     filter,
@@ -88,6 +91,20 @@ export const TerminalTabs: React.FC = () => {
         >
           <Plus className="w-3.5 h-3.5 text-violet-400" />
           <span className="hidden sm:inline">New Tab</span>
+        </Button>
+
+        <Button
+          size="sm"
+          variant="outline"
+          onClick={() => {
+            const defaultCwd = useAppStore.getState().scanPaths[0] || 'D:\\Code';
+            openAdminTerminal({ cwd: defaultCwd, name: 'Admin Shell' });
+          }}
+          className="h-8 px-2 text-xs bg-amber-950/20 border-amber-500/30 text-amber-300 hover:border-amber-400 hover:text-amber-200 gap-1 font-medium shadow-sm"
+          title="New Administrator Terminal"
+        >
+          <Shield className="w-3.5 h-3.5 text-amber-400" />
+          <span className="hidden sm:inline">Admin Tab</span>
         </Button>
 
         <Button
@@ -147,6 +164,12 @@ export const TerminalTabs: React.FC = () => {
                     <TerminalIcon className="w-3.5 h-3.5 text-cyan-400 shrink-0" />
                   )}
 
+                  {term.isAdmin && (
+                    <span title="Administrator Terminal">
+                      <Shield className="w-3 h-3 text-amber-400 shrink-0" />
+                    </span>
+                  )}
+
                   <span
                     className={cn(
                       'w-2 h-2 rounded-full shrink-0',
@@ -193,6 +216,15 @@ export const TerminalTabs: React.FC = () => {
                 <ContextMenuItem onClick={() => handleStartRename(term.id, term.name)}>
                   <Edit2 className="w-3.5 h-3.5 mr-2 text-zinc-400" />
                   Rename Tab
+                </ContextMenuItem>
+                <ContextMenuItem
+                  onClick={() => {
+                    const defaultCwd = term.cwd || useAppStore.getState().scanPaths[0] || 'D:\\Code';
+                    openAdminTerminal({ cwd: defaultCwd, name: `Admin - ${term.name}` });
+                  }}
+                >
+                  <Shield className="w-3.5 h-3.5 mr-2 text-amber-400" />
+                  Open Admin Terminal Here
                 </ContextMenuItem>
                 <ContextMenuItem onClick={() => window.api?.terminal?.write(term.id, '\x0c')}>
                   <Eraser className="w-3.5 h-3.5 mr-2 text-zinc-400" />

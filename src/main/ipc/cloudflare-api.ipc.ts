@@ -31,4 +31,11 @@ export function setupCloudflareApiIpc() {
       return cloudflareApiService.createDnsCname(zoneId, subdomain, tunnelId, config);
     }
   );
+
+  ipcMain.handle(
+    'cloudflare:api:getConfiguration',
+    async (_, tunnelId: string, config: CloudflareApiConfig) => {
+      return cloudflareApiService.getConfiguration(tunnelId, config);
+    }
+  );
 }

@@ -11,6 +11,7 @@ interface TerminalOptions {
   projectName?: string
   serviceId?: string
   isService?: boolean
+  isAdmin?: boolean
   command?: string
   shell?: string
 }
@@ -20,8 +21,13 @@ interface TerminalState {
   activeTerminalId: string | null
   layout: TerminalLayout
   filter: TerminalFilter
+  isAppElevated: boolean
+  checkElevation: () => Promise<boolean>
+  relaunchAsAdmin: () => Promise<boolean>
   setFilter: (filter: TerminalFilter) => void
   createTerminal: (options: TerminalOptions) => Promise<string>
+  openAdminTerminal: (options?: { cwd?: string; command?: string; name?: string; external?: boolean }) => Promise<string | boolean>
+  openElevatedWindow: (options?: { cwd?: string; command?: string; name?: string }) => Promise<{ success: boolean; error?: string }>
   killTerminal: (id: string) => void
   restartTerminal: (id: string) => Promise<void>
   setActiveTerminal: (id: string) => void
@@ -38,8 +44,69 @@ export const useTerminalStore = create<TerminalState>((set, get) => ({
   activeTerminalId: null,
   layout: 'tabs',
   filter: 'all',
+  isAppElevated: false,
+
+  checkElevation: async () => {
+    if (!window.api?.system?.isElevated) return false
+    try {
+      const isElevated = await window.api.system.isElevated()
+      set({ isAppElevated: isElevated })
+      return isElevated
+    } catch {
+      return false
+    }
+  },
+
+  relaunchAsAdmin: async () => {
+    if (!window.api?.system?.relaunchElevated) return false
+    try {
+      const res = await window.api.system.relaunchElevated()
+      return !!res.success
+    } catch {
+      return false
+    }
+  },
 
   setFilter: (filter) => set({ filter }),
+
+  openElevatedWindow: async (options) => {
+    if (!window.api?.terminal?.openElevated) {
+      return { success: false, error: 'Elevated terminal not supported on this platform' }
+    }
+    return window.api.terminal.openElevated({
+      cwd: options?.cwd,
+      command: options?.command,
+      name: options?.name
+    })
+  },
+
+  openAdminTerminal: async (options) => {
+    const isElevated = await get().checkElevation()
+    if (options?.external || !isElevated) {
+      // Launch native elevated console window with UAC prompt
+      const res = await get().openElevatedWindow(options)
+      if (res.success) {
+        useNotificationStore.getState().notify({
+          title: 'Administrator Terminal Spawned',
+          message: `Opened elevated terminal for ${options?.name || 'Session'}`,
+          type: 'success',
+          category: 'terminals',
+          actionTab: 'terminals'
+        })
+        return true
+      }
+      // If external launch failed or fallback, spawn internal tagged as admin
+    }
+
+    // App is elevated or user requested internal admin tab
+    const name = options?.name ? (options.name.startsWith('[Admin]') ? options.name : `[Admin] ${options.name}`) : 'Admin Terminal'
+    return get().createTerminal({
+      name,
+      cwd: options?.cwd || 'D:\\Code',
+      command: options?.command,
+      isAdmin: true
+    })
+  },
   
   createTerminal: async (options) => {
     const id = generateId()
@@ -52,6 +119,7 @@ export const useTerminalStore = create<TerminalState>((set, get) => ({
       projectName: options.projectName,
       serviceId: options.serviceId,
       isService: options.isService ?? false,
+      isAdmin: options.isAdmin ?? false,
       status: 'starting',
       createdAt: Date.now(),
       command: options.command
@@ -81,6 +149,7 @@ export const useTerminalStore = create<TerminalState>((set, get) => ({
         projectName: options.projectName,
         serviceId: options.serviceId,
         isService: options.isService,
+        isAdmin: options.isAdmin,
         command: options.command
       })
       
@@ -144,6 +213,7 @@ export const useTerminalStore = create<TerminalState>((set, get) => ({
       projectName: term.projectName,
       serviceId: term.serviceId,
       isService: term.isService,
+      isAdmin: term.isAdmin,
       command: term.command
     })
   },

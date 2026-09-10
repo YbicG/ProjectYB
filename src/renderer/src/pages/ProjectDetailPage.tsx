@@ -60,7 +60,7 @@ export const ProjectDetailPage: React.FC = () => {
   const { selectedProjectId, selectProject } = useProjectStore();
   const { projects } = useWorkspaceProjects();
   const { runningServices, startService, stopService } = useServiceStore();
-  const { createTerminal } = useTerminalStore();
+  const { createTerminal, openAdminTerminal } = useTerminalStore();
   const { configs: allConfigs, addConfig, updateConfig } = useRunConfigStore();
   const { setActiveTab } = useAppStore();
 
@@ -80,6 +80,20 @@ export const ProjectDetailPage: React.FC = () => {
   const [subprojectEnvTarget, setSubprojectEnvTarget] = useState<{ path: string; name: string } | null>(null);
   const [subprojectPeekTarget, setSubprojectPeekTarget] = useState<{ path: string; name: string } | null>(null);
 
+  const handleOpenAdminTerminal = async () => {
+    if (!project) return;
+    try {
+      await openAdminTerminal({
+        name: `${project.name} (Admin)`,
+        cwd: project.path
+      });
+      useThemeStore.getState().setTerminalDockOpen(true);
+      toast.success('Spawned Administrator terminal');
+    } catch (err: any) {
+      toast.error('Failed to open Admin terminal: ' + err.message);
+    }
+  };
+
   const handleOpenSubprojectTerminal = async (sub: SubProject) => {
     try {
       await createTerminal({
@@ -92,6 +106,19 @@ export const ProjectDetailPage: React.FC = () => {
       toast.success(`Spawned terminal in ${sub.name}`);
     } catch (err: any) {
       toast.error('Failed to open terminal: ' + err.message);
+    }
+  };
+
+  const handleOpenSubprojectAdminTerminal = async (sub: SubProject) => {
+    try {
+      await openAdminTerminal({
+        name: project ? `${project.name} > ${sub.name} (Admin)` : `${sub.name} (Admin)`,
+        cwd: sub.path
+      });
+      useThemeStore.getState().setTerminalDockOpen(true);
+      toast.success(`Spawned Admin terminal in ${sub.name}`);
+    } catch (err: any) {
+      toast.error('Failed to open admin terminal: ' + err.message);
     }
   };
 
@@ -166,7 +193,7 @@ export const ProjectDetailPage: React.FC = () => {
 
   const scripts = Object.entries(project.scripts || {});
 
-  const handleLaunchScript = async (scriptName: string, command: string) => {
+  const handleLaunchScript = async (scriptName: string, command: string, isAdmin?: boolean) => {
     try {
       const isDaemon =
         scriptName.includes('dev') ||
@@ -180,26 +207,35 @@ export const ProjectDetailPage: React.FC = () => {
           name: scriptName,
           command: command,
           cwd: project.path,
-          autoRestart: false
+          autoRestart: false,
+          isAdmin
         });
-        toast.success('Started service: ' + scriptName);
+        toast.success(`Started service ${isAdmin ? '(Admin)' : ''}: ${scriptName}`);
       } else {
-        await createTerminal({
-          name: project.name + ' [' + scriptName + ']',
-          cwd: project.path,
-          command: command,
-          projectId: project.id,
-          projectName: project.name
-        });
+        if (isAdmin) {
+          await openAdminTerminal({
+            cwd: project.path,
+            name: `${project.name} [${scriptName}]`,
+            command
+          });
+        } else {
+          await createTerminal({
+            name: project.name + ' [' + scriptName + ']',
+            cwd: project.path,
+            command: command,
+            projectId: project.id,
+            projectName: project.name
+          });
+        }
         useThemeStore.getState().setTerminalDockOpen(true);
-        toast.success('Spawned terminal for ' + scriptName);
+        toast.success(`Spawned ${isAdmin ? 'Admin ' : ''}terminal for ${scriptName}`);
       }
     } catch (err: any) {
       toast.error('Failed to launch ' + scriptName + ': ' + err.message);
     }
   };
 
-  const handleRunSubprojectScript = async (sub: SubProject, scriptName: string, command: string) => {
+  const handleRunSubprojectScript = async (sub: SubProject, scriptName: string, command: string, isAdmin?: boolean) => {
     try {
       const isDaemon = scriptName.includes('dev') || scriptName.includes('start') || scriptName.includes('serve');
       if (isDaemon) {
@@ -208,19 +244,28 @@ export const ProjectDetailPage: React.FC = () => {
           name: sub.name + ':' + scriptName,
           command: command,
           cwd: sub.path,
-          autoRestart: false
+          autoRestart: false,
+          isAdmin
         });
-        toast.success('Started subproject service: ' + sub.name + ' [' + scriptName + ']');
+        toast.success(`Started subproject service ${isAdmin ? '(Admin)' : ''}: ${sub.name} [${scriptName}]`);
       } else {
-        await createTerminal({
-          name: sub.name + ' [' + scriptName + ']',
-          cwd: sub.path,
-          command: command,
-          projectId: project.id,
-          projectName: project.name
-        });
+        if (isAdmin) {
+          await openAdminTerminal({
+            cwd: sub.path,
+            name: `${sub.name} [${scriptName}]`,
+            command
+          });
+        } else {
+          await createTerminal({
+            name: sub.name + ' [' + scriptName + ']',
+            cwd: sub.path,
+            command: command,
+            projectId: project.id,
+            projectName: project.name
+          });
+        }
         useThemeStore.getState().setTerminalDockOpen(true);
-        toast.success('Running ' + scriptName + ' in ' + sub.name);
+        toast.success(`Running ${isAdmin ? 'Admin ' : ''}${scriptName} in ${sub.name}`);
       }
     } catch (err: any) {
       toast.error('Failed to run: ' + err.message);
@@ -347,6 +392,31 @@ export const ProjectDetailPage: React.FC = () => {
           >
             <FolderOpen className="w-3.5 h-3.5" />
             <span>Explorer</span>
+          </Button>
+
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={async () => {
+              await createTerminal({ name: project.name, cwd: project.path, projectId: project.id, projectName: project.name });
+              useThemeStore.getState().setTerminalDockOpen(true);
+            }}
+            className="h-7 text-xs border-zinc-800 hover:bg-zinc-900 text-zinc-300 gap-1.5"
+            title="Open terminal in project directory"
+          >
+            <Terminal className="w-3.5 h-3.5 text-emerald-400" />
+            <span>Terminal</span>
+          </Button>
+
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleOpenAdminTerminal}
+            className="h-7 text-xs border-amber-500/30 bg-amber-950/20 text-amber-300 hover:bg-amber-950/40 gap-1.5 font-medium"
+            title="Open Administrator terminal in project directory"
+          >
+            <Shield className="w-3.5 h-3.5 text-amber-400" />
+            <span>Admin</span>
           </Button>
 
           <Button
@@ -538,13 +608,24 @@ export const ProjectDetailPage: React.FC = () => {
                               <Square className="w-3 h-3" /> Stop
                             </Button>
                           ) : (
-                            <Button
-                              size="sm"
-                              onClick={() => handleLaunchScript(name, cmd)}
-                              className="h-7 text-xs bg-violet-600 hover:bg-violet-700 gap-1 px-2.5"
-                            >
-                              <Play className="w-3 h-3" /> Start
-                            </Button>
+                            <div className="flex items-center gap-1.5">
+                              <Button
+                                size="sm"
+                                onClick={() => handleLaunchScript(name, cmd)}
+                                className="h-7 text-xs bg-violet-600 hover:bg-violet-700 gap-1 px-2.5"
+                              >
+                                <Play className="w-3 h-3" /> Start
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => handleLaunchScript(name, cmd, true)}
+                                className="h-7 text-xs border-amber-500/30 text-amber-400 hover:bg-amber-950/30 gap-1 px-2"
+                                title="Run script as Administrator"
+                              >
+                                <Shield className="w-3 h-3 text-amber-400" /> Admin
+                              </Button>
+                            </div>
                           )}
                         </div>
                       </Card>
@@ -595,6 +676,16 @@ export const ProjectDetailPage: React.FC = () => {
                           >
                             <Terminal className="w-3 h-3" />
                             <span>Terminal</span>
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handleOpenSubprojectAdminTerminal(sub)}
+                            className="h-7 px-2 text-xs font-mono border-amber-500/30 bg-zinc-950 hover:bg-amber-950/30 text-amber-400 hover:text-amber-300 gap-1"
+                            title="Spawn Administrator Terminal in Universal Bottom Dock"
+                          >
+                            <Shield className="w-3 h-3 text-amber-400" />
+                            <span>Admin</span>
                           </Button>
                           <Button
                             variant="outline"

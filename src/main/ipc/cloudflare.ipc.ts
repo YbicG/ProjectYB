@@ -51,8 +51,8 @@ export function setupCloudflareIpc(mainWindow: BrowserWindow) {
   });
 
   // Cloudflare REST API management
-  ipcMain.handle('cloudflare:testApiToken', async (_, apiToken: string) => {
-    return cloudflareService.testApiToken(apiToken);
+  ipcMain.handle('cloudflare:testApiToken', async (_, apiToken: string, accountId?: string) => {
+    return cloudflareService.testApiToken(apiToken, accountId);
   });
 
   ipcMain.handle('cloudflare:listAccounts', async (_, apiToken: string) => {
@@ -65,6 +65,10 @@ export function setupCloudflareIpc(mainWindow: BrowserWindow) {
 
   ipcMain.handle('cloudflare:createRemoteTunnel', async (_, apiToken: string, accountId: string, name: string) => {
     return cloudflareService.createRemoteTunnel(apiToken, accountId, name);
+  });
+
+  ipcMain.handle('cloudflare:getRemoteTunnelToken', async (_, apiToken: string, accountId: string, tunnelId: string) => {
+    return cloudflareService.getRemoteTunnelToken(apiToken, accountId, tunnelId);
   });
 
   ipcMain.handle('cloudflare:deleteRemoteTunnel', async (_, apiToken: string, accountId: string, tunnelId: string) => {

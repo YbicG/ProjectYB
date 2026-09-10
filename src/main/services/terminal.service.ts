@@ -1,3 +1,4 @@
+import { exec, execSync } from 'child_process';
 import * as pty from 'node-pty';
 import { logger } from '../utils/logger';
 import { logStreamService, cleanAnsiText } from './logstream.service';
@@ -13,6 +14,7 @@ export interface TerminalInstance {
   projectName?: string;
   serviceId?: string;
   isService?: boolean;
+  isAdmin?: boolean;
   command?: string;
   port?: number;
   startedAt: number;
@@ -24,8 +26,65 @@ export interface TerminalSpawnMeta {
   projectName?: string;
   serviceId?: string;
   isService?: boolean;
+  isAdmin?: boolean;
   command?: string;
   port?: number;
+}
+
+export function isProcessElevated(): boolean {
+  if (process.platform !== 'win32') {
+    return typeof process.getuid === 'function' && process.getuid() === 0;
+  }
+  try {
+    execSync('net session', { stdio: 'ignore' });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+export function openElevatedTerminal(
+  cwd: string = process.cwd(),
+  command?: string,
+  title?: string
+): Promise<{ success: boolean; pid?: number; error?: string }> {
+  return new Promise((resolve) => {
+    try {
+      const targetCwd = cwd || process.cwd();
+      if (process.platform === 'win32') {
+        const winTitle = (title || 'Terminal').replace(/'/g, "''");
+        const safeCwd = targetCwd.replace(/'/g, "''");
+        let psCommand = `Set-Location -LiteralPath '${safeCwd}'; $host.UI.RawUI.WindowTitle = 'ProjectYB [Admin] - ${winTitle}'; Write-Host '[ProjectYB Administrator Terminal]' -ForegroundColor Yellow; Write-Host 'Directory: ${safeCwd}' -ForegroundColor DarkGray;`;
+
+        if (command && command.trim()) {
+          const safeCmd = command.trim().replace(/"/g, '`"');
+          psCommand += ` Write-Host 'Executing: ${safeCmd}' -ForegroundColor Cyan; ${safeCmd};`;
+        }
+
+        const args = ['-NoExit', '-ExecutionPolicy', 'Bypass', '-Command', psCommand];
+        const argList = args.map((a) => `\\"${a.replace(/"/g, '`"')}\\"`).join(', ');
+        const elevateScript = `Start-Process powershell.exe -Verb RunAs -WorkingDirectory \\"${targetCwd.replace(/"/g, '`"')}\\" -ArgumentList ${argList}`;
+
+        exec(`powershell -NoProfile -Command "${elevateScript}"`, (err: any) => {
+          if (err) {
+            logger.error('[TerminalService] Failed to launch elevated terminal:', err);
+            resolve({ success: false, error: err.message });
+          } else {
+            logger.info(`[TerminalService] Launched elevated terminal in ${targetCwd}`);
+            resolve({ success: true });
+          }
+        });
+      } else {
+        const script = command ? `sudo sh -c 'cd "${targetCwd}" && ${command}'` : `sudo -i`;
+        exec(script, (err: any) => {
+          if (err) resolve({ success: false, error: err.message });
+          else resolve({ success: true });
+        });
+      }
+    } catch (err: any) {
+      resolve({ success: false, error: err.message });
+    }
+  });
 }
 
 class TerminalService {
@@ -63,6 +122,7 @@ class TerminalService {
         projectName: meta?.projectName,
         serviceId: meta?.serviceId,
         isService: meta?.isService ?? Boolean(meta?.serviceId),
+        isAdmin: meta?.isAdmin ?? isProcessElevated(),
         command: meta?.command,
         port: meta?.port,
         startedAt: Date.now()

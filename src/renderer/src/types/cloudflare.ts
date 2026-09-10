@@ -34,6 +34,7 @@ export interface RemoteTunnelInfo {
   status: string;
   createdAt: string;
   connectionsCount?: number;
+  hostname?: string;
 }
 
 export interface CloudflareAccount {

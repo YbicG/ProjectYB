@@ -26,6 +26,7 @@ export const CreateTunnelDialog: React.FC = () => {
     startNamedTunnel,
     autoCreateAndLaunchNamedTunnel,
     binaryStatus,
+    checkBinaryStatus,
     installBinary,
     isDownloadingBinary,
     config,
@@ -61,6 +62,7 @@ export const CreateTunnelDialog: React.FC = () => {
   useEffect(() => {
     if (createModalOpen) {
       loadConfig();
+      checkBinaryStatus();
     }
   }, [createModalOpen]);
 
@@ -79,7 +81,11 @@ export const CreateTunnelDialog: React.FC = () => {
   const handleLaunch = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!binaryStatus?.installed) {
+    let currentBinary = binaryStatus;
+    if (!currentBinary) {
+      currentBinary = await checkBinaryStatus();
+    }
+    if (!currentBinary?.installed) {
       toast.info('Downloading and installing cloudflared first...');
       const ok = await installBinary();
       if (!ok) return;

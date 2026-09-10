@@ -1,5 +1,5 @@
 import { ipcMain, BrowserWindow } from 'electron';
-import { terminalService, TerminalSpawnMeta } from '../services/terminal.service';
+import { terminalService, TerminalSpawnMeta, isProcessElevated, openElevatedTerminal } from '../services/terminal.service';
 
 export function setupTerminalIpc(mainWindow: BrowserWindow) {
   ipcMain.handle(
@@ -17,11 +17,12 @@ export function setupTerminalIpc(mainWindow: BrowserWindow) {
         projectName?: string;
         serviceId?: string;
         isService?: boolean;
+        isAdmin?: boolean;
         command?: string;
         port?: number;
       }
     ) => {
-      const { id, cwd, cols, rows, shell, name, projectId, projectName, serviceId, isService, command, port } = options;
+      const { id, cwd, cols, rows, shell, name, projectId, projectName, serviceId, isService, isAdmin, command, port } = options;
       return terminalService.spawn(
         id,
         cwd || process.cwd(),
@@ -30,7 +31,7 @@ export function setupTerminalIpc(mainWindow: BrowserWindow) {
         shell,
         (data) => mainWindow.webContents.send(`terminal:data:${id}`, data),
         (exitCode) => mainWindow.webContents.send(`terminal:exit:${id}`, exitCode),
-        { name, projectId, projectName, serviceId, isService, command, port }
+        { name, projectId, projectName, serviceId, isService, isAdmin, command, port }
       );
     }
   );
@@ -40,4 +41,11 @@ export function setupTerminalIpc(mainWindow: BrowserWindow) {
   ipcMain.on('terminal:kill', (_, id: string) => terminalService.kill(id));
   ipcMain.handle('terminal:getBuffer', (_, id: string) => terminalService.getBuffer(id));
   ipcMain.handle('terminal:list', () => terminalService.getAllTerminals());
+  ipcMain.handle('terminal:isElevated', () => isProcessElevated());
+  ipcMain.handle(
+    'terminal:openElevated',
+    (_, options: { cwd?: string; command?: string; name?: string }) => {
+      return openElevatedTerminal(options.cwd, options.command, options.name);
+    }
+  );
 }

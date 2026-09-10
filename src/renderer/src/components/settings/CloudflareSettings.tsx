@@ -11,7 +11,9 @@ import {
   RotateCw,
   Server,
   ShieldCheck,
-  Globe
+  Globe,
+  Play,
+  Square
 } from 'lucide-react';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '../ui/card';
 import { Button } from '../ui/button';
@@ -39,13 +41,17 @@ export const CloudflareSettings: React.FC = () => {
     remoteTunnels,
     loadRemoteTunnels,
     createRemoteNamedTunnel,
-    deleteRemoteNamedTunnel
+    deleteRemoteNamedTunnel,
+    activeTunnels,
+    launchRemoteTunnel,
+    stopTunnel
   } = useCloudflareStore();
 
   const [tokenInput, setTokenInput] = useState(config.apiToken || '');
   const [accountIdInput, setAccountIdInput] = useState(config.accountId || '');
   const [newTunnelName, setNewTunnelName] = useState('');
   const [isCreatingTunnel, setIsCreatingTunnel] = useState(false);
+  const [tunnelPorts, setTunnelPorts] = useState<Record<string, number>>({});
 
   useEffect(() => {
     loadConfig();
@@ -70,7 +76,7 @@ export const CloudflareSettings: React.FC = () => {
       apiToken: tokenInput.trim(),
       accountId: accountIdInput.trim() || undefined
     });
-    const ok = await testToken(tokenInput.trim());
+    const ok = await testToken(tokenInput.trim(), accountIdInput.trim() || undefined);
     if (ok) {
       toast.success('Cloudflare API Token connected and verified!');
     } else {
@@ -351,39 +357,97 @@ export const CloudflareSettings: React.FC = () => {
               </div>
             ) : (
               <div className="divide-y divide-zinc-850 border border-zinc-800 rounded-lg overflow-hidden bg-zinc-900/30">
-                {remoteTunnels.map((tun) => (
-                  <div key={tun.id} className="p-3 flex items-center justify-between gap-3 hover:bg-zinc-900/60 transition-colors">
-                    <div className="space-y-0.5 min-w-0">
-                      <div className="flex items-center gap-2">
-                        <span className="font-semibold text-xs text-zinc-200 truncate">{tun.name}</span>
-                        <Badge
-                          variant="outline"
-                          className={cn(
-                            'text-[9px] font-mono uppercase px-1 py-0',
-                            tun.status === 'healthy' || tun.status === 'active'
-                              ? 'border-emerald-500/40 text-emerald-400'
-                              : 'border-zinc-700 text-zinc-500'
-                          )}
-                        >
-                          {tun.status}
-                        </Badge>
-                      </div>
-                      <p className="font-mono text-[10px] text-zinc-500 truncate">ID: {tun.id}</p>
-                    </div>
+                {remoteTunnels.map((tun) => {
+                  const runningInstance = activeTunnels.find((a) => a.id === tun.id || (a.name === tun.name && a.status !== 'stopped'));
+                  const portVal = tunnelPorts[tun.id] ?? 3000;
 
-                    <div className="flex items-center gap-2 shrink-0">
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => deleteRemoteNamedTunnel(tun.id)}
-                        className="h-7 w-7 text-zinc-500 hover:text-red-400"
-                        title="Delete Tunnel"
-                      >
-                        <Trash2 className="w-3.5 h-3.5" />
-                      </Button>
+                  return (
+                    <div key={tun.id} className="p-3 flex items-center justify-between gap-3 hover:bg-zinc-900/60 transition-colors">
+                      <div className="space-y-0.5 min-w-0">
+                        <div className="flex items-center gap-2">
+                          <span className="font-semibold text-xs text-zinc-200 truncate">{tun.name}</span>
+                          <Badge
+                            variant="outline"
+                            className={cn(
+                              'text-[9px] font-mono uppercase px-1 py-0',
+                              runningInstance
+                                ? 'border-emerald-500/40 text-emerald-400 bg-emerald-950/30'
+                                : tun.status === 'healthy' || tun.status === 'active'
+                                ? 'border-emerald-500/40 text-emerald-400'
+                                : 'border-zinc-700 text-zinc-500'
+                            )}
+                          >
+                            {runningInstance ? 'Running' : tun.status}
+                          </Badge>
+                        </div>
+                        <p className="font-mono text-[10px] text-zinc-500 truncate">ID: {tun.id}</p>
+                        {runningInstance?.publicUrl ? (
+                          <a
+                            href={runningInstance.publicUrl}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="font-mono text-[11px] text-emerald-400 hover:underline flex items-center gap-1"
+                          >
+                            {runningInstance.publicUrl} <ExternalLink className="w-2.5 h-2.5" />
+                          </a>
+                        ) : tun.hostname ? (
+                          <a
+                            href={`https://${tun.hostname}`}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="font-mono text-[11px] text-cyan-400 hover:underline flex items-center gap-1"
+                          >
+                            https://{tun.hostname} <ExternalLink className="w-2.5 h-2.5" />
+                          </a>
+                        ) : null}
+                      </div>
+
+                      <div className="flex items-center gap-2 shrink-0">
+                        {runningInstance ? (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => stopTunnel(runningInstance.id)}
+                            className="h-7 text-xs border-red-500/40 text-red-400 hover:bg-red-950/30 gap-1"
+                          >
+                            <Square className="w-3 h-3 fill-current" />
+                            Stop
+                          </Button>
+                        ) : (
+                          <div className="flex items-center gap-1.5">
+                            <span className="text-[11px] text-zinc-500 font-mono">Port</span>
+                            <Input
+                              type="number"
+                              value={portVal}
+                              onChange={(e) => setTunnelPorts((prev) => ({ ...prev, [tun.id]: parseInt(e.target.value, 10) || 3000 }))}
+                              className="h-7 w-16 px-1.5 text-center text-xs font-mono bg-zinc-900 border-zinc-800"
+                              min={1}
+                              max={65535}
+                            />
+                            <Button
+                              size="sm"
+                              onClick={() => launchRemoteTunnel(tun.id, tun.name, portVal)}
+                              className="h-7 text-xs bg-emerald-600 hover:bg-emerald-500 text-white gap-1"
+                            >
+                              <Play className="w-3 h-3 fill-current" />
+                              Run
+                            </Button>
+                          </div>
+                        )}
+
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => deleteRemoteNamedTunnel(tun.id)}
+                          className="h-7 w-7 text-zinc-500 hover:text-red-400"
+                          title="Delete Tunnel"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </Button>
+                      </div>
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             )}
           </CardContent>

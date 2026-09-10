@@ -124,6 +124,36 @@ export class CloudflareApiService {
       const createData = (await createRes.json()) as any;
       if (!createData.success) {
         const errMsg = createData.errors?.[0]?.message || 'Failed to create Cloudflare tunnel';
+        const alreadyExists =
+          createData.errors?.some(
+            (e: any) => e.code === 1003 || String(e.message).toLowerCase().includes('already exists')
+          ) || errMsg.toLowerCase().includes('already exists');
+
+        if (alreadyExists) {
+          // Look up existing tunnel by name
+          try {
+            const searchRes = await fetch(
+              `${this.baseUrl}/accounts/${config.accountId}/cfd_tunnel?name=${encodeURIComponent(name.trim())}&is_deleted=false`,
+              {
+                headers: {
+                  Authorization: `Bearer ${config.apiToken.trim()}`,
+                  'Content-Type': 'application/json'
+                }
+              }
+            );
+            const searchData = (await searchRes.json()) as any;
+            if (searchData.success && Array.isArray(searchData.result) && searchData.result.length > 0) {
+              const existingTunnel = searchData.result[0];
+              const tokenResult = await this.getTunnelToken(existingTunnel.id, config);
+              return {
+                success: true,
+                tunnelId: existingTunnel.id,
+                name: existingTunnel.name,
+                token: tokenResult.token
+              };
+            }
+          } catch {}
+        }
         return { success: false, error: errMsg };
       }
 
@@ -151,6 +181,31 @@ export class CloudflareApiService {
       };
     } catch (err: any) {
       logger.error(`Failed to create named tunnel "${name}"`, err);
+      return { success: false, error: err.message };
+    }
+  }
+
+  /**
+   * Get Tunnel Configuration
+   * GET /accounts/{account_id}/cfd_tunnel/{tunnel_id}/configurations
+   */
+  async getConfiguration(
+    tunnelId: string,
+    config: CloudflareApiConfig
+  ): Promise<{ success: boolean; config?: any; error?: string }> {
+    try {
+      const res = await fetch(`${this.baseUrl}/accounts/${config.accountId}/cfd_tunnel/${tunnelId}/configurations`, {
+        headers: {
+          Authorization: `Bearer ${config.apiToken.trim()}`,
+          'Content-Type': 'application/json'
+        }
+      });
+      const data = (await res.json()) as any;
+      if (!data.success) {
+        return { success: false, error: data.errors?.[0]?.message || 'Failed to fetch tunnel configuration' };
+      }
+      return { success: true, config: data.result?.config };
+    } catch (err: any) {
       return { success: false, error: err.message };
     }
   }
@@ -197,7 +252,25 @@ export class CloudflareApiService {
     config: CloudflareApiConfig
   ): Promise<ConfigureIngressResult> {
     try {
+      // Fetch existing ingress rules first to prevent clobbering
+      let existingIngress: any[] = [];
+      try {
+        const getRes = await fetch(`${this.baseUrl}/accounts/${config.accountId}/cfd_tunnel/${tunnelId}/configurations`, {
+          headers: {
+            Authorization: `Bearer ${config.apiToken.trim()}`,
+            'Content-Type': 'application/json'
+          }
+        });
+        const getData = (await getRes.json()) as any;
+        if (getData.success && getData.result?.config?.ingress) {
+          existingIngress = getData.result.config.ingress.filter(
+            (i: any) => i.service !== 'http_status:404' && i.hostname !== hostname.trim()
+          );
+        }
+      } catch {}
+
       const ingress = [
+        ...existingIngress,
         {
           hostname: hostname.trim(),
           service: `http://localhost:${localPort}`

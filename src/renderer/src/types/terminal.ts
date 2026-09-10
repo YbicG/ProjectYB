@@ -10,6 +10,7 @@ export interface TerminalInstance {
   projectName?: string
   serviceId?: string
   isService?: boolean
+  isAdmin?: boolean
   status: TerminalStatus
   pid?: number
   createdAt: number
